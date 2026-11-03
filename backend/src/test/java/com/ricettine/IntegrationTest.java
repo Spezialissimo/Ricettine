@@ -11,7 +11,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * Base class for all backend integration tests. One Postgres container is started once per JVM
  * (singleton pattern) and shared by every test class, so the Spring context cache stays valid.
  */
-@SpringBootTest(properties = "logging.level.org.hibernate.orm.jdbc.error=OFF")
+@SpringBootTest(properties = { "logging.level.org.hibernate.orm.jdbc.error=OFF",
+		"ricettine.storage.local.path=target/test-media" })
 @AutoConfigureMockMvc
 public abstract class IntegrationTest {
 

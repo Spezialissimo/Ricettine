@@ -43,6 +43,15 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 	}
 
 	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+			org.springframework.web.multipart.MaxUploadSizeExceededException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.PAYLOAD_TOO_LARGE);
+		pd.setProperty("code", "file_too_large");
+		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(pd);
+	}
+
+	@Override
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		Map<String, String> fields = new LinkedHashMap<>();
