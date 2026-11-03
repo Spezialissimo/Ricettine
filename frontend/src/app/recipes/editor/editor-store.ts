@@ -1,5 +1,6 @@
 import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
 import { errorKey, toApiError } from '../../core/api-error';
+import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
@@ -88,9 +89,13 @@ export class EditorStore {
   });
 
   constructor() {
+    // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
+    const pending = inject(PendingSaves);
+    const unregister = pending.register(() => this.autosave.flush());
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
-      void this.autosave.flush().finally(() => this.autosave.dispose());
+      unregister();
+      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()));
     });
   }
 

@@ -1,5 +1,5 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { createRecipe, newUserPage } from './helpers';
+import { createRecipe, logIn, logOut, newUserPage } from './helpers';
 
 const newRecipeLink = (page: Page, project: string) =>
   project === 'desktop'
@@ -228,5 +228,16 @@ test('ingredient row: the name is the wide field and nothing overflows the panel
     await page.setViewportSize({ width: 800, height: 800 }); // narrowest desktop width: still no overflow
     await check();
   }
+  await context.close();
+});
+
+test('logging out right after typing keeps the text', async ({ browser }, testInfo) => {
+  const { page, context, who } = await newUserPage(browser, testInfo, 'logout');
+  const url = await createRecipe(page, { title: 'Pie' });
+  await page.getByLabel('Title').fill('Pie with apples');
+  await logOut(page); // no wait for "Saved ✓"
+  await logIn(page, who);
+  await page.goto(url);
+  await expect(page.getByLabel('Title')).toHaveValue('Pie with apples');
   await context.close();
 });

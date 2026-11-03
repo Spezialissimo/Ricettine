@@ -70,6 +70,7 @@ describe('ShellComponent', () => {
     const f = TestBed.createComponent(ShellComponent);
     await f.whenStable();
     (f.nativeElement.querySelector('button.logout') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r)); // pending saves are flushed first (none here)
     http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'x' });
     await f.whenStable();
     await new Promise((r) => setTimeout(r));

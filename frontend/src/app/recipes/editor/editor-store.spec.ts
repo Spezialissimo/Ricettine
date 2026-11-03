@@ -1,6 +1,7 @@
 import { toInput } from '../recipe.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore, conflictText, isUntouchedDraft, withoutBlankIngredients } from './editor-store';
@@ -136,6 +137,42 @@ describe('EditorStore', () => {
     await expect(done).rejects.toBeTruthy();
     await vi.advanceTimersByTimeAsync(800);
     expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'T!', version: 1 }));
+  });
+
+  it('PendingSaves.flushAll sends what is typed in an open editor and waits for the answer', async () => {
+    let resolve!: (r: Recipe) => void;
+    const save = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolve = r)));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    const pending = TestBed.inject(PendingSaves);
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    let done = false;
+    const all = pending.flushAll().then(() => (done = true));
+    await vi.advanceTimersByTimeAsync(0); // no debounce wait
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed' }));
+    expect(done).toBe(false);
+    resolve(serverRecipe({ title: 'Typed', version: 2 }));
+    await all;
+    expect(store.status()).toBe('saved');
+  });
+
+  it('a destroyed editor stays tracked until its leaving flush settles', async () => {
+    let resolve!: (r: Recipe) => void;
+    const save = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolve = r)));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    const pending = TestBed.inject(PendingSaves);
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    TestBed.resetTestingModule(); // leaving the page: the destroy-flush starts
+    expect(save).toHaveBeenCalledTimes(1);
+    let done = false;
+    const all = pending.flushAll().then(() => (done = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(done).toBe(false);
+    expect(save).toHaveBeenCalledTimes(1);
+    resolve(serverRecipe({ title: 'Typed', version: 2 }));
+    await all;
+    expect(done).toBe(true);
   });
 
   it('remove stops autosave and deletes the recipe', async () => {
