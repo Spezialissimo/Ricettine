@@ -25,4 +25,7 @@ status="$(curl -fsS "$BASE/api/setup/status")"
 [ "$status" = '{"setupRequired":true}' ] || fail "unexpected /api/setup/status: $status"
 curl -fsS "$BASE/r/anything" | grep -q '<app-root' || fail "/r/anything is not index HTML"
 
+heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxRAMPercentage || true)"
+echo "$heap" | grep -q '= 75' || fail "JVM MaxRAMPercentage is not 75: $heap"
+
 echo "SMOKE OK"

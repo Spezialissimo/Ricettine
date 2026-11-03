@@ -19,7 +19,7 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | Variable | Default | Description |
 | --- | --- | --- |
 | `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
-| `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. |
+| `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. **Only applied when the `db-data` volume is first created**: changing it later does not change the existing database's password (change it inside Postgres with `ALTER USER ricettine PASSWORD '...'` and then update the variable). |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/ricettine` | JDBC URL, if you use your own Postgres. |
 | `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `ricettine` | Database credentials. |
 | `RICETTINE_STORAGE_TYPE` | `local` | Image storage: `local` or `s3`. |
@@ -33,11 +33,13 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 
 ## Upgrading
 
+The image is built from source on your machine (no published image yet; one will come with CI in a later release). To upgrade, update the checkout and rebuild:
+
 ```sh
-docker compose pull && docker compose up -d
+git pull && docker compose up -d --build
 ```
 
-Database migrations run automatically on startup.
+Database migrations run automatically on startup. Your data stays in the `db-data` and `app-data` volumes.
 
 ## Development
 
