@@ -29,6 +29,23 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
 };
 
 describe('RecipeEditorPage', () => {
+  it('keeps Publish disabled while a photo uploads, and says why', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const { f, el } = await mount({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const publish = el.querySelector('button.publish') as HTMLButtonElement;
+    expect(publish.disabled).toBe(false);
+    const input = el.querySelector('.cover input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new Event('change'));
+    await settle(f);
+    expect(publish.disabled).toBe(true);
+    expect(el.textContent).toContain(en.editor.waitingForUploads);
+  });
+
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
 
   it('loads the recipe into labelled fields laid out per the mockups', async () => {

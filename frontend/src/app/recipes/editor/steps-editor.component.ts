@@ -4,6 +4,8 @@ import { StepInput } from '../recipe.model';
 import { countingSteps, countsStep } from './completeness';
 import { uid } from './editor-sheet';
 import { EditorStore } from './editor-store';
+import { PhotoDropDirective } from './photo-drop.directive';
+import { PhotoSlotComponent } from './photo-slot.component';
 
 export const MAX_STEPS = 100;
 export const MAX_STEP_TEXT = 5000;
@@ -14,7 +16,7 @@ export const MAX_STEP_TEXT = 5000;
  */
 @Component({
   selector: 'app-steps-editor',
-  imports: [TranslocoDirective],
+  imports: [TranslocoDirective, PhotoDropDirective, PhotoSlotComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './steps-editor.component.scss',
   template: `
@@ -22,11 +24,13 @@ export const MAX_STEP_TEXT = 5000;
       @let steps = store.recipe().steps;
       <ol class="step-list">
         @for (s of steps; track $index; let i = $index) {
-          <li class="step" [class.active]="active() === i" (focusin)="active.set(i)" (click)="active.set(i)">
+          <li class="step" [class.active]="active() === i" (focusin)="active.set(i)" (click)="active.set(i)"
+            appPhotoDrop (dropped)="active.set(i); store.uploadPhoto(i, $event)" (rejected)="store.rejectPhoto(i, $event)">
             <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
             <div class="step-body">
               <textarea [id]="id(i)" rows="2" [maxLength]="maxText" [attr.aria-label]="t('editor.stepN', { n: i + 1 })"
                 [value]="s.text" (input)="setText(i, $event)" (keydown)="onKeydown(i, $event)"></textarea>
+              <app-photo-slot [slot]="i" [capture]="true" />
               @if (active() === i) {
                 <div class="step-actions">
                   <button type="button" class="btn delete-step" [disabled]="!canDelete(s)"
@@ -75,6 +79,7 @@ export class StepsEditorComponent {
       ...r,
       steps: [...r.steps.slice(0, at), { text: '', photoMediaId: null }, ...r.steps.slice(at)],
     }));
+    this.store.stepInserted(at);
     this.active.set(at);
     afterNextRender(
       () => {
@@ -84,6 +89,22 @@ export class StepsEditorComponent {
       },
       { injector: this.injector },
     );
+  }
+
+  /**
+   * Phone "📷 Photo": attaches `file` to the step last focused or tapped, else the last step; with no
+   * steps, adds one first.
+   */
+  async attachPhoto(file: File): Promise<void> {
+    if (this.store.recipe().steps.length === 0) this.addStep();
+    await this.store.uploadPhoto(this.targetStep() as number, file);
+  }
+
+  /** The step a phone photo goes to: the one last focused or tapped, else the last; null with no steps. */
+  targetStep(): number | null {
+    const last = this.store.recipe().steps.length - 1;
+    const a = this.active();
+    return last < 0 ? null : a !== null && a <= last ? a : last;
   }
 
   protected setText(i: number, ev: Event): void {
@@ -102,6 +123,7 @@ export class StepsEditorComponent {
 
   protected remove(i: number): void {
     this.store.update((r) => ({ ...r, steps: r.steps.filter((_, si) => si !== i) }));
+    this.store.stepRemoved(i);
     // focus the previous step, else the next one (now at the same index), else the add button
     const left = this.store.recipe().steps.length;
     const target = i > 0 ? i - 1 : left > 0 ? 0 : null;
