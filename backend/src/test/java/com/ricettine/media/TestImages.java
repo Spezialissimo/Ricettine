@@ -144,4 +144,16 @@ public final class TestImages {
 			throw new IllegalStateException(e);
 		}
 	}
+
+	/** RIFF/WEBP with only a VP8X header declaring w x h: enough for header-dimension checks, no pixel data. */
+	public static byte[] webpHeaderOnly(int w, int h) {
+		java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(30).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		b.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(22);
+		b.put("WEBP".getBytes(StandardCharsets.US_ASCII));
+		b.put("VP8X".getBytes(StandardCharsets.US_ASCII)).putInt(10);
+		b.putInt(0); // flags + reserved
+		b.put((byte) ((w - 1) & 0xFF)).put((byte) (((w - 1) >> 8) & 0xFF)).put((byte) (((w - 1) >> 16) & 0xFF));
+		b.put((byte) ((h - 1) & 0xFF)).put((byte) (((h - 1) >> 8) & 0xFF)).put((byte) (((h - 1) >> 16) & 0xFF));
+		return b.array();
+	}
 }

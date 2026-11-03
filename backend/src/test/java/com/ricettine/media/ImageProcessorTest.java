@@ -250,4 +250,25 @@ class ImageProcessorTest {
 					assertThat(e.getStatus().value()).isEqualTo(413);
 				});
 	}
+
+	@Test
+	void subsamplesLargePng() throws Exception {
+		ProcessedImage p = processor.processDetailed(TestImages.write(TestImages.halves(8000, 6000), "png"),
+				Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY));
+		assertThat(p.subsample()).isEqualTo(2);
+		assertThat(p.decodedWidth()).isEqualTo(4000);
+		assertThat(p.decodedHeight()).isEqualTo(3000);
+		BufferedImage d = decode(p.variants().get(ImageVariant.DISPLAY));
+		assertThat(d.getWidth()).isEqualTo(1600);
+		assertThat(d.getHeight()).isEqualTo(1200);
+	}
+
+	@Test
+	void webpOverItsLowerCapIs413WithoutDecoding() {
+		assertThatThrownBy(() -> processor.process(TestImages.webpHeaderOnly(8000, 7000), Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> {
+					assertThat(e.getCode()).isEqualTo("image_too_large");
+					assertThat(e.getStatus().value()).isEqualTo(413);
+				});
+	}
 }

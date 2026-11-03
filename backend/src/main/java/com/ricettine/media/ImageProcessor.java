@@ -30,6 +30,8 @@ import org.springframework.stereotype.Component;
 public class ImageProcessor {
 
 	private static final long MAX_PIXELS = 250_000_000L;
+	/** The WebP reader decodes the full frame before subsampling, so it gets a much lower cap. */
+	private static final long MAX_WEBP_PIXELS = 50_000_000L;
 	private static final float QUALITY = 0.85f;
 
 	static {
@@ -43,7 +45,7 @@ public class ImageProcessor {
 	ProcessedImage processDetailed(byte[] input, Set<ImageVariant> variants) {
 		boolean jpeg = sniff(input);
 		int target = variants.stream().mapToInt(ImageVariant::maxEdge).max().orElse(1);
-		Decoded dec = decode(input, target);
+		Decoded dec = decode(input, target, isWebp(input));
 		BufferedImage src = dec.image();
 		int orientation = jpeg ? orientation(input) : 1;
 		Map<ImageVariant, byte[]> out = new EnumMap<>(ImageVariant.class);
@@ -66,6 +68,11 @@ public class ImageProcessor {
 	private record Decoded(BufferedImage image, int factor) {
 	}
 
+	private static boolean isWebp(byte[] b) {
+		return b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W'
+				&& b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
+	}
+
 	/** @return true when JPEG (the only format we read EXIF from) */
 	private static boolean sniff(byte[] b) {
 		if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
@@ -84,7 +91,7 @@ public class ImageProcessor {
 		return new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_image");
 	}
 
-	private static Decoded decode(byte[] input, int target) {
+	private static Decoded decode(byte[] input, int target, boolean webp) {
 		try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(input))) {
 			var readers = ImageIO.getImageReaders(in);
 			if (!readers.hasNext()) {
@@ -95,7 +102,7 @@ public class ImageProcessor {
 				reader.setInput(in, true, true);
 				int w = reader.getWidth(0);
 				int h = reader.getHeight(0);
-				if ((long) w * h > MAX_PIXELS) {
+				if ((long) w * h > (webp ? MAX_WEBP_PIXELS : MAX_PIXELS)) {
 					throw new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large");
 				}
 				int f = subsampleFactor(w, h, target);
