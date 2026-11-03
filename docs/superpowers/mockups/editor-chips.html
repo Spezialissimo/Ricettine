@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recipe Editor Mockup</title>
+<style>
+  :root{--bg:#f4f1ec;--phone:#fff;--ink:#2b2622;--muted:#8a8178;--line:#e6e0d8;--accent:#c8553d;--soft:#f8f5f1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font:15px/1.4 -apple-system,system-ui,sans-serif;color:var(--ink);padding:24px 16px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px;max-width:900px}
+  .row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .col{max-width:340px}
+  .cap{font-weight:600;margin:0 0 8px}
+  .note{color:var(--muted);font-size:13px;margin:10px 4px 0}
+  .phone{width:320px;height:640px;background:var(--phone);border-radius:36px;border:10px solid #222;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+  .scroll{height:100%;overflow-y:auto;padding:14px 14px 90px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:14px}
+  .top b{font-size:16px}
+  .link{color:var(--accent);font-weight:600}
+  .thumb{height:140px;border-radius:14px;background:repeating-linear-gradient(45deg,#efe9e1,#efe9e1 10px,#f6f2ec 10px,#f6f2ec 20px);display:flex;align-items:center;justify-content:center;color:var(--muted);border:2px dashed var(--line);margin-bottom:12px}
+  .title{font-size:20px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 0;margin-bottom:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:13px}
+  .chip b{color:var(--accent)}
+  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 6px;display:flex;justify-content:space-between}
+  .grp{font-weight:600;font-size:14px;margin:8px 0 4px}
+  .ing{display:grid;grid-template-columns:44px 40px 1fr;gap:6px;margin-bottom:6px}
+  .ing div{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px}
+  .add{color:var(--accent);font-size:14px;font-weight:600;padding:6px 0}
+  .step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .stxt{flex:1;font-size:14px}
+  .sphoto{margin-top:6px;height:70px;border-radius:10px;background:linear-gradient(135deg,#e9c9a8,#c98b5c);}
+  .snophoto{margin-top:6px;font-size:13px;color:var(--muted)}
+  .active{background:#fff7f3;border:2px solid var(--accent);border-radius:12px;padding:10px;margin-top:8px}
+  .caret{border-left:2px solid var(--accent);height:16px;display:inline-block;vertical-align:middle;animation:b 1s step-end infinite}
+  @keyframes b{50%{opacity:0}}
+  .bar{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;gap:8px}
+  .btn{flex:1;border-radius:14px;padding:14px 0;text-align:center;font-weight:700;font-size:15px}
+  .primary{background:var(--accent);color:#fff}
+  .ghost{background:var(--soft);border:1px solid var(--line)}
+  .vis{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+  .vis span{flex:1;text-align:center;padding:7px}
+  .vis .on{background:var(--ink);color:#fff}
+  textarea{all:unset}
+</style>
+</head>
+<style>
+.chip.empty{border-style:dashed;color:var(--muted);background:#fff}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:10px 16px 22px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 4px;font-size:17px}
+.sheet .hint{color:var(--muted);font-size:13px;margin:0 0 14px}
+.stepper{display:flex;align-items:center;justify-content:center;gap:22px;margin:10px 0 18px}
+.stepper .b{width:54px;height:54px;border-radius:50%;background:var(--soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700}
+.stepper .v{font-size:40px;font-weight:800;min-width:60px;text-align:center}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.presets span{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px 0;text-align:center;font-size:14px}
+.presets .on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.field{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:15px;margin-bottom:8px}
+.linkprev{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:14px;font-size:13px}
+.linkprev .ic{width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#e9c9a8,#c98b5c)}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs span{flex:1;text-align:center;padding:8px;border-radius:10px;background:var(--soft);font-size:14px;border:1px solid var(--line)}
+.tabs .on{background:var(--ink);color:#fff}
+</style><body>
+<h1>Recipe details: how the chips work</h1>
+<p class="sub">Chips you haven't filled in show as dashed "+ Prep time" placeholders, so you can see what's missing without a long form. Tapping a chip opens a small sheet from the bottom, within thumb reach. Tap outside or swipe it down to close. Changes save immediately; there's no OK button to hunt for.</p>
+<div class="row">
+<div class="col"><p class="cap">Portions</p><div class="phone"><div class="scroll">
+  <div class="top"><span class="link">Cancel</span><b>New recipe</b><span class="link">Save</span></div>
+  <div class="thumb">📷 Add cover photo</div>
+  <div class="title">Lasagna della nonna</div>
+  <div class="chips"><span class="chip">🍽 Serves <b>4</b></span><span class="chip empty">+ Prep time</span><span class="chip empty">+ Cook time</span><span class="chip empty">+ Source</span></div>
+</div><div class="dim"></div><div class="sheet"><div class="grab"></div><h3>How many does it serve?</h3><p class="hint">What these ingredient amounts make. Readers can scale it on the recipe page.</p>
+<div class="stepper"><div class="b">−</div><div class="v">4</div><div class="b">+</div></div>
+<div class="btn primary">Done</div></div></div><p class="note">Big −/+ buttons, whole numbers. A new recipe starts at 4 (my guess at a sensible default).</p></div>
+<div class="col"><p class="cap">Prep / cook time</p><div class="phone"><div class="scroll">
+  <div class="top"><span class="link">Cancel</span><b>New recipe</b><span class="link">Save</span></div>
+  <div class="thumb">📷 Add cover photo</div>
+  <div class="title">Lasagna della nonna</div>
+  <div class="chips"><span class="chip">🍽 Serves <b>4</b></span><span class="chip empty">+ Prep time</span><span class="chip empty">+ Cook time</span><span class="chip empty">+ Source</span></div>
+</div><div class="dim"></div><div class="sheet"><div class="grab"></div><h3>Prep time</h3>
+<div class="tabs"><span class="on">Prep</span><span>Cook</span></div>
+<div class="presets"><span>5m</span><span>10m</span><span>15m</span><span class="on">30m</span><span>45m</span><span>1h</span><span>1h 30</span><span>2h</span></div>
+<div class="field">Other: <b>__ h __ min</b></div>
+<div class="btn primary">Done</div></div></div><p class="note">One tap for common times, with a custom entry for "4h 20m" braises. Prep and cook share one sheet so you can set both at once.</p></div>
+<div class="col"><p class="cap">Source</p><div class="phone"><div class="scroll">
+  <div class="top"><span class="link">Cancel</span><b>New recipe</b><span class="link">Save</span></div>
+  <div class="thumb">📷 Add cover photo</div>
+  <div class="title">Lasagna della nonna</div>
+  <div class="chips"><span class="chip">🍽 Serves <b>4</b></span><span class="chip empty">+ Prep time</span><span class="chip empty">+ Cook time</span><span class="chip empty">+ Source</span></div>
+</div><div class="dim"></div><div class="sheet"><div class="grab"></div><h3>Where's it from?</h3><p class="hint">A link, a book, a person: anything.</p>
+<div class="field">https://www.giallozafferano.it/ricette/lasagne</div>
+<div class="linkprev"><div class="ic"></div><div><b>Lasagne alla bolognese</b><br><span style="color:var(--muted)">giallozafferano.it</span></div></div>
+<div class="btn primary">Done</div></div></div><p class="note">Plain text ("Nonna", "Ottolenghi, Simple p.112") or a link. If it's a link, it's shown as a link on the recipe page. The preview card is optional polish (it needs the server to fetch the page), so I'd skip it for the trial.</p></div>
+</div></body></html>

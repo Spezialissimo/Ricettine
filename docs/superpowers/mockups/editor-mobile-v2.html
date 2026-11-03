@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recipe Editor Mockup</title>
+<style>
+  :root{--bg:#f4f1ec;--phone:#fff;--ink:#2b2622;--muted:#8a8178;--line:#e6e0d8;--accent:#c8553d;--soft:#f8f5f1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font:15px/1.4 -apple-system,system-ui,sans-serif;color:var(--ink);padding:24px 16px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px;max-width:900px}
+  .row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .col{max-width:340px}
+  .cap{font-weight:600;margin:0 0 8px}
+  .note{color:var(--muted);font-size:13px;margin:10px 4px 0}
+  .phone{width:320px;height:640px;background:var(--phone);border-radius:36px;border:10px solid #222;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+  .scroll{height:100%;overflow-y:auto;padding:14px 14px 90px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:14px}
+  .top b{font-size:16px}
+  .link{color:var(--accent);font-weight:600}
+  .thumb{height:140px;border-radius:14px;background:repeating-linear-gradient(45deg,#efe9e1,#efe9e1 10px,#f6f2ec 10px,#f6f2ec 20px);display:flex;align-items:center;justify-content:center;color:var(--muted);border:2px dashed var(--line);margin-bottom:12px}
+  .title{font-size:20px;font-weight:700;border-bottom:1px solid var(--line);padding:6px 0;margin-bottom:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:13px}
+  .chip b{color:var(--accent)}
+  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 6px;display:flex;justify-content:space-between}
+  .grp{font-weight:600;font-size:14px;margin:8px 0 4px}
+  .ing{display:grid;grid-template-columns:44px 40px 1fr;gap:6px;margin-bottom:6px}
+  .ing div{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px}
+  .add{color:var(--accent);font-size:14px;font-weight:600;padding:6px 0}
+  .step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .stxt{flex:1;font-size:14px}
+  .sphoto{margin-top:6px;height:70px;border-radius:10px;background:linear-gradient(135deg,#e9c9a8,#c98b5c);}
+  .snophoto{margin-top:6px;font-size:13px;color:var(--muted)}
+  .active{background:#fff7f3;border:2px solid var(--accent);border-radius:12px;padding:10px;margin-top:8px}
+  .caret{border-left:2px solid var(--accent);height:16px;display:inline-block;vertical-align:middle;animation:b 1s step-end infinite}
+  @keyframes b{50%{opacity:0}}
+  .bar{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;gap:8px}
+  .btn{flex:1;border-radius:14px;padding:14px 0;text-align:center;font-weight:700;font-size:15px}
+  .primary{background:var(--accent);color:#fff}
+  .ghost{background:var(--soft);border:1px solid var(--line)}
+  .vis{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+  .vis span{flex:1;text-align:center;padding:7px}
+  .vis .on{background:var(--ink);color:#fff}
+  textarea{all:unset}
+</style>
+</head>
+<style>
+.handle{flex:none;width:28px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:20px;cursor:grab;touch-action:none;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
+.dragging{box-shadow:0 8px 20px rgba(0,0,0,.18);background:#fff;border-radius:12px;transform:rotate(-1deg);border:2px solid var(--accent)!important;padding:10px 8px}
+.gap{height:46px;border:2px dashed var(--accent);border-radius:12px;margin:6px 0;opacity:.5}
+.phone.tall{height:auto}.phone.tall .scroll{height:auto;overflow:visible;padding-bottom:100px}
+.bar.fixed{position:absolute}
+</style><body>
+<h1>Recipe editor on a phone, v2: one page, drag handles</h1>
+<p class="sub">Everything is on one page: steps come right after the ingredients. Each step has a ⠿ handle on the left; press and drag it to reorder. The bottom bar stays fixed while you scroll.</p>
+<div class="row">
+<div class="col">
+<p class="cap">The whole page (scrolled out)</p>
+<div class="phone tall"><div class="scroll">
+  <div class="top"><span class="link">Cancel</span><b>New recipe</b><span class="link">Save</span></div>
+  <div class="thumb">📷 Add cover photo</div>
+  <div class="title">Lasagna della nonna</div>
+  <div class="chips"><span class="chip">🍽 Serves <b>4</b> ±</span><span class="chip">⏱ Prep <b>30m</b></span><span class="chip">🔥 Cook <b>45m</b></span><span class="chip">🔗 Source: Nonna</span></div>
+  <div class="sec"><span>Visibility</span></div>
+  <div class="vis"><span class="on">🔒 Private</span><span>🌍 Public</span></div>
+  <div class="sec"><span>Ingredients</span><span>4 portions</span></div>
+  <div class="grp">For the ragù</div>
+  <div class="ing"><div>500</div><div>g</div><div>minced beef</div></div>
+  <div class="ing"><div>700</div><div>ml</div><div>passata</div></div>
+  <div class="add">+ ingredient</div>
+  <div class="grp">For the béchamel</div>
+  <div class="ing"><div>1</div><div>l</div><div>milk</div></div>
+  <div class="add">+ ingredient · + group</div>
+  <div class="sec"><span>Steps</span><span>Saved ✓</span></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">1</div><div class="stxt">Brown the beef with onion and carrot, 10 minutes.<div class="sphoto"></div></div></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">2</div><div class="stxt">Add passata, simmer on low for 1 hour.<div class="snophoto">📷 add photo</div></div></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">3</div><div class="stxt">Melt butter, whisk in flour, then milk a bit at a time.<div class="sphoto"></div></div></div>
+  <div class="active"><div style="display:flex;gap:10px"><div class="handle">⠿</div><div class="num">4</div><div class="stxt">Layer ragù, pasta, béchamel<span class="caret"></span></div></div></div>
+  <div class="add">+ step</div>
+  <div class="sec"><span>Notes</span></div>
+  <div class="ing" style="grid-template-columns:1fr"><div>Next time: less salt in the ragù</div></div>
+</div>
+<div class="bar fixed"><div class="btn ghost">📷 Photo</div><div class="btn primary">+ Next step</div></div>
+</div>
+</div>
+<div class="col">
+<p class="cap">Dragging step 3 above step 2</p>
+<div class="phone"><div class="scroll">
+  <div class="sec"><span>Steps</span></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">1</div><div class="stxt">Brown the beef with onion and carrot, 10 minutes.</div></div>
+  <div class="step dragging"><div class="handle" style="color:var(--accent)">⠿</div><div class="num">3</div><div class="stxt">Melt butter, whisk in flour, then milk a bit at a time.</div></div>
+  <div class="gap"></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">2</div><div class="stxt">Add passata, simmer on low for 1 hour.</div></div>
+  <div class="step"><div class="handle">⠿</div><div class="num">4</div><div class="stxt">Layer ragù, pasta, béchamel</div></div>
+</div>
+<div class="bar"><div class="btn ghost">📷 Photo</div><div class="btn primary">+ Next step</div></div>
+</div>
+<p class="note">Dragging only starts from the handle, so scrolling the page with your thumb never moves a step by accident. Tap a step's text to edit it; the 🗑 delete sits in that step's edit view.</p>
+</div>
+</div>
+</body></html>
