@@ -104,6 +104,26 @@ public class AccountService {
 		tokens.revokeOutstanding(userId, TokenPurpose.PASSWORD_RESET.name());
 	}
 
+	/**
+	 * Grants or removes the admin role. Removing it from the last admin is 409 {@code last_admin}. Sessions
+	 * snapshot authorities, so on a change every session of the target ends after commit (they sign in again).
+	 */
+	@Transactional
+	public User setAdmin(UUID userId, boolean admin) {
+		List<User> admins = users.lockAdmins(); // serialises concurrent role changes and admin deletions
+		User user = users.findById(userId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "not_found"));
+		if (user.isAdmin() == admin) {
+			return user;
+		}
+		if (!admin && admins.stream().noneMatch(a -> !a.getId().equals(userId))) {
+			throw new ApiException(HttpStatus.CONFLICT, "last_admin");
+		}
+		user.setAdmin(admin);
+		users.saveAndFlush(user);
+		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
+		return user;
+	}
+
 	/** Stores the new avatar first, swaps it in, and removes the old blob only once the swap has committed. */
 	@Transactional
 	public User setAvatar(UUID userId, byte[] image) {

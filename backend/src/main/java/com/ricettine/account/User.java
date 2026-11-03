@@ -50,6 +50,7 @@ public class User {
 	public String getDisplayName() { return displayName; }
 	public String getPasswordHash() { return passwordHash; }
 	public boolean isAdmin() { return admin; }
+	public void setAdmin(boolean admin) { this.admin = admin; }
 	public String getAvatarKey() { return avatarKey; }
 	public Instant getCreatedAt() { return createdAt; }
 }
