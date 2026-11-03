@@ -52,6 +52,6 @@ Database migrations run automatically on startup. Your data stays in the `db-dat
 - Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
 - Frontend: `cd frontend && npx ng test --watch=false`.
 - Smoke: `scripts/smoke.sh`.
-- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports). The UI is not responsive yet, so the desktop project runs the same flows at desktop size.
+- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports).
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request and on pushes to `main`.

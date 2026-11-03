@@ -9,25 +9,78 @@
 .topbar {
   position: sticky;
   top: 0;
-  height: t.$topbar-height;
-  display: flex;
-  align-items: center;
-  padding: 0 t.$space-4;
+  z-index: 1;
+  min-height: t.$topbar-height;
   background: t.$surface;
   border-bottom: 1px solid t.$border;
-  .title {
-    font-weight: 700;
-    color: t.$accent;
-  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  min-height: t.$topbar-height;
+  padding: 0 t.$space-4;
+  max-width: t.$content-max-width;
+  margin: 0 auto;
+}
+
+.logo {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  color: t.$accent;
+  text-decoration: none;
+}
+
+.main-nav {
+  display: none;
+}
+
+.new-icon {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border-radius: t.$radius;
+  background: t.$accent;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  min-width: 0;
   .who {
-    margin-left: auto;
     color: t.$muted;
     font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+  }
+  .logout {
+    @include t.touch-target;
+    padding: 0 t.$space-3;
+    border: 1px solid t.$border;
+    border-radius: t.$radius;
+    background: t.$surface;
+    color: t.$ink;
+    font: inherit;
+    cursor: pointer;
   }
 }
 
 main {
   padding: t.$space-4;
+  max-width: t.$content-max-width;
+  margin: 0 auto;
 }
 
 .bottom-nav {
@@ -51,5 +104,46 @@ main {
       color: t.$accent;
       font-weight: 600;
     }
+  }
+}
+
+@media (min-width: t.$bp-desktop) {
+  :host {
+    padding-bottom: 0;
+  }
+  .bar {
+    gap: t.$space-4;
+  }
+  .main-nav {
+    display: flex;
+    align-items: center;
+    gap: t.$space-2;
+    margin-right: auto;
+    margin-left: t.$space-4;
+    a {
+      @include t.touch-target;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 t.$space-3;
+      color: t.$muted;
+      text-decoration: none;
+      &.active {
+        color: t.$accent;
+        font-weight: 600;
+      }
+      &.new {
+        background: t.$accent;
+        color: #fff;
+        font-weight: 600;
+        border-radius: t.$radius;
+      }
+    }
+  }
+  .new-icon,
+  .bottom-nav {
+    display: none;
+  }
+  main {
+    padding: t.$space-6 t.$space-4;
   }
 }

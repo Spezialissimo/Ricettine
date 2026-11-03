@@ -1,0 +1,40 @@
+@use '../../styles/tokens' as t;
+
+:host { display: block; }
+h1 { margin: 0 0 t.$space-4; color: t.$accent; font-size: 1.5rem; }
+.alert { color: #b3261e; }
+.loading, .empty { color: t.$muted; display: flex; align-items: center; gap: t.$space-2; }
+button.retry, a.primary {
+  @include t.touch-target;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: t.$radius; background: t.$accent; color: #fff; font: inherit; font-weight: 600;
+  padding: 0 t.$space-4; text-decoration: none; cursor: pointer;
+}
+.spinner { width: 20px; height: 20px; border: 3px solid t.$border; border-top-color: t.$accent;
+  border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: t.$space-3; grid-template-columns: 1fr; }
+a.recipe {
+  @include t.touch-target;
+  display: flex; background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius;
+  overflow: hidden; color: t.$ink; text-decoration: none;
+}
+.thumb { width: 72px; height: 72px; flex: none; object-fit: cover; background: t.$bg; }
+.thumb.none { background: repeating-linear-gradient(45deg, #efe9e1, #efe9e1 10px, #f6f2ec 10px, #f6f2ec 20px); }
+.body { display: flex; flex-direction: column; justify-content: center; gap: t.$space-1; padding: t.$space-2 t.$space-3; min-width: 0; }
+.name { font-weight: 700; overflow-wrap: anywhere; }
+.name.untitled { color: t.$muted; }
+.badge { align-self: flex-start; font-size: 0.7rem; border: 1px solid t.$border; border-radius: 999px; padding: 2px 8px; }
+.badge[data-badge='draft'] { background: #fff4e0; }
+.badge[data-badge='public'] { background: #e5f3e6; }
+
+@media (min-width: t.$bp-desktop) {
+  .grid { grid-template-columns: repeat(3, 1fr); gap: t.$space-4; }
+  a.recipe { flex-direction: column; height: 100%; }
+  .thumb { width: 100%; height: 120px; }
+  .body { padding: 10px 12px; }
+}
+@media (min-width: 1000px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}

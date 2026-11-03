@@ -29,11 +29,18 @@ export function newContext(browser: Browser, testInfo: TestInfo): Promise<Browse
   return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
 }
 
+/** "Landed on home": the My recipes heading and the user's display name in the shell. */
+export async function expectHome(page: Page, displayName: string) {
+  await expect(page).toHaveURL(/\/recipes$/);
+  await expect(page.getByRole('heading', { name: 'My recipes' })).toBeVisible();
+  await expect(page.getByRole('banner').getByText(displayName, { exact: true })).toBeVisible();
+}
+
 export async function logIn(page: Page, who: Pick<Person, 'email' | 'password' | 'displayName'>) {
   await page.getByLabel('Email', { exact: true }).fill(who.email);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
+  await expectHome(page, who.displayName);
 }
 
 export async function logOut(page: Page) {
@@ -58,7 +65,7 @@ export async function register(page: Page, invitePath: string, who: Person) {
   await page.getByLabel('Display name').fill(who.displayName);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
+  await expectHome(page, who.displayName);
 }
 
 /** Registers a new regular user (via an invite from the shared admin) and returns their logged-in page. */

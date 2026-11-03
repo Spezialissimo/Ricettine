@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { newUserPage } from './helpers';
+import { expectHome, newUserPage } from './helpers';
 
 const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'portrait-orientation6.jpg');
 const compose = process.env.E2E_COMPOSE_PROJECT;
@@ -37,8 +37,8 @@ test('session and avatar survive an app restart', async ({ browser, baseURL }, t
   // still on /settings/profile: no redirect to /login, session intact, avatar rendered again
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(avatar).toBeVisible();
-  await page.getByRole('link', { name: 'Home' }).click();
-  await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
+  await page.getByRole('link', { name: 'My recipes' }).click();
+  await expectHome(page, who.displayName);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(avatar).toBeVisible();
   expect((await page.request.get(src)).status()).toBe(200);
