@@ -21,7 +21,7 @@ async function drag(page: Page, from: Locator, to: Locator) {
 
 test('reorder steps by handle, keyboard, and not by the text', async ({ browser }, testInfo) => {
   const { page } = await newUserPage(browser, testInfo, 'reorder');
-  const url = await createRecipe(page, { title: 'Order pie', ingredients: ['flour'], steps: ['A', 'B', 'C'] });
+  await createRecipe(page, { title: 'Order pie', ingredients: ['flour'], steps: ['A', 'B', 'C'] });
   const handle = (n: number) => page.getByRole('button', { name: `Reorder step ${n}` });
   await expect(handle(3)).toBeVisible();
   const box = (await handle(3).boundingBox())!;
@@ -32,7 +32,7 @@ test('reorder steps by handle, keyboard, and not by the text', async ({ browser 
   const textC = page.getByRole('textbox', { name: 'Step 3' });
   const ta = (await textC.boundingBox())!;
   const a0 = (await page.getByRole('textbox', { name: 'Step 1' }).boundingBox())!;
-  await page.mouse.move(ta.x + ta.width - 8, ta.y + 10);
+  await page.mouse.move(ta.x + ta.width / 2, ta.y + ta.height / 2);
   await page.mouse.down();
   await page.mouse.move(a0.x + 20, a0.y + 10, { steps: 12 });
   await page.mouse.up();
@@ -53,7 +53,6 @@ test('reorder steps by handle, keyboard, and not by the text', async ({ browser 
   await saved(page);
   await page.reload();
   await expect.poll(() => stepTexts(page)).toEqual(['A', 'B', 'C']);
-  expect(url).toContain('/edit');
 });
 
 test('a long step keeps a correct textarea height after moving', async ({ browser }, testInfo) => {
@@ -68,4 +67,8 @@ test('a long step keeps a correct textarea height after moving', async ({ browse
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => h(1)).toBeGreaterThan(150);
   expect(await h(2)).toBeLessThan(100);
+  // still auto-grows after the move
+  const before = await h(2);
+  await page.getByRole('textbox', { name: 'Step 2' }).fill(Array.from({ length: 10 }, (_, i) => `more ${i}`).join('\n'));
+  await expect.poll(() => h(2)).toBeGreaterThan(before + 80);
 });

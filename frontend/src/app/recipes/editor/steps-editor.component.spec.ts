@@ -159,12 +159,18 @@ describe('StepsEditorComponent', () => {
       expect(texts(store)).toEqual(['B', 'A', 'C']);
     });
 
-    it('recomputes textarea heights after a move (no stale height from the previous occupant)', async () => {
+    it('a single step has no usable handle and cannot be dragged', async () => {
+      const { el } = await mount(['A']);
+      expect(handles(el)[0].disabled).toBe(true);
+      expect(el.querySelector('li.step')?.classList.contains('cdk-drag-disabled')).toBe(true);
+    });
+
+    it('clears textarea heights after a move (no stale height from the previous occupant)', async () => {
       const { f, el } = await mount(['A', 'B']);
       areas(el)[0].style.height = '300px';
       key(handles(el)[1], 'ArrowUp');
       await settle(f);
-      expect(areas(el)[0].style.height).not.toBe('300px');
+      expect(areas(el)[0].style.height).toBe('');
     });
   });
 });

@@ -26,9 +26,9 @@ export const MAX_STEP_TEXT = 5000;
       @let steps = store.recipe().steps;
       <ol class="step-list" cdkDropList (cdkDropListDropped)="drop($event)">
         @for (s of steps; track $index; let i = $index) {
-          <li class="step" cdkDrag cdkDragLockAxis="y" [class.active]="active() === i" (focusin)="active.set(i)" (click)="active.set(i)"
+          <li class="step" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="steps.length < 2" [class.active]="active() === i" (focusin)="active.set(i)" (click)="active.set(i)"
             appPhotoDrop (dropped)="active.set(i); store.uploadPhoto(i, $event)" (rejected)="store.rejectPhoto(i, $event)">
-            <button type="button" class="drag-handle" cdkDragHandle [id]="handleId(i)"
+            <button type="button" class="drag-handle" cdkDragHandle [disabled]="steps.length < 2" [id]="handleId(i)"
               [attr.aria-label]="t('editor.reorderStep', { n: i + 1 })" (keydown)="onHandleKeydown(i, $event)">⠿</button>
             <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
             <div class="step-body">
@@ -157,8 +157,7 @@ export class StepsEditorComponent {
     afterNextRender(
       () => {
         this.host.nativeElement.querySelectorAll('textarea').forEach((t) => {
-          t.style.height = 'auto';
-          t.style.height = `${t.scrollHeight}px`;
+          t.style.removeProperty('height'); // field-sizing: content sizes it again
         });
         document.getElementById(this.handleId(to))?.focus();
       },

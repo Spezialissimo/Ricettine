@@ -37,3 +37,8 @@ textarea {
 @media (max-width: calc(#{t.$bp-desktop} - 1px)) {
   .add-step { display: none; } // the phone bottom bar has "+ Next step"
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .cdk-drag-animating, .step-list.cdk-drop-list-dragging .step:not(.cdk-drag-placeholder) { transition: none; }
+}
+.drag-handle:disabled { visibility: hidden; }
