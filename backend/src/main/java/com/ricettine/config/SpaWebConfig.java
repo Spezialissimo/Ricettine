@@ -13,13 +13,13 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 @Configuration
 public class SpaWebConfig implements WebMvcConfigurer {
 
-	private static final List<String> BACKEND_PREFIXES = List.of("api/", "media/", "actuator/");
+	private static final List<String> BACKEND_PREFIXES = List.of("api", "media", "actuator");
 
 	@Override
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
 		registry.addResourceHandler("/**")
 				.addResourceLocations("classpath:/static/")
-				.resourceChain(true)
+				.resourceChain(false)
 				.addResolver(new PathResourceResolver() {
 					@Override
 					protected Resource getResource(String resourcePath, Resource location) throws IOException {
@@ -37,10 +37,9 @@ public class SpaWebConfig implements WebMvcConfigurer {
 	}
 
 	static boolean isSpaRoute(String path) {
-		for (String prefix : BACKEND_PREFIXES) {
-			if (path.startsWith(prefix)) {
-				return false;
-			}
+		String first = path.contains("/") ? path.substring(0, path.indexOf('/')) : path;
+		if (BACKEND_PREFIXES.contains(first)) {
+			return false;
 		}
 		String last = path.substring(path.lastIndexOf('/') + 1);
 		return !last.contains(".");

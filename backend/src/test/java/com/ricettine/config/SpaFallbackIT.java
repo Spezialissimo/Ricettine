@@ -39,4 +39,25 @@ class SpaFallbackIT extends IntegrationTest {
 	void missingAssetIs404() throws Exception {
 		mvc.perform(get("/missing.js")).andExpect(status().isNotFound());
 	}
+
+	@Test
+	void backendPathsAreClosedToAnonymous() throws Exception {
+		for (String path : new String[] {"/api/nope", "/api", "/actuator", "/actuator/info", "/media", "/media/x"}) {
+			mvc.perform(get(path)).andExpect(status().isUnauthorized());
+		}
+	}
+
+	@Test
+	void bareMediaIsNotIndex() throws Exception {
+		mvc.perform(get("/media").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("u")))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void nonGetOnSpaPathsIsNotPermitted() throws Exception {
+		for (String path : new String[] {"/", "/r/x"}) {
+			mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(path))
+					.andExpect(status().is4xxClientError());
+		}
+	}
 }
