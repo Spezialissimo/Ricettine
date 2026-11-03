@@ -43,7 +43,7 @@ test('cover and step photos: add, survive reload, remove, stay private', async (
     await dropFile(page.locator('li.step').nth(1));
   } else {
     await page.getByRole('textbox', { name: 'Step 2' }).click();
-    await pickFile(page, page.getByRole('button', { name: '📷 Photo' }));
+    await pickFile(page, page.locator('.bottom-bar').getByRole('button', { name: 'Add photo to step 2' }));
   }
   await expect(page.locator('img[src^="/media/"][alt="Photo of step 2"]')).toBeVisible();
   await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();

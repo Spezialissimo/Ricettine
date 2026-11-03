@@ -82,6 +82,22 @@ describe('step photos', () => {
     expect(el.textContent).not.toContain(en.editor.uploading);
   });
 
+  it('keeps one persistent live region per slot and only changes its text while uploading', async () => {
+    let finish!: (p: Photo) => void;
+    const { f, el } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))) });
+    const region = stepEl(el, 1).querySelector('[role="status"]') as HTMLElement;
+    expect(region).toBeTruthy();
+    expect(region.textContent?.trim()).toBe('');
+    choose(inputs(el)[1], jpeg());
+    await settle(f);
+    expect(stepEl(el, 1).querySelector('[role="status"]')).toBe(region);
+    expect(region.textContent?.trim()).toBe(en.editor.uploading);
+    finish(photo('m1'));
+    await settle(f);
+    expect(stepEl(el, 1).querySelector('[role="status"]')).toBe(region);
+    expect(region.textContent?.trim()).toBe('');
+  });
+
   it('offers Add photo / Replace / Remove with the step number in their names, and Remove clears the reference', async () => {
     const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m1')) });
     expect(buttonNamed(el, 'Add photo to step 1')?.textContent?.trim()).toBe('Add photo');

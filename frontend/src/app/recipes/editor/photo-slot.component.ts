@@ -24,6 +24,7 @@ import { PhotoPickerComponent } from './photo-picker.component';
       min-height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid #e2dcd3; border-radius: 10px; background: #fff;
       color: #b3261e; font: inherit; font-weight: 600; cursor: pointer;
     }
+    .status { margin: 0; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .error { margin: 0; color: #b3261e; font-size: 0.85rem; }
   `,
   template: `
@@ -39,10 +40,12 @@ import { PhotoPickerComponent } from './photo-picker.component';
             <img class="photo-preview" [src]="p" alt="" aria-hidden="true" />
           }
           @if (up?.status === 'uploading') {
-            <span class="label" role="status">{{ t('editor.uploading') }}</span>
+            <span class="label" aria-hidden="true">{{ t('editor.uploading') }}</span>
           }
         </div>
       }
+      <!-- persistent live region: its text changes, so screen readers announce it reliably -->
+      <p class="status" role="status">{{ up?.status === 'uploading' ? t('editor.uploading') : '' }}</p>
       @if (up?.error; as e) {
         <p class="error" role="alert">{{ t(e) }}</p>
       }

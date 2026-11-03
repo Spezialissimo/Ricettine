@@ -26,7 +26,9 @@ export function photoProblem(file: File): string | null {
     :host(.primary) button { background: #c8553d; border-color: #c8553d; color: #fff; }
   `,
   template: `
-    <button type="button" [attr.aria-label]="ariaLabel() || null" (click)="file.click()">{{ label() }}</button>
+    <button type="button" [attr.aria-label]="ariaLabel() || null" (click)="file.click()">
+      @if (icon()) { <span aria-hidden="true">{{ icon() }}&nbsp;</span> }{{ label() }}
+    </button>
     <input #file type="file" hidden aria-hidden="true" tabindex="-1" [accept]="accept"
       [attr.capture]="capture() ? 'environment' : null" (change)="onChange(file)" />
   `,
@@ -35,6 +37,8 @@ export class PhotoPickerComponent {
   protected readonly accept = PHOTO_ACCEPT;
   readonly label = input.required<string>();
   readonly ariaLabel = input<string>('');
+  /** Decorative emoji before the label, hidden from screen readers. */
+  readonly icon = input<string>('');
   readonly capture = input(false);
   readonly picked = output<File>();
   readonly rejected = output<string>();

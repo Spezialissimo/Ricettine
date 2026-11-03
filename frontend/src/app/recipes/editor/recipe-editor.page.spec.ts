@@ -85,7 +85,7 @@ describe('RecipeEditorPage', () => {
     }
     expect(right.querySelector('.steps')).toBeTruthy();
     const bar = el.querySelector('.bottom-bar')!;
-    expect(byText(bar, 'button', en.editor.photo)).toBeTruthy();
+    expect(bar.querySelector('app-photo-picker button')?.textContent).toContain(en.editor.photo);
     expect(byText(bar, 'button', en.editor.nextStep)).toBeTruthy();
     const header = el.querySelector('.editor-header')!;
     expect(byText(header, 'button', en.editor.done)).toBeTruthy();
@@ -419,6 +419,19 @@ describe('RecipeEditorPage', () => {
       const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: null })) });
       expect(el.querySelector('.steps')).toBeTruthy();
       expect(el.querySelector('#recipe-title-error')).toBeNull();
+    });
+
+    it('the bottom-bar camera button names its target step and hides the emoji from screen readers', async () => {
+      const { f, el } = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ steps: [{ text: 'a', photo: null }, { text: 'b', photo: null }] })),
+      });
+      const btn = () => el.querySelector('.bottom-bar app-photo-picker button') as HTMLButtonElement;
+      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 2');
+      expect(btn().querySelector('[aria-hidden="true"]')?.textContent).toContain('📷');
+      expect(btn().textContent).toContain(en.editor.photo);
+      el.querySelectorAll('.steps li.step')[0].querySelector('textarea')!.dispatchEvent(new Event('focusin', { bubbles: true }));
+      await settle(f);
+      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 1');
     });
 
     it('the bottom-bar "+ Next step" adds a step', async () => {

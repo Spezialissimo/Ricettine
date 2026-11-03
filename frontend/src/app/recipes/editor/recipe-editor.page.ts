@@ -148,7 +148,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         </div>
 
         <div class="bottom-bar">
-          <app-photo-picker [capture]="true" [label]="t('editor.photo')" (picked)="steps()?.attachPhoto($event)"
+          <app-photo-picker [capture]="true" icon="📷" [label]="t('editor.photo')"
+            [ariaLabel]="t('editor.addStepPhoto', { n: (steps()?.targetStep() ?? 0) + 1 })" (picked)="steps()?.attachPhoto($event)"
             (rejected)="rejectBarPhoto($event)" />
           <button type="button" class="btn primary" (click)="nextStep()">{{ t('editor.nextStep') }}</button>
         </div>
