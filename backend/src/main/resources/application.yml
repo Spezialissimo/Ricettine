@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: ricettine
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ricettine
+    username: ricettine
+    password: ricettine
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  session:
+    timeout: 30d
+    jdbc:
+      initialize-schema: never
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30d
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+ricettine:
+  security:
+    # argon2 needs ~16 MB per hash; more concurrent hashes wait (up to 10 s, then 503 busy).
+    max-concurrent-hashes: 4
+  storage:
+    type: local
+    local:
+      path: ./data/media
+    s3:
+      path-style: false

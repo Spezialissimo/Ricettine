@@ -1,0 +1,48 @@
+package com.ricettine.account;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.ricettine.IntegrationTest;
+import com.ricettine.account.AccountDtos.NewAccountRequest;
+import com.ricettine.common.ApiException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+class AccountServiceIT extends IntegrationTest {
+
+	@Autowired AccountService accounts;
+	@Autowired JdbcTemplate jdbc;
+
+	@BeforeEach
+	void clean() {
+		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
+	}
+
+	private static NewAccountRequest req(String email, String username) {
+		return new NewAccountRequest(email, "correct-horse-1", username, "Davide");
+	}
+
+	@Test
+	void duplicateEmailIgnoringCaseAndWhitespaceIsEmailTaken() {
+		accounts.create(req(" Davide@X.com ", "davide"), false);
+		assertThatThrownBy(() -> accounts.create(req("davide@x.com", "other"), false))
+			.isInstanceOfSatisfying(ApiException.class, e -> {
+				assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+				assertThat(e.getCode()).isEqualTo("email_taken");
+			});
+	}
+
+	@Test
+	void duplicateUsernameIsUsernameTaken() {
+		accounts.create(req("a@x.com", "davide"), false);
+		assertThatThrownBy(() -> accounts.create(req("b@x.com", "davide"), false))
+			.isInstanceOfSatisfying(ApiException.class, e -> {
+				assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+				assertThat(e.getCode()).isEqualTo("username_taken");
+			});
+	}
+}

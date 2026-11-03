@@ -1,0 +1,72 @@
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TranslocoDirective } from '@jsverse/transloco';
+import { ApiError, errorKey, toApiError } from '../core/api-error';
+import { AuthStore } from '../core/auth.store';
+import { safeNext } from './safe-next';
+
+@Component({
+  selector: 'app-login-page',
+  imports: [ReactiveFormsModule, TranslocoDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './auth-page.scss',
+  styles: `
+    @use '../../styles/tokens' as t;
+    label { display: block; margin-bottom: t.$space-4; font-weight: 600; }
+    input { @include t.touch-target; display: block; width: 100%; margin-top: t.$space-1; padding: 0 t.$space-3;
+      font: inherit; border: 1px solid t.$border; border-radius: t.$radius; background: t.$surface; color: t.$ink; }
+    .alert { color: #b3261e; margin: 0 0 t.$space-4; }
+    button { @include t.touch-target; width: 100%; border: 0; border-radius: t.$radius; background: t.$accent;
+      color: #fff; font-weight: 600; }
+    button[disabled] { opacity: 0.6; }
+  `,
+  template: `
+    <ng-container *transloco="let t">
+      <h1>{{ t('common.appName') }}</h1>
+      <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+        <label>
+          {{ t('auth.email') }}
+          <input type="email" name="email" formControlName="email" autocomplete="username"
+            autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
+        </label>
+        <label>
+          {{ t('auth.password') }}
+          <input type="password" name="password" formControlName="password" autocomplete="current-password" />
+        </label>
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(key(e)) }}</p>
+        }
+        <button type="submit" [disabled]="busy()">{{ t('auth.login') }}</button>
+      </form>
+    </ng-container>
+  `,
+})
+export class LoginPage {
+  private readonly auth = inject(AuthStore);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly busy = signal(false);
+  readonly error = signal<ApiError | null>(null);
+  readonly key = errorKey;
+  readonly form = new FormGroup({
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
+
+  async submit(): Promise<void> {
+    if (this.form.invalid || this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const { email, password } = this.form.getRawValue();
+      await this.auth.login(email.trim(), password);
+      await this.router.navigateByUrl(safeNext(this.route.snapshot.queryParamMap.get('next')));
+    } catch (e) {
+      this.error.set(toApiError(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}

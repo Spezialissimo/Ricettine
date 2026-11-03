@@ -1,0 +1,117 @@
+{
+  "common": {
+    "appName": "Ricettine",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share",
+    "expiresOn": "Expires {{date}}",
+    "logout": "Log out"
+  },
+  "nav": {
+    "home": "Home",
+    "recipes": "Recipes",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "displayName": "Display name",
+    "usernameHint": "Lowercase letters, digits and underscore, 3-30 characters.",
+    "passwordHint": "At least 10 characters.",
+    "newPassword": "New password",
+    "loggingIn": "Logging in...",
+    "required": "This field is required.",
+    "register": "Create account",
+    "creating": "Creating account..."
+  },
+  "setup": {
+    "title": "Set up Ricettine",
+    "intro": "Create the administrator account for your Ricettine.",
+    "submit": "Create administrator"
+  },
+  "settings": {
+    "title": "Settings",
+    "profileTitle": "Profile",
+    "saved": "Saved.",
+    "avatar": "Avatar",
+    "avatarChoose": "Choose photo",
+    "avatarUploading": "Uploading...",
+    "avatarRemove": "Remove photo",
+    "avatarAlt": "Your avatar",
+    "passwordTitle": "Change password",
+    "currentPassword": "Current password",
+    "passwordSubmit": "Change password",
+    "passwordDone": "Your password has been changed.",
+    "deleteTitle": "Delete account",
+    "deleteWarning": "This permanently deletes your account. Enter your password to confirm.",
+    "deleteSubmit": "Delete my account",
+    "linkPassword": "Change password",
+    "linkDelete": "Delete account"
+  },
+  "admin": {
+    "title": "Administration",
+    "invites": "Invites",
+    "users": "Users",
+    "createInvite": "Create invite",
+    "creating": "Creating...",
+    "inviteReady": "Invite link (single use)",
+    "activeInvites": "Active invites",
+    "noInvites": "No active invites.",
+    "revoke": "Revoke",
+    "createdOn": "Created {{date}}",
+    "resetPassword": "Reset password",
+    "resetReady": "Password reset link for {{name}}",
+    "adminBadge": "Admin",
+    "makeAdmin": "Make admin",
+    "removeAdmin": "Remove admin"
+  },
+  "errors": {
+    "bad_credentials": "Wrong email or password.",
+    "bad_request": "The request could not be understood.",
+    "busy": "The server is busy right now. Please try again in a moment.",
+    "email_taken": "This email is already registered.",
+    "file_too_large": "The file is too large (15 MB maximum).",
+    "forbidden": "You are not allowed to do that.",
+    "internal_error": "Something went wrong on our side. Please try again.",
+    "invalid_email": "Enter a valid email address.",
+    "invalid_username": "Username must be 3-30 characters: lowercase letters, digits or underscore.",
+    "invite_invalid": "This invite link is invalid, used or expired.",
+    "last_admin": "You are the last administrator. Make someone else an administrator first.",
+    "method_not_allowed": "That action is not supported.",
+    "not_authenticated": "Please log in to continue.",
+    "not_found": "Not found.",
+    "password_too_long": "Password must be at most 128 characters.",
+    "password_too_short": "Password must be at least 10 characters.",
+    "reset_invalid": "This password reset link is invalid, used or expired.",
+    "setup_already_done": "Setup has already been completed.",
+    "unsupported_image": "Unsupported image. Use a JPEG, PNG or WebP file.",
+    "unsupported_media_type": "Unsupported content type.",
+    "username_reserved": "This username is reserved.",
+    "username_taken": "This username is already taken.",
+    "validation_failed": "Please check the highlighted fields.",
+    "network_error": "Cannot reach the server. Check your connection.",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "invite": {
+    "title": "Join Ricettine",
+    "intro": "You have been invited. Create your account.",
+    "checking": "Checking invite..."
+  },
+  "reset": {
+    "title": "Choose a new password",
+    "submit": "Change password",
+    "done": "Your password has been changed.",
+    "goToLogin": "Go to log in"
+  },
+  "home": {
+    "greeting": "Hi {{name}}"
+  }
+}

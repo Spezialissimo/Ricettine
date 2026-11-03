@@ -1,0 +1,55 @@
+@use '../../styles/tokens' as t;
+
+:host {
+  display: block;
+  min-height: 100dvh;
+  padding-bottom: t.$bottomnav-height;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  height: t.$topbar-height;
+  display: flex;
+  align-items: center;
+  padding: 0 t.$space-4;
+  background: t.$surface;
+  border-bottom: 1px solid t.$border;
+  .title {
+    font-weight: 700;
+    color: t.$accent;
+  }
+  .who {
+    margin-left: auto;
+    color: t.$muted;
+    font-size: 0.9rem;
+  }
+}
+
+main {
+  padding: t.$space-4;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: t.$bottomnav-height;
+  display: flex;
+  background: t.$surface;
+  border-top: 1px solid t.$border;
+  a {
+    @include t.touch-target;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: t.$muted;
+    text-decoration: none;
+    &.active {
+      color: t.$accent;
+      font-weight: 600;
+    }
+  }
+}

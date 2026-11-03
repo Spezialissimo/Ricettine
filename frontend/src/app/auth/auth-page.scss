@@ -1,0 +1,33 @@
+@use '../../styles/tokens' as t;
+
+:host {
+  display: block;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: t.$space-6 t.$space-4;
+}
+
+h1 {
+  margin: 0 0 t.$space-2;
+  color: t.$accent;
+  font-size: 1.5rem;
+}
+
+.intro {
+  margin: 0 0 t.$space-4;
+  color: t.$muted;
+}
+
+.card {
+  background: t.$surface;
+  border: 1px solid t.$border;
+  border-radius: t.$radius;
+  padding: t.$space-4;
+}
+
+.btn-link {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  color: t.$accent;
+}
