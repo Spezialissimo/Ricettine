@@ -33,6 +33,14 @@ public class AppUserDetailsService implements UserDetailsService {
 		}
 	}
 
+	/**
+	 * The principal stored in the session: same name and authorities, but no password, so the hash is never
+	 * serialized into spring_session_attributes.
+	 */
+	static UserDetails sessionPrincipal(User u) {
+		return org.springframework.security.core.userdetails.User.withUserDetails(toDetails(u)).password("").build();
+	}
+
 	static UserDetails toDetails(User u) {
 		List<GrantedAuthority> authorities = new ArrayList<>();
 		authorities.add(new SimpleGrantedAuthority("ROLE_USER"));

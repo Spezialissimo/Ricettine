@@ -71,6 +71,18 @@ class AuthIT extends IntegrationTest {
 	}
 
 	@Test
+	void storedSessionDoesNotContainPasswordHash() throws Exception {
+		User u = user("davide@x.com", "davide", false);
+		session(login("davide@x.com", "correct-horse-1"));
+		var blobs = jdbc.queryForList("select attribute_bytes from spring_session_attributes "
+				+ "where attribute_name = 'SPRING_SECURITY_CONTEXT'", byte[].class);
+		assertThat(blobs).hasSize(1);
+		String stored = new String(blobs.getFirst(), java.nio.charset.StandardCharsets.ISO_8859_1);
+		assertThat(stored).contains(u.getId().toString()).doesNotContain("$argon2")
+			.doesNotContain(u.getPasswordHash());
+	}
+
+	@Test
 	void meWithoutSessionIs401Json() throws Exception {
 		mvc.perform(get("/api/me"))
 			.andExpect(status().isUnauthorized())

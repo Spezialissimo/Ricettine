@@ -28,7 +28,7 @@ public class AuthSessions {
 
 	/** Authenticates the request as {@code user}: rotates the session id and persists the security context. */
 	public void login(User user, HttpServletRequest req, HttpServletResponse res) {
-		UserDetails details = AppUserDetailsService.toDetails(user);
+		UserDetails details = AppUserDetailsService.sessionPrincipal(user);
 		SecurityContext context = holder.createEmptyContext();
 		context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(details, null,
 				details.getAuthorities()));
