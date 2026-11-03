@@ -5,6 +5,7 @@ import { RecipeApi } from '../recipe.api';
 import { Photo, Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
 import { unnamedRows } from './completeness';
+import { remapIndex } from './remap-index';
 
 const EMPTY: RecipeInput = {
   version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
@@ -206,6 +207,13 @@ export class EditorStore {
   stepRemoved(at: number): void {
     this.dropUpload(at);
     this._uploads.update((us) => us.map((u) => (typeof u.slot === 'number' && u.slot > at ? { ...u, slot: u.slot - 1 } : u)));
+  }
+
+  /** A step moved from `from` to `to`: the uploads of every step in between follow it (the moved step's goes with it). */
+  stepMoved(from: number, to: number): void {
+    this._uploads.update((us) =>
+      us.map((u) => (typeof u.slot === 'number' ? { ...u, slot: remapIndex(u.slot, from, to) } : u)),
+    );
   }
 
   private setReference(slot: PhotoSlot, mediaId: string | null): void {

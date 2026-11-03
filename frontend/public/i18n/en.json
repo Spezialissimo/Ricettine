@@ -243,6 +243,8 @@
     "addStep": "+ Add step",
     "stepN": "Step {{n}}",
     "deleteStep": "Delete step",
+    "reorderStep": "Reorder step {{n}}",
+    "stepMoved": "Step {{n}} moved to position {{m}}",
     "amountsInvalid": "Fix the highlighted amounts before publishing.",
     "publishBlocked": "Not published: your latest changes could not be saved yet.",
     "unnamedIngredientHint": "Give each ingredient you started a name, or clear it.",

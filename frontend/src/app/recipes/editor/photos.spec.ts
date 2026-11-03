@@ -246,4 +246,24 @@ describe('cover photo and photo_not_in_recipe', () => {
     expect(await store.publish()).toBe('blocked');
     expect(publish).not.toHaveBeenCalled();
   });
+
+  it('an upload in flight follows its step when steps are reordered', async () => {
+    let finish!: (p: Photo) => void;
+    const { f, el, store } = await mount(
+      { uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))) },
+      ['A', 'B', 'C'],
+    );
+    choose(inputs(el)[2], jpeg());
+    await settle(f);
+    (el.querySelectorAll('button.drag-handle')[2] as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }),
+    );
+    await settle(f);
+    expect(store.uploadFor(1)?.status).toBe('uploading');
+    expect(store.uploadFor(2)).toBeUndefined();
+    finish(photo('m1'));
+    await settle(f);
+    expect(store.recipe().steps.map((s) => s.photoMediaId)).toEqual([null, 'm1', null]);
+    expect(store.recipe().steps.map((s) => s.text)).toEqual(['A', 'C', 'B']);
+  });
 });
