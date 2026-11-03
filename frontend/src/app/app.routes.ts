@@ -11,7 +11,6 @@ import { PasswordPage } from './settings/password.page';
 import { ProfilePage } from './settings/profile.page';
 import { MyRecipesPage } from './recipes/my-recipes.page';
 import { NewRecipePage } from './recipes/new-recipe.page';
-import { RecipeEditorPage } from './recipes/recipe-editor.page';
 import { ShellComponent } from './shell/shell.component';
 
 // Every route lives under the pathless parent so setupGuard (canActivateChild) runs for all of them.
@@ -32,7 +31,10 @@ export const routes: Routes = [
           { path: '', pathMatch: 'full', redirectTo: 'recipes' },
           { path: 'recipes', component: MyRecipesPage, pathMatch: 'full' },
           { path: 'recipes/new', component: NewRecipePage },
-          { path: 'recipes/:id/edit', component: RecipeEditorPage },
+          {
+            path: 'recipes/:id/edit',
+            loadComponent: () => import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
+          },
           { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
           { path: 'settings/profile', component: ProfilePage },
           { path: 'settings/password', component: PasswordPage },

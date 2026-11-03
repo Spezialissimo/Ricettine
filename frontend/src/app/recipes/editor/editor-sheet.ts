@@ -1,0 +1,39 @@
+import { Dialog, DialogRef } from '@angular/cdk/dialog';
+import { ComponentType } from '@angular/cdk/portal';
+import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
+import { Injector } from '@angular/core';
+
+/** Same query as `$bp-desktop` in styles/_tokens.scss. */
+export const DESKTOP_QUERY = '(min-width: 768px)';
+
+export function isDesktop(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+/**
+ * Opens an editor sheet: a centered dialog on desktop, a bottom sheet on the phone (decided at open
+ * time). `injector` must see the page's EditorStore. Esc and a click on the backdrop close it.
+ */
+export function openEditorSheet<C, D = unknown>(
+  dialog: Dialog,
+  injector: Injector,
+  component: ComponentType<C>,
+  opts: { label: string; data?: D },
+): DialogRef<unknown, C> {
+  const desktop = isDesktop();
+  const position = createGlobalPositionStrategy(injector).centerHorizontally();
+  return dialog.open(component, {
+    injector,
+    data: opts.data,
+    ariaLabel: opts.label,
+    panelClass: ['editor-sheet', desktop ? 'editor-sheet--center' : 'editor-sheet--bottom'],
+    positionStrategy: desktop ? position.centerVertically() : position.bottom('0'),
+    width: desktop ? '380px' : '100%',
+    maxWidth: '100vw',
+    autoFocus: 'first-tabbable',
+  });
+}
+
+let nextId = 0;
+/** Unique ids for label/input pairs inside sheets. */
+export const uid = (prefix: string) => `${prefix}-${++nextId}`;

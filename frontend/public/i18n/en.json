@@ -149,5 +149,79 @@
     "slice": "slice",
     "can": "can",
     "bunch": "bunch"
+  },
+  "editor": {
+    "loading": "Loading recipe...",
+    "done": "Done",
+    "publish": "Publish",
+    "more": "More actions",
+    "delete": "Delete recipe",
+    "status": {
+      "saving": "Saving...",
+      "saved": "Saved ✓",
+      "error": "Not saved",
+      "conflict": "Not saved: changed elsewhere",
+      "offline": "Offline: will save when you reconnect"
+    },
+    "title": "Title",
+    "titlePlaceholder": "Recipe title",
+    "cover": "Add cover photo",
+    "visibility": "Visibility",
+    "private": "Private",
+    "public": "Public",
+    "ingredients": "Ingredients",
+    "steps": "Steps",
+    "notes": "Notes",
+    "photo": "Photo",
+    "nextStep": "+ Next step",
+    "details": "Details",
+    "chips": {
+      "serves": "Serves {{n}}",
+      "prep": "Prep {{time}}",
+      "cook": "Cook {{time}}",
+      "addPrep": "+ Prep time",
+      "addCook": "+ Cook time",
+      "addSource": "+ Source"
+    },
+    "portions": {
+      "title": "How many does it serve?",
+      "hint": "What these ingredient amounts make. Readers can scale it on the recipe page.",
+      "decrease": "Fewer portions",
+      "increase": "More portions"
+    },
+    "time": {
+      "title": "Times",
+      "prep": "Prep",
+      "cook": "Cook",
+      "other": "Other",
+      "hours": "Hours",
+      "minutes": "Minutes",
+      "clear": "Clear",
+      "h": "{{h}}h",
+      "m": "{{m}}m",
+      "hm": "{{h}}h {{m}}"
+    },
+    "sourceSheet": {
+      "title": "Where's it from?",
+      "hint": "A link, a book, a person: anything.",
+      "label": "Source"
+    },
+    "sheetDone": "Done",
+    "deleteConfirm": {
+      "title": "Delete this recipe?",
+      "body": "This permanently deletes the recipe and its photos. It cannot be undone.",
+      "confirm": "Delete"
+    },
+    "conflict": "This recipe was changed on another device or tab, so your latest changes were not saved. Copy anything you want to keep, then load the latest version.",
+    "conflictCopy": "Your unsaved text",
+    "loadLatest": "Load latest",
+    "field": {
+      "required": "This field is required.",
+      "too_long": "This is too long.",
+      "out_of_range": "This value is out of range.",
+      "too_many": "There are too many items.",
+      "invalid": "This value is not valid.",
+      "invalid_unit": "That unit is not supported."
+    }
   }
 }

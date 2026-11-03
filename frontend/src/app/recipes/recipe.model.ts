@@ -69,7 +69,10 @@ export function toInput(r: Recipe): RecipeInput {
     notes: r.notes,
     visibility: r.visibility,
     coverMediaId: r.cover?.mediaId ?? null,
-    groups: r.groups.map((g) => ({ name: g.name, ingredients: g.ingredients.map((i) => ({ ...i })) })),
+    groups: r.groups.map((g) => ({
+      name: g.name,
+      ingredients: g.ingredients.map((i) => ({ amount: i.amount, unit: i.unit, name: i.name, note: i.note })),
+    })),
     steps: r.steps.map((s) => ({ text: s.text, photoMediaId: s.photo?.mediaId ?? null })),
   };
 }
