@@ -31,6 +31,7 @@ class PublicRecipeIT extends IntegrationTest {
 	@Autowired JdbcTemplate jdbc;
 	@Autowired AccountService accounts;
 	@Autowired ObjectMapper json;
+	@Autowired org.springframework.web.context.WebApplicationContext wac;
 
 	Cookie me;
 	Cookie other;
@@ -118,8 +119,9 @@ class PublicRecipeIT extends IntegrationTest {
 	@Test
 	void unknownMalformedAndDraftTokensAre404() throws Exception {
 		String draft = create(me);
-		for (String t : new String[] { token(draft), "nope", "a".repeat(43), "%20" }) {
+		for (String t : new String[] { token(draft), "nope", "a".repeat(43), "x".repeat(2000), "a.b", "!!!" }) {
 			mvc.perform(get("/api/r/" + t)).andExpect(status().isNotFound())
+				.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
 				.andExpect(jsonPath("$.code").value("recipe_not_found"));
 		}
 	}
@@ -127,8 +129,15 @@ class PublicRecipeIT extends IntegrationTest {
 	@Test
 	void anonymousRequestCreatesNoSession() throws Exception {
 		String t = token(published("PRIVATE"));
+		// csrf() in earlier requests leaves a session-backed CSRF repository in the shared filter chain
+		// (test-support artifact); put the production cookie repository back before measuring.
+		org.springframework.security.test.web.support.WebTestUtils.setCsrfTokenRepository(
+				new org.springframework.mock.web.MockHttpServletRequest(wac.getServletContext()),
+				org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse());
+		int sessions = jdbc.queryForObject("select count(*) from spring_session", Integer.class);
 		MvcResult r = mvc.perform(get("/api/r/" + t)).andExpect(status().isOk()).andReturn();
 		assertThat(r.getResponse().getCookie("SESSION")).isNull();
+		assertThat(jdbc.queryForObject("select count(*) from spring_session", Integer.class)).isEqualTo(sessions);
 	}
 
 	@Test
@@ -167,8 +176,11 @@ class PublicRecipeIT extends IntegrationTest {
 		String oldPhoto = before.get("cover").get("thumbUrl").asText();
 		mvc.perform(get(oldPhoto)).andExpect(status().isOk());
 
+		long v = jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id);
 		MvcResult res = mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me))
-			.andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2)).andReturn();
+			.andExpect(status().isOk()).andExpect(jsonPath("$.version").value(v + 1)).andReturn();
+		assertThat(jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id))
+			.isEqualTo(v + 1);
 		String newToken = token(id);
 		assertThat(newToken).isNotEqualTo(oldToken);
 		assertThat(recipe(res).get("shareUrl").asText()).endsWith("/r/" + newToken);
