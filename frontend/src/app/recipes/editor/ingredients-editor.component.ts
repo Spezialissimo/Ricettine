@@ -68,9 +68,12 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
                 <input type="text" class="note" [id]="id(gi, ii, 'note')" [maxLength]="maxName" [value]="ing.note ?? ''"
                   (input)="patch(gi, ii, { note: $any($event.target).value === '' ? null : $any($event.target).value })" />
               </div>
-              <button type="button" class="btn delete-ingredient" [disabled]="!canDeleteIngredient(ing)"
+              <button type="button" class="btn icon delete-ingredient" [disabled]="!canDeleteIngredient(ing)"
+                [attr.aria-label]="ing.name.trim()
+                  ? t('editor.deleteIngredientNamed', { name: ing.name.trim() })
+                  : t('editor.deleteIngredientNumbered', { n: rowNumber(gi, ii) })"
                 [attr.aria-describedby]="published() && total() <= 1 ? hintId : null" (click)="deleteIngredient(gi, ii)">
-                {{ t('editor.deleteIngredient') }}
+                <span aria-hidden="true">✕</span>
               </button>
               @if (amountInvalid(gi, ii)) {
                 <p class="field-error amount-error" [id]="id(gi, ii, 'amount-error')">{{ t('editor.amountInvalid') }}</p>
@@ -151,6 +154,11 @@ export class IngredientsEditorComponent {
     const el = target ? document.getElementById(target) : null;
     el?.scrollIntoView?.({ block: 'center' });
     el?.focus();
+  }
+
+  /** 1-based position of a row across all groups (names an unnamed row's delete button). */
+  protected rowNumber(g: number, i: number): number {
+    return this.store.recipe().groups.slice(0, g).reduce((n, grp) => n + grp.ingredients.length, 0) + i + 1;
   }
 
   protected id = (g: number, i: number, part: string) => `${this.base}-${g}-${i}-${part}`;

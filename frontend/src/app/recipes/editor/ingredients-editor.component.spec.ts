@@ -55,6 +55,15 @@ describe('IngredientsEditorComponent', () => {
     }
   });
 
+  it('the delete control is an icon button whose accessible name names its row', async () => {
+    const { el } = await mount([group('A', 'flour', ''), group('B', ' milk ')]);
+    const del = Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[];
+    expect(del.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Delete ingredient flour', 'Delete ingredient 2', 'Delete ingredient milk',
+    ]);
+    expect(del[0].textContent?.trim()).toBe('✕');
+  });
+
   it('keeps the typed amount text, never stores an invalid value, and links the error with aria-describedby', async () => {
     const { f, el, store } = await mount([group(null, 'milk')]);
     const amount = () => el.querySelector('input.amount') as HTMLInputElement;

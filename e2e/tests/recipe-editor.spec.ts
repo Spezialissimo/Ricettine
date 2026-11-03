@@ -183,7 +183,7 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   // (b) the last ingredient and the last group cannot be deleted (the blank row was never saved: publishing adopts the server copy)
   const rows = ingredients.locator('.ing-row');
   await expect(rows).toHaveCount(1);
-  await expect(rows.nth(0).getByRole('button', { name: 'Delete ingredient' })).toBeDisabled();
+  await expect(rows.nth(0).getByRole('button', { name: 'Delete ingredient leek' })).toBeDisabled();
   await expect(ingredients.getByRole('button', { name: 'Delete group' })).toBeDisabled();
   await expect(ingredients.getByText(hint)).toBeVisible();
 
@@ -194,5 +194,39 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await page.reload();
   await expect(page.getByLabel('Title')).toHaveValue('Soup');
   await expect(page.locator('.editor-header .state')).toContainText('Published');
+  await context.close();
+});
+
+test('ingredient row: the name is the wide field and nothing overflows the panel', async ({ browser }, testInfo) => {
+  const desktop = testInfo.project.name === 'desktop';
+  const { page, context } = await newUserPage(browser, testInfo, 'ingrow');
+  await createRecipe(page, { title: 'Bread', ingredients: ['flour'] });
+  const section = page.locator('section.ingredients');
+  const row = section.locator('.ing-row').first();
+  const name = row.getByLabel('Ingredient', { exact: true });
+  const del = row.getByRole('button', { name: 'Delete ingredient flour' });
+  await expect(name).toBeVisible();
+  await expect(del).toBeVisible();
+
+  const check = async () => {
+    const panel = (await section.boundingBox())!;
+    const n = (await name.boundingBox())!;
+    const d = (await del.boundingBox())!;
+    expect(n.width).toBeGreaterThanOrEqual(desktop ? 160 : 120);
+    expect(d.width).toBeGreaterThanOrEqual(44);
+    expect(d.height).toBeGreaterThanOrEqual(44);
+    for (const field of [row.getByLabel('Amount'), row.getByLabel('Unit'), name, row.getByLabel('Note'), del]) {
+      const b = (await field.boundingBox())!;
+      expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
+    }
+    return { n, d };
+  };
+  const { n, d } = await check();
+  if (desktop) {
+    // as in the mockup: amount, unit, name and the delete icon on one line (the note goes below)
+    expect(Math.abs(n.y + n.height / 2 - (d.y + d.height / 2))).toBeLessThan(4);
+    await page.setViewportSize({ width: 800, height: 800 }); // narrowest desktop width: still no overflow
+    await check();
+  }
   await context.close();
 });
