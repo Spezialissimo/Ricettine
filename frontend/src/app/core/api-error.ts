@@ -1,0 +1,49 @@
+import { HttpErrorResponse } from '@angular/common/http';
+
+export type ApiError = { status: number; code: string; fields?: Record<string, string> };
+
+/** Every `code` the backend can emit (plus frontend-only network_error / unknown). */
+export const KNOWN_ERROR_CODES: readonly string[] = [
+  'bad_credentials',
+  'bad_request',
+  'email_taken',
+  'file_too_large',
+  'forbidden',
+  'internal_error',
+  'invalid_email',
+  'invalid_username',
+  'invite_invalid',
+  'last_admin',
+  'method_not_allowed',
+  'not_authenticated',
+  'not_found',
+  'password_too_long',
+  'password_too_short',
+  'reset_invalid',
+  'setup_already_done',
+  'unsupported_image',
+  'unsupported_media_type',
+  'username_reserved',
+  'username_taken',
+  'validation_failed',
+  'network_error',
+  'unknown',
+];
+
+export function toApiError(e: unknown): ApiError {
+  if (e instanceof HttpErrorResponse) {
+    if (e.status === 0) {
+      return { status: 0, code: 'network_error' };
+    }
+    const body = e.error;
+    if (body && typeof body === 'object' && typeof body.code === 'string') {
+      return { status: e.status, code: body.code, fields: body.fields ?? undefined };
+    }
+    return { status: e.status, code: 'unknown' };
+  }
+  return { status: 0, code: 'unknown' };
+}
+
+export function errorKey(e: ApiError): string {
+  return KNOWN_ERROR_CODES.includes(e.code) ? `errors.${e.code}` : 'errors.unknown';
+}

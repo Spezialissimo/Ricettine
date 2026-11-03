@@ -1,0 +1,24 @@
+// Design tokens (palette from the mockups)
+$ink: #2b2622;
+$accent: #c8553d;
+$bg: #f4f1ec;
+$surface: #ffffff;
+$muted: #6f665e;
+$border: #e2dcd3;
+
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-6: 24px;
+$space-8: 32px;
+
+$radius: 12px;
+$touch-target: 44px;
+$topbar-height: 52px;
+$bottomnav-height: 56px;
+
+@mixin touch-target {
+  min-width: $touch-target;
+  min-height: $touch-target;
+}

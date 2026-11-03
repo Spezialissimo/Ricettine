@@ -1,0 +1,55 @@
+{
+  "common": {
+    "appName": "Ricettine",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back"
+  },
+  "nav": {
+    "home": "Home",
+    "recipes": "Recipes",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password"
+  },
+  "setup": {
+    "title": "Set up Ricettine"
+  },
+  "settings": {
+    "title": "Settings"
+  },
+  "admin": {
+    "title": "Administration"
+  },
+  "errors": {
+    "bad_credentials": "Wrong email or password.",
+    "bad_request": "The request could not be understood.",
+    "email_taken": "This email is already registered.",
+    "file_too_large": "The file is too large (15 MB maximum).",
+    "forbidden": "You are not allowed to do that.",
+    "internal_error": "Something went wrong on our side. Please try again.",
+    "invalid_email": "Enter a valid email address.",
+    "invalid_username": "Username must be 3-30 characters: lowercase letters, digits or underscore.",
+    "invite_invalid": "This invite link is invalid, used or expired.",
+    "last_admin": "You are the last administrator and cannot do that.",
+    "method_not_allowed": "That action is not supported.",
+    "not_authenticated": "Please log in to continue.",
+    "not_found": "Not found.",
+    "password_too_long": "Password must be at most 128 characters.",
+    "password_too_short": "Password must be at least 10 characters.",
+    "reset_invalid": "This password reset link is invalid, used or expired.",
+    "setup_already_done": "Setup has already been completed.",
+    "unsupported_image": "Unsupported image. Use a JPEG, PNG or WebP file.",
+    "unsupported_media_type": "Unsupported content type.",
+    "username_reserved": "This username is reserved.",
+    "username_taken": "This username is already taken.",
+    "validation_failed": "Please check the highlighted fields.",
+    "network_error": "Cannot reach the server. Check your connection.",
+    "unknown": "Something went wrong. Please try again."
+  }
+}
