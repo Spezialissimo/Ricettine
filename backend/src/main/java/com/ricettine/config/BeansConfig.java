@@ -2,7 +2,13 @@ package com.ricettine.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
+import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
+import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
@@ -26,6 +32,12 @@ public class BeansConfig {
 
 	@Bean
 	PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+		// Argon2 for new hashes (bcrypt silently caps at 72 bytes and throws beyond); {bcrypt} hashes still verify.
+		Map<String, PasswordEncoder> encoders = new HashMap<>();
+		encoders.put("argon2", Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+		encoders.put("bcrypt", new BCryptPasswordEncoder());
+		encoders.put("pbkdf2@SpringSecurity_v5_8", Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+		encoders.put("scrypt@SpringSecurity_v5_8", SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8());
+		return new DelegatingPasswordEncoder("argon2", encoders);
 	}
 }

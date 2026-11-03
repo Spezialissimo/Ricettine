@@ -133,4 +133,25 @@ class AuthIT extends IntegrationTest {
 		mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
 			.andExpect(status().isBadRequest());
 	}
+
+	@Test
+	void longAndMultibytePasswordsWork() throws Exception {
+		String ascii128 = "a".repeat(128);
+		String multibyte = "\u00e8".repeat(60); // 120 UTF-8 bytes
+		for (String[] c : new String[][] {{"a@x.com", "usera", ascii128}, {"b@x.com", "userb", multibyte}}) {
+			User u = accounts.create(new NewAccountRequest(c[0], c[2], c[1], "D"), false);
+			assertThat(jdbc.queryForObject("select password_hash from app_user where id = ?", String.class, u.getId()))
+				.startsWith("{argon2}");
+			assertThat(login(c[0], c[2]).getResponse().getStatus()).isEqualTo(200);
+		}
+	}
+
+	@Test
+	void legacyBcryptHashStillLogsIn() throws Exception {
+		User u = user("old@x.com", "olduser", false);
+		String bcrypt = "{bcrypt}" + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+			.encode("correct-horse-1");
+		jdbc.update("update app_user set password_hash = ? where id = ?", bcrypt, u.getId());
+		assertThat(login("old@x.com", "correct-horse-1").getResponse().getStatus()).isEqualTo(200);
+	}
 }
