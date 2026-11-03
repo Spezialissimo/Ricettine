@@ -10,7 +10,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 @Configuration
@@ -18,6 +20,7 @@ public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		CsrfTokenRepository csrfTokens = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		http.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				.requestMatchers("/api/setup/**").permitAll()
@@ -32,13 +35,23 @@ public class SecurityConfig {
 					.permitAll()
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated())
-			.csrf(csrf -> csrf.spa())
-			.logout(l -> l.logoutUrl("/api/auth/logout")
-				.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
+			.csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokens))
+			.logout(l -> l.logoutUrl("/api/auth/logout").logoutSuccessHandler(logoutSuccess(csrfTokens)))
 			.exceptionHandling(e -> e
 				.authenticationEntryPoint(entryPoint())
 				.accessDeniedHandler(accessDenied()));
 		return http.build();
+	}
+
+	/**
+	 * Logout clears the XSRF cookie (CsrfLogoutHandler); the SPA then goes to /login without any GET, so the 204
+	 * carries a fresh token and the next login POST passes CSRF.
+	 */
+	private static LogoutSuccessHandler logoutSuccess(CsrfTokenRepository csrfTokens) {
+		return (req, res, auth) -> {
+			csrfTokens.saveToken(csrfTokens.generateToken(req), req, res);
+			res.setStatus(HttpStatus.NO_CONTENT.value());
+		};
 	}
 
 	private static AuthenticationEntryPoint entryPoint() {
