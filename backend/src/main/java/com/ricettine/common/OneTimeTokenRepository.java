@@ -1,4 +1,4 @@
-package com.ricettine.invite;
+package com.ricettine.common;
 
 import java.time.Instant;
 import java.util.List;

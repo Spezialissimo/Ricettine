@@ -6,9 +6,11 @@ import com.ricettine.auth.AuthSessions;
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.ApiException;
 import com.ricettine.common.TokenPurpose;
-import com.ricettine.invite.OneTimeTokenRepository;
+import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.media.ImageVariant;
+import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
+import com.ricettine.media.ProcessedUpload;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -17,7 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class AccountService {
@@ -30,10 +34,12 @@ public class AccountService {
 	private final List<AccountDeletionHook> deletionHooks;
 	private final AfterTransaction after;
 	private final OneTimeTokenRepository tokens;
+	private final TransactionTemplate tx;
 
 	public AccountService(UserRepository users, PasswordEncoder encoder, MediaService media, AuthSessions sessions,
 			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks, AfterTransaction after,
-			OneTimeTokenRepository tokens) {
+			OneTimeTokenRepository tokens, PlatformTransactionManager txManager) {
+		this.tx = new TransactionTemplate(txManager);
 		this.after = after;
 		this.tokens = tokens;
 		this.users = users;
@@ -124,17 +130,24 @@ public class AccountService {
 		return user;
 	}
 
-	/** Stores the new avatar first, swaps it in, and removes the old blob only once the swap has committed. */
-	@Transactional
+	/**
+	 * Processes the image first, outside any transaction (the limiter wait and the decode must not hold a DB
+	 * connection), then registers it and swaps it in within one short transaction; the old blobs go only once the
+	 * swap has committed, the new ones are removed if it rolls back.
+	 */
 	public User setAvatar(UUID userId, byte[] image) {
+		ProcessedUpload upload = media.process(image, Set.of(ImageVariant.AVATAR));
+		return tx.execute(status -> swapAvatar(userId, upload));
+	}
+
+	private User swapAvatar(UUID userId, ProcessedUpload upload) {
 		User user = users.findById(userId).orElseThrow(AccountService::notAuthenticated);
-		String newKey = media.store(image, Set.of(ImageVariant.AVATAR));
-		after.afterRollback("delete orphaned media " + newKey, () -> media.delete(newKey));
+		String newKey = media.register(upload, userId, MediaKind.AVATAR, null);
 		String oldKey = user.getAvatarKey();
 		user.setAvatarKey(newKey);
 		users.saveAndFlush(user);
 		if (oldKey != null) {
-			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
+			media.delete(oldKey);
 		}
 		return user;
 	}
@@ -146,14 +159,14 @@ public class AccountService {
 		if (oldKey != null) {
 			user.setAvatarKey(null);
 			users.saveAndFlush(user);
-			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
+			media.delete(oldKey);
 		}
 		return user;
 	}
 
 	/**
-	 * Deletes the account: hooks run first, then the row (FK cascades remove tokens); the avatar blob and the
-	 * user's sessions go after commit. The last admin cannot leave while other users remain.
+	 * Deletes the account: hooks run first, then all the user's media rows, then the user row (FK cascades remove
+	 * tokens); media blobs and the user's sessions go after commit. The last admin cannot leave while other users remain.
 	 */
 	@Transactional
 	public void delete(UUID userId) {
@@ -165,15 +178,11 @@ public class AccountService {
 			}
 		}
 		deletionHooks.forEach(h -> h.beforeDelete(userId));
-		String avatarKey = user.getAvatarKey();
+		media.deleteAllOwnedBy(userId); // every kind: rows now, blobs after commit
 		users.delete(user);
 		users.flush();
 		if (users.count() == 0) {
 			jdbc.update("delete from instance_setup");
-		}
-		// Independent best-effort steps: a failed blob delete must never stop session invalidation.
-		if (avatarKey != null) {
-			after.afterCommit("delete media " + avatarKey, () -> media.delete(avatarKey));
 		}
 		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
 	}

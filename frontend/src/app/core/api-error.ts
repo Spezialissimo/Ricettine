@@ -10,6 +10,7 @@ export const KNOWN_ERROR_CODES: readonly string[] = [
   'email_taken',
   'file_too_large',
   'forbidden',
+  'image_too_large',
   'internal_error',
   'invalid_email',
   'invalid_username',

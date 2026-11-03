@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop Mockups</title>
+<style>
+  :root{--bg:#f4f1ec;--card:#fff;--ink:#2b2622;--muted:#8a8178;--line:#e6e0d8;--accent:#c8553d;--soft:#f8f5f1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#ddd6cc;font:14px/1.4 -apple-system,system-ui,sans-serif;color:var(--ink);padding:24px}
+  h1{font-size:20px;margin:0 0 4px} .sub{color:#5d554d;margin:0 0 24px;max-width:1000px}
+  .cap{font-weight:700;margin:28px 0 8px;font-size:15px}
+  .note{color:#5d554d;font-size:13px;margin:8px 2px 0;max-width:1100px}
+  .win{width:1200px;max-width:100%;background:var(--bg);border-radius:10px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.18);position:relative}
+  .chrome{height:30px;background:#e9e4dd;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid #d6cfc5}
+  .dot{width:11px;height:11px;border-radius:50%;background:#cfc7bc}
+  .url{margin-left:16px;background:#fff;border-radius:6px;padding:3px 12px;font-size:12px;color:var(--muted);width:420px}
+  .nav{display:flex;align-items:center;gap:22px;padding:12px 32px;background:#fff;border-bottom:1px solid var(--line)}
+  .logo{font-weight:800;font-size:17px;color:var(--accent);margin-right:12px}
+  .nav a{color:var(--ink);text-decoration:none} .nav a.on{font-weight:700;border-bottom:2px solid var(--accent);padding-bottom:4px}
+  .nav .sp{flex:1} .btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border-radius:10px;font-weight:600;border:1px solid var(--line);background:var(--soft)}
+  .primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#e9c9a8,#c98b5c)}
+  .page{max-width:1100px;margin:0 auto;padding:20px 32px 40px}
+  .ehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .ehead .t{font-size:13px;color:var(--muted)} .saved{color:#3b7a3b;font-size:13px}
+  .cols{display:grid;grid-template-columns:1fr 1.15fr;gap:24px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .thumb{height:150px;border-radius:12px;background:repeating-linear-gradient(45deg,#efe9e1,#efe9e1 10px,#f6f2ec 10px,#f6f2ec 20px);display:flex;align-items:center;justify-content:center;color:var(--muted);border:2px dashed var(--line);margin-bottom:12px}
+  .title{font-size:24px;font-weight:700;border-bottom:1px solid var(--line);padding:4px 0 8px;margin-bottom:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:13px}
+  .chip b{color:var(--accent)} .chip.empty{border-style:dashed;color:var(--muted);background:#fff}
+  .vis{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+  .vis span{padding:7px 14px} .vis .on{background:var(--ink);color:#fff}
+  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px;display:flex;justify-content:space-between}
+  .grp{font-weight:600;margin:10px 0 6px}
+  .ing{display:grid;grid-template-columns:70px 90px 1fr 26px;gap:6px;margin-bottom:6px;align-items:center}
+  .ing div{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+  .ing .x{background:none;border:none;color:var(--muted);text-align:center}
+  .add{color:var(--accent);font-weight:600;padding:6px 0}
+  .step{display:flex;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:#fff}
+  .handle{width:28px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;background:var(--soft);border:1px solid var(--line);border-radius:8px}
+  .num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .stxt{flex:1} .stxt .tx{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:44px}
+  .srow{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .sphoto{width:120px;height:80px;border-radius:10px;background:linear-gradient(135deg,#e9c9a8,#c98b5c)}
+  .mini{font-size:12px;color:var(--accent);font-weight:600}
+  .drop{border:2px dashed var(--accent);background:#fff4ef}
+  .droptag{font-size:12px;color:var(--accent);font-weight:700}
+  .kbd{font:12px ui-monospace,monospace;background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .img{height:120px;background:linear-gradient(135deg,#e9c9a8,#c98b5c)} .card .img.none{background:repeating-linear-gradient(45deg,#efe9e1,#efe9e1 10px,#f6f2ec 10px,#f6f2ec 20px)}
+  .card .b{padding:10px 12px} .card .n{font-weight:700} .badge{display:inline-block;font-size:11px;border-radius:999px;padding:2px 8px;margin-top:6px;border:1px solid var(--line)}
+  .badge.d{background:#fff3cd;border-color:#ecd98f} .badge.p{background:#e8f1e8;border-color:#bcd8bc}
+  .rp{display:grid;grid-template-columns:320px 1fr;gap:28px}
+  .hero{height:220px;border-radius:14px;background:linear-gradient(135deg,#e9c9a8,#c98b5c);margin-bottom:16px}
+  .sticky{position:sticky;top:12px}
+  .rstep{display:flex;gap:12px;margin-bottom:16px}
+  .rstep .ph{height:150px;border-radius:12px;background:linear-gradient(135deg,#e9c9a8,#c98b5c);margin-top:8px}
+  .ingr{padding:6px 0;border-bottom:1px solid var(--line)} .ingr b{display:inline-block;min-width:70px}
+  .scrim{position:absolute;inset:30px 0 0 0;background:rgba(0,0,0,.25)}
+  .dialog{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:380px;background:#fff;border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .tabs{display:flex;gap:6px;margin:10px 0}.tabs span{flex:1;text-align:center;padding:8px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}.tabs .on{background:var(--ink);color:#fff}
+  .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.presets span{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:9px 0;text-align:center}.presets .on{background:var(--ink);color:#fff}
+</style>
+</head>
+<body>
+<h1>Desktop layout: first sketch</h1>
+<p class="sub">Wireframes at 1200 px wide; the look isn't final. Below 768 px, the app falls back to the phone layouts you've already seen (single column, bottom bar, bottom sheets).</p>
+
+<p class="cap">1 · Recipe editor: two columns</p>
+<div class="win">
+  <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ricettine.app/recipes/8f3c…/edit</span></div>
+  <div class="nav"><span class="logo">Ricettine</span><a class="on">My recipes</a><a>Settings</a><a>Admin</a><span class="sp"></span><span class="btn primary">+ New recipe</span><span class="avatar"></span></div>
+  <div class="page">
+    <div class="ehead"><span class="btn">← Done</span><span class="t">Draft</span><span class="saved">Saved ✓</span><span style="flex:1"></span><span class="btn primary">Publish</span><span class="btn">⋯</span></div>
+    <div class="cols">
+      <div class="panel">
+        <div class="thumb">📷 Add cover photo, or drop an image here</div>
+        <div class="title">Lasagna della nonna</div>
+        <div class="chips"><span class="chip">🍽 Serves <b>4</b></span><span class="chip">⏱ Prep <b>30m</b></span><span class="chip empty">+ Cook time</span><span class="chip">🔗 Nonna</span></div>
+        <div class="vis"><span class="on">🔒 Private</span><span>🌍 Public</span></div>
+        <div class="sec"><span>Ingredients</span></div>
+        <div class="grp">For the ragù</div>
+        <div class="ing"><div>500</div><div>g ▾</div><div>minced beef</div><div class="x">✕</div></div>
+        <div class="ing"><div>700</div><div>ml ▾</div><div>passata</div><div class="x">✕</div></div>
+        <div class="add">+ ingredient</div>
+        <div class="grp">For the béchamel</div>
+        <div class="ing"><div>1/2</div><div>l ▾</div><div>milk</div><div class="x">✕</div></div>
+        <div class="add">+ ingredient · + group</div>
+        <div class="sec"><span>Notes</span></div>
+        <div class="ing" style="grid-template-columns:1fr"><div>Next time: less salt in the ragù</div></div>
+      </div>
+      <div class="panel">
+        <div class="sec" style="margin-top:0"><span>Steps</span><span>drag ⠿ to reorder</span></div>
+        <div class="step"><div class="handle">⠿</div><div class="num">1</div><div class="stxt"><div class="tx">Brown the beef with onion and carrot, 10 minutes.</div><div class="srow"><div class="sphoto"></div><span class="mini">Replace · Remove</span></div></div></div>
+        <div class="step drop"><div class="handle">⠿</div><div class="num">2</div><div class="stxt"><div class="tx">Add passata, simmer on low for 1 hour.</div><div class="srow"><span class="droptag">⬇ Drop to attach photo</span></div></div></div>
+        <div class="step"><div class="handle">⠿</div><div class="num">3</div><div class="stxt"><div class="tx">Melt butter, whisk in flour, then the milk a bit at a time.|</div><div class="srow"><span class="mini">📷 Add photo</span><span style="flex:1"></span><span class="mini" style="color:var(--muted)">🗑</span></div></div></div>
+        <div class="add">+ Add step &nbsp;<span class="kbd">Ctrl</span>+<span class="kbd">Enter</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">On the left is everything about the recipe; on the right are the steps, each with its photo inline. There's no bottom bar: Done, Publish and "Saved ✓" sit in the header. Step 2 shows the drop-zone highlight you get while dragging an image file from your computer over it. Ctrl/Cmd+Enter inside a step adds the next one.</p>
+
+<p class="cap">2 · A detail chip on desktop opens a centered dialog</p>
+<div class="win" style="height:420px">
+  <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ricettine.app/recipes/8f3c…/edit</span></div>
+  <div class="nav"><span class="logo">Ricettine</span><a class="on">My recipes</a><a>Settings</a><span class="sp"></span><span class="btn primary">+ New recipe</span><span class="avatar"></span></div>
+  <div class="page" style="opacity:.5"><div class="cols"><div class="panel" style="height:260px"></div><div class="panel" style="height:260px"></div></div></div>
+  <div class="scrim"></div>
+  <div class="dialog"><b style="font-size:16px">Times</b><div class="tabs"><span class="on">Prep</span><span>Cook</span></div><div class="presets"><span>5m</span><span>10m</span><span>15m</span><span class="on">30m</span><span>45m</span><span>1h</span><span>1h 30</span><span>2h</span></div><div class="ing" style="grid-template-columns:1fr"><div>Other: __ h __ min</div></div><div style="text-align:right;margin-top:10px"><span class="btn primary">Done</span></div></div>
+</div>
+<p class="note">Same content as the phone's bottom sheet, but centered. Esc or clicking outside closes it.</p>
+
+<p class="cap">3 · My recipes: a card grid</p>
+<div class="win">
+  <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ricettine.app/recipes</span></div>
+  <div class="nav"><span class="logo">Ricettine</span><a class="on">My recipes</a><a>Settings</a><a>Admin</a><span class="sp"></span><span class="btn primary">+ New recipe</span><span class="avatar"></span></div>
+  <div class="page">
+    <div class="grid">
+      <div class="card"><div class="img"></div><div class="b"><div class="n">Lasagna della nonna</div><span class="badge d">Draft</span></div></div>
+      <div class="card"><div class="img"></div><div class="b"><div class="n">Risotto ai funghi</div><span class="badge p">Public</span></div></div>
+      <div class="card"><div class="img none"></div><div class="b"><div class="n">Tiramisù</div><span class="badge">Private</span></div></div>
+      <div class="card"><div class="img none"></div><div class="b"><div class="n" style="color:var(--muted)">Untitled recipe</div><span class="badge d">Draft</span></div></div>
+    </div>
+  </div>
+</div>
+<p class="note">Most recently edited first. Recipes without a cover show the placeholder pattern. On the phone, this becomes a single list.</p>
+
+<p class="cap">4 · Recipe page (share link), ingredients beside the steps</p>
+<div class="win">
+  <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">ricettine.app/r/Xk2…</span></div>
+  <div class="nav"><span class="logo">Ricettine</span><span class="sp"></span><span class="btn">Log in</span></div>
+  <div class="page">
+    <div class="hero"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="avatar"></span><span style="color:var(--muted)">by Giulia</span></div>
+    <div class="title" style="border:none">Lasagna della nonna</div>
+    <div class="chips"><span class="chip">🍽 Serves <b>4</b></span><span class="chip">⏱ Prep <b>30m</b></span><span class="chip">🔥 Cook <b>45m</b></span><span class="chip">🔗 Nonna</span></div>
+    <div class="rp">
+      <div><div class="panel sticky"><div class="sec" style="margin-top:0"><span>Ingredients</span></div><div class="grp">For the ragù</div><div class="ingr"><b>500 g</b> minced beef</div><div class="ingr"><b>700 ml</b> passata</div><div class="grp">For the béchamel</div><div class="ingr"><b>0.5 l</b> milk</div></div></div>
+      <div>
+        <div class="rstep"><div class="num">1</div><div style="flex:1">Brown the beef with onion and carrot, 10 minutes.<div class="ph"></div></div></div>
+        <div class="rstep"><div class="num">2</div><div style="flex:1">Add passata, simmer on low for 1 hour.</div></div>
+        <div class="rstep"><div class="num">3</div><div style="flex:1">Melt butter, whisk in flour, then the milk a bit at a time.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Readable without an account. The ingredients column stays in view while you scroll through the steps. Scaling portions and keep-screen-on come in Plan 4. When the author views it, an "Edit" button appears.</p>
+</body>
+</html>
