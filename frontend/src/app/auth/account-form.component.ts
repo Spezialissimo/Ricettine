@@ -10,11 +10,19 @@ const RESERVED_USERNAMES = new Set([
   'invite', 'me', 'new',
 ]);
 
-const reservedUsername: ValidatorFn = (c) => (RESERVED_USERNAMES.has(c.value) ? { reserved: true } : null);
-const notBlank: ValidatorFn = (c) => (String(c.value ?? '').trim() ? null : { required: true });
-const maxTrimmed =
+export const reservedUsername: ValidatorFn = (c) => (RESERVED_USERNAMES.has(c.value) ? { reserved: true } : null);
+export const notBlank: ValidatorFn = (c) => (String(c.value ?? '').trim() ? null : { required: true });
+export const maxTrimmed =
   (n: number): ValidatorFn =>
   (c) => (String(c.value ?? '').trim().length > n ? { maxlength: true } : null);
+
+export const USERNAME_VALIDATORS: ValidatorFn[] = [
+  Validators.required, Validators.pattern(/^[a-z0-9_]{3,30}$/), reservedUsername,
+];
+export const DISPLAY_NAME_VALIDATORS: ValidatorFn[] = [notBlank, maxTrimmed(80)];
+export const PASSWORD_VALIDATORS: ValidatorFn[] = [
+  Validators.required, Validators.minLength(10), Validators.maxLength(128),
+];
 
 const FIELD_OF_CODE: Record<string, 'email' | 'username' | 'password'> = {
   email_taken: 'email',
@@ -98,15 +106,15 @@ export class AccountFormComponent {
     }),
     username: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.pattern(/^[a-z0-9_]{3,30}$/), reservedUsername],
+      validators: USERNAME_VALIDATORS,
     }),
     displayName: new FormControl('', {
       nonNullable: true,
-      validators: [notBlank, maxTrimmed(80)],
+      validators: DISPLAY_NAME_VALIDATORS,
     }),
     password: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.minLength(10), Validators.maxLength(128)],
+      validators: PASSWORD_VALIDATORS,
     }),
   });
 

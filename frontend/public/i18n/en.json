@@ -4,12 +4,18 @@
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
-    "back": "Back"
+    "back": "Back",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share",
+    "expiresOn": "Expires {{date}}",
+    "logout": "Log out"
   },
   "nav": {
     "home": "Home",
     "recipes": "Recipes",
-    "settings": "Settings"
+    "settings": "Settings",
+    "admin": "Admin"
   },
   "auth": {
     "login": "Log in",
@@ -32,10 +38,38 @@
     "submit": "Create administrator"
   },
   "settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "profileTitle": "Profile",
+    "saved": "Saved.",
+    "avatar": "Avatar",
+    "avatarChoose": "Choose photo",
+    "avatarUploading": "Uploading...",
+    "avatarRemove": "Remove photo",
+    "avatarAlt": "Your avatar",
+    "passwordTitle": "Change password",
+    "currentPassword": "Current password",
+    "passwordSubmit": "Change password",
+    "passwordDone": "Your password has been changed.",
+    "deleteTitle": "Delete account",
+    "deleteWarning": "This permanently deletes your account. Enter your password to confirm.",
+    "deleteSubmit": "Delete my account",
+    "linkPassword": "Change password",
+    "linkDelete": "Delete account"
   },
   "admin": {
-    "title": "Administration"
+    "title": "Administration",
+    "invites": "Invites",
+    "users": "Users",
+    "createInvite": "Create invite",
+    "creating": "Creating...",
+    "inviteReady": "Invite link (single use)",
+    "activeInvites": "Active invites",
+    "noInvites": "No active invites.",
+    "revoke": "Revoke",
+    "createdOn": "Created {{date}}",
+    "resetPassword": "Reset password",
+    "resetReady": "Password reset link for {{name}}",
+    "adminBadge": "Admin"
   },
   "errors": {
     "bad_credentials": "Wrong email or password.",
