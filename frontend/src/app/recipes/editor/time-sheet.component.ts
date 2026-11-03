@@ -41,7 +41,7 @@ const field = (kind: TimeKind) => (kind === 'prep' ? 'prepMinutes' : 'cookMinute
       <div class="tabs" role="tablist" [attr.aria-labelledby]="titleId" (keydown)="onTabKey($event)">
         @for (k of kinds; track k) {
           <button type="button" role="tab" [id]="tabId + k" [attr.aria-controls]="panelId"
-            [attr.aria-selected]="tab() === k" [attr.tabindex]="tab() === k ? 0 : -1" (click)="tab.set(k)">
+            [attr.aria-selected]="tab() === k" [attr.tabindex]="tab() === k ? 0 : -1" (click)="selectTab(k)">
             {{ t('editor.time.' + k) }}
           </button>
         }
@@ -56,16 +56,16 @@ const field = (kind: TimeKind) => (kind === 'prep' ? 'prepMinutes' : 'cookMinute
         </div>
         <fieldset>
           <legend>{{ t('editor.time.other') }}</legend>
-          <div class="custom">
+          <div class="custom" (focusout)="onCustomBlur($event)">
             <div>
               <label [for]="hoursId">{{ t('editor.time.hours') }}</label>
               <input #h type="number" name="hours" inputmode="numeric" min="0" max="168" [id]="hoursId"
-                [value]="hours()" (input)="custom(h.value, m.value)" />
+                [value]="draft()?.h ?? hours()" (input)="custom(h.value, m.value)" />
             </div>
             <div>
               <label [for]="minutesId">{{ t('editor.time.minutes') }}</label>
               <input #m type="number" name="minutes" inputmode="numeric" min="0" max="59" [id]="minutesId"
-                [value]="minutes()" (input)="custom(h.value, m.value)" />
+                [value]="draft()?.m ?? minutes()" (input)="custom(h.value, m.value)" />
             </div>
           </div>
         </fieldset>
@@ -73,7 +73,7 @@ const field = (kind: TimeKind) => (kind === 'prep' ? 'prepMinutes' : 'cookMinute
           {{ t('editor.time.clear') }}
         </button>
       </div>
-      <button type="button" class="done" (click)="ref.close()">{{ t('editor.sheetDone') }}</button>
+      <button type="button" class="done" (click)="draft.set(null); ref.close()">{{ t('editor.sheetDone') }}</button>
     </ng-container>
   `,
 })
@@ -94,23 +94,44 @@ export class TimeSheetComponent {
   protected readonly hours = computed(() => (this.value() === null ? '' : String(Math.floor(this.value()! / 60))));
   protected readonly minutes = computed(() => (this.value() === null ? '' : String(this.value()! % 60)));
 
+  /** Raw h/min text while the user types in the custom fields; null shows the normalized value. */
+  protected readonly draft = signal<{ h: string; m: string } | null>(null);
+
+  protected selectTab(k: TimeKind): void {
+    this.draft.set(null);
+    this.tab.set(k);
+  }
+
+  /** Leaving the custom fields (not just moving between them) normalizes "75 min" to 1 h 15. */
+  protected onCustomBlur(e: FocusEvent): void {
+    const to = e.relatedTarget as Node | null;
+    if (to && (e.currentTarget as HTMLElement).contains(to)) return;
+    this.draft.set(null);
+  }
+
   set(minutes: number | null): void {
+    this.draft.set(null);
     const key = field(this.tab());
     this.store.update((r) => ({ ...r, [key]: minutes }));
   }
 
   custom(hours: string, minutes: string): void {
-    if (!hours.trim() && !minutes.trim()) return this.set(null);
-    const h = Math.max(0, Math.floor(Number(hours) || 0));
-    const m = Math.max(0, Math.floor(Number(minutes) || 0));
-    this.set(Math.min(MAX_MINUTES, h * 60 + m));
+    const key = field(this.tab());
+    let total: number | null = null;
+    if (hours.trim() || minutes.trim()) {
+      const h = Math.max(0, Math.floor(Number(hours) || 0));
+      const m = Math.max(0, Math.floor(Number(minutes) || 0));
+      total = Math.min(MAX_MINUTES, h * 60 + m);
+    }
+    this.store.update((r) => ({ ...r, [key]: total }));
+    this.draft.set({ h: hours, m: minutes });
   }
 
   protected onTabKey(e: KeyboardEvent): void {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
     const next: TimeKind = this.tab() === 'prep' ? 'cook' : 'prep';
-    this.tab.set(next);
+    this.selectTab(next);
     (e.currentTarget as HTMLElement).querySelector<HTMLElement>(`[id="${this.tabId + next}"]`)?.focus();
   }
 }

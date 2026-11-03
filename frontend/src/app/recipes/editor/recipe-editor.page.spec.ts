@@ -84,6 +84,75 @@ describe('RecipeEditorPage', () => {
     expect(nav).toHaveBeenCalledWith('/recipes');
   });
 
+  it('Done on an empty local copy whose server version moved does not remove', async () => {
+    const get = vi.fn()
+      .mockResolvedValueOnce(serverRecipe({ version: 1 }))
+      .mockResolvedValue(serverRecipe({ version: 2, title: 'Filled on my phone' }));
+    const save = vi.fn();
+    const remove = vi.fn();
+    const { f, el, nav } = await mount({ get, save, remove });
+    byText(el, 'button', en.editor.done)!.click();
+    await settle(f);
+    expect(get).toHaveBeenCalledTimes(2); // re-checked the server copy before deleting
+    expect(remove).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(nav).toHaveBeenCalledWith('/recipes');
+  });
+
+  it('Done on an empty local copy does not remove when the server copy has content at the same version', async () => {
+    const get = vi.fn()
+      .mockResolvedValueOnce(serverRecipe({ version: 3 }))
+      .mockResolvedValue(serverRecipe({ version: 3, notes: 'x' }));
+    const remove = vi.fn();
+    const { f, el } = await mount({ get, remove, save: vi.fn() });
+    byText(el, 'button', en.editor.done)!.click();
+    await settle(f);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('Done during a conflict does not remove, even with an empty local copy', async () => {
+    const get = vi.fn().mockResolvedValue(serverRecipe());
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const remove = vi.fn();
+    const { f, el, nav } = await mount({ get, save, remove });
+    const title = el.querySelector('#recipe-title') as HTMLInputElement;
+    type(title, 'typed');
+    await f.componentInstance['store'].flush();
+    type(title, ''); // local copy is empty again, but the save 409'd
+    await settle(f);
+    expect(el.querySelector('.conflict')).toBeTruthy();
+    byText(el, 'button', en.editor.done)!.click();
+    await settle(f);
+    expect(remove).not.toHaveBeenCalled();
+    expect(nav).not.toHaveBeenCalled();
+  });
+
+  it('Done and Delete share one busy guard', async () => {
+    const save = vi.fn().mockReturnValue(new Promise(() => {})); // a save that never answers
+    const remove = vi.fn();
+    const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'X' })), save, remove });
+    type(el.querySelector('#recipe-title') as HTMLInputElement, 'Y');
+    void f.componentInstance.done();
+    await settle(f);
+    await f.componentInstance.confirmDelete(); // ignored while Done is running
+    await settle(f);
+    expect(document.querySelector('app-confirm-delete-dialog')).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('Done is ignored while the delete confirmation is open', async () => {
+    const save = vi.fn();
+    const remove = vi.fn();
+    const { f, el, nav } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, remove });
+    void f.componentInstance.confirmDelete();
+    await settle(f);
+    expect(document.querySelector('app-confirm-delete-dialog')).toBeTruthy();
+    expect((byText(el, 'button', en.editor.done) as HTMLButtonElement).disabled).toBe(true);
+    await f.componentInstance.done();
+    expect(remove).not.toHaveBeenCalled();
+    expect(nav).not.toHaveBeenCalled();
+  });
+
   it('marks the title invalid with a described error when the server rejects it', async () => {
     const save = vi.fn().mockRejectedValue(
       new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } }),

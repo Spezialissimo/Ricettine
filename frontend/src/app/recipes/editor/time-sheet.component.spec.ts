@@ -73,6 +73,29 @@ describe('TimeSheetComponent', () => {
     expect(close).toHaveBeenCalled();
   });
 
+  it('keeps what you type while typing and normalizes on blur', async () => {
+    const { f, el, store } = await mount('prep');
+    const hours = el.querySelector('input[name="hours"]') as HTMLInputElement;
+    const minutes = el.querySelector('input[name="minutes"]') as HTMLInputElement;
+    type(hours, '1');
+    await settle(f);
+    expect(store.recipe().prepMinutes).toBe(60);
+    expect(minutes.value).toBe(''); // not rewritten to "0" mid-typing
+    hours.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: minutes }));
+    await settle(f);
+    expect(minutes.value).toBe(''); // moving between the two fields is still typing
+    type(hours, '');
+    type(minutes, '75');
+    await settle(f);
+    expect(store.recipe().prepMinutes).toBe(75);
+    expect(minutes.value).toBe('75');
+    expect(hours.value).toBe('');
+    minutes.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    await settle(f);
+    expect(hours.value).toBe('1');
+    expect(minutes.value).toBe('15');
+  });
+
   it('clamps custom times to 0-10080 minutes', async () => {
     const { f, el, store } = await mount('prep');
     type(el.querySelector('input[name="hours"]') as HTMLInputElement, '500');

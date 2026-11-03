@@ -118,6 +118,34 @@ export class EditorStore {
     return isUntouchedDraft(this._server(), this._recipe());
   }
 
+  /**
+   * Done on an untouched draft: deletes it only if it is still empty on the server too, at the version
+   * this editor last loaded or saved. DELETE carries no version, so this re-check is what keeps Done
+   * from deleting content saved meanwhile on another device. Never deletes during a conflict.
+   * Resolves true if the recipe was deleted.
+   */
+  async removeIfUntouched(): Promise<boolean> {
+    if (this.status() === 'conflict' || !this.isUntouchedDraft()) return false;
+    this.autosave.suspend();
+    try {
+      await this.autosave.settled();
+      const known = this._recipe().version;
+      const fresh = await this.api.get(this._id!);
+      const stillEmpty =
+        this.status() !== 'conflict' && fresh.version === known && isUntouchedDraft(fresh, toInput(fresh));
+      if (!stillEmpty || !this.isUntouchedDraft()) {
+        this.autosave.resume();
+        return false;
+      }
+      await this.api.remove(this._id!);
+    } catch (e) {
+      this.autosave.resume();
+      throw e;
+    }
+    this.autosave.dispose();
+    return true;
+  }
+
   /** Stops autosave (nothing more is sent) and deletes the recipe. */
   async remove(): Promise<void> {
     this.autosave.suspend();

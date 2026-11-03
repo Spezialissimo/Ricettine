@@ -47,7 +47,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
           @if (store.server()?.status === 'DRAFT') {
             <button type="button" class="btn primary publish" disabled>{{ t('editor.publish') }}</button>
           }
-          <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [cdkMenuTriggerFor]="menu">⋯</button>
+          <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [disabled]="busy()"
+            [cdkMenuTriggerFor]="menu">⋯</button>
           <ng-template #menu>
             <div class="menu" cdkMenu>
               <button type="button" class="menu-item danger" cdkMenuItem (cdkMenuItemTriggered)="confirmDelete()">
@@ -153,15 +154,16 @@ export class RecipeEditorPage {
     this.store.update((r) => ({ ...r, visibility }));
   }
 
-  /** Done: an untouched new draft is deleted; otherwise send pending changes and leave once they are saved. */
+  /**
+   * Done: an untouched new draft (still empty on the server at our version) is deleted; otherwise send
+   * pending changes and leave once they are saved. Shares the `busy` guard with Delete.
+   */
   async done(): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
     this.actionError.set(null);
     try {
-      if (this.store.isUntouchedDraft()) {
-        await this.store.remove();
-      } else {
+      if (!(await this.store.removeIfUntouched())) {
         await this.store.flush();
         if (this.store.autosave.dirty()) return; // stay: the status/banner says why, nothing is lost
       }
@@ -174,16 +176,20 @@ export class RecipeEditorPage {
   }
 
   async confirmDelete(): Promise<void> {
-    const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteDialog, {
-      label: this.i18n.translate('editor.deleteConfirm.title'),
-    });
-    if ((await firstValueFrom(ref.closed)) !== true) return;
+    if (this.busy()) return;
+    this.busy.set(true);
     this.actionError.set(null);
     try {
+      const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteDialog, {
+        label: this.i18n.translate('editor.deleteConfirm.title'),
+      });
+      if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
       await this.store.remove();
       await this.router.navigateByUrl('/recipes');
     } catch (e) {
       this.actionError.set(errorKey(toApiError(e)));
+    } finally {
+      this.busy.set(false);
     }
   }
 
