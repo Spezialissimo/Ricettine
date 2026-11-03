@@ -53,3 +53,5 @@ Database migrations run automatically on startup. Your data stays in the `db-dat
 - Frontend: `cd frontend && npx ng test --watch=false`.
 - Smoke: `scripts/smoke.sh`.
 - Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports). The UI is not responsive yet, so the desktop project runs the same flows at desktop size.
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request and on pushes to `main`.

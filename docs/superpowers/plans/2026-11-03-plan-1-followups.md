@@ -20,10 +20,10 @@ Collected from the per-task and whole-branch reviews of Plan 1. Nothing here blo
 - Publish the image to ghcr, then switch the README upgrade path back to `docker compose pull`.
 - Login rate limiting (argon2 is about 16 MB / 100 ms per attempt; concurrency is already bounded at 4).
 - Re-test S3 storage against real AWS S3 (tests use `adobe/s3mock`, pinned to 5.2.3).
-- Run the amd64 image (only built so far, never executed).
+- amd64 image: now built and executed by CI (`e2e` and `smoke` jobs on ubuntu-latest); the arm64 image is still only exercised locally.
 - Session upgrade hazard: sessions are Java-serialized; plan for clearing `spring_session` on major Spring Security bumps, or a JSON serializer.
 - Proxy docs: invite/reset tokens appear in URL paths, so keep them out of access logs.
-- Maven prints 401 metadata warnings for the flyway/red-gate repos; check CI tolerates them.
+- Maven prints 401 metadata warnings for the flyway/red-gate repos; CI runs `./mvnw -B verify` and they should be tolerated (confirm on the first real run).
 - `Dockerfile` has `dependency:resolve || true` in the cache-warm layer.
 
 ## Small cleanups (any time)

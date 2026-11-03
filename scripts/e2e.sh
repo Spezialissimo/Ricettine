@@ -29,4 +29,9 @@ done
 cd e2e
 npm ci
 npx playwright install chromium
-npx playwright test "$@"
+if ! npx playwright test "$@"; then
+  mkdir -p test-results
+  docker compose -p "$E2E_COMPOSE_PROJECT" logs --no-color > test-results/compose.log 2>&1 || true
+  echo "E2E FAIL: compose logs saved to e2e/test-results/compose.log" >&2
+  exit 1
+fi
