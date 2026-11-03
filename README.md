@@ -46,3 +46,10 @@ Database migrations run automatically on startup. Your data stays in the `db-dat
 - Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
 - Frontend: `cd frontend && npm ci && npx ng serve` (proxies `/api` to `localhost:8080`).
 - Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`).
+
+## Tests
+
+- Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
+- Frontend: `cd frontend && npx ng test --watch=false`.
+- Smoke: `scripts/smoke.sh`.
+- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports).
