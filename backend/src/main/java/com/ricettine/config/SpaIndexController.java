@@ -2,6 +2,7 @@ package com.ricettine.config;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,6 @@ class SpaIndexController {
 		if (!index.exists()) {
 			return ResponseEntity.notFound().build();
 		}
-		return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(index);
+		return ResponseEntity.ok().cacheControl(CacheControl.noCache()).contentType(MediaType.TEXT_HTML).body(index);
 	}
 }

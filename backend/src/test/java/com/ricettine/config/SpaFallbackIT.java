@@ -28,6 +28,16 @@ class SpaFallbackIT extends IntegrationTest {
 	}
 
 	@Test
+	void indexIsNotCachedAtRootOrOnDeepLinks() throws Exception {
+		for (String path : new String[] {"/", "/r/abc123", "/index.html"}) {
+			mvc.perform(get(path))
+					.andExpect(status().isOk())
+					.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+							.string("Cache-Control", "no-cache"));
+		}
+	}
+
+	@Test
 	@WithMockUser
 	void unknownApiIs404Json() throws Exception {
 		mvc.perform(get("/api/nope"))

@@ -1,0 +1,12 @@
+.git
+.superpowers
+.claude
+.DS_Store
+docs
+data
+backend/target
+backend/data
+frontend/node_modules
+frontend/dist
+frontend/.angular
+**/.DS_Store
