@@ -1,4 +1,4 @@
-import { BrowserContext, Page, expect, test } from '@playwright/test';
+import { BrowserContext, Frame, Page, expect, test } from '@playwright/test';
 import { ADMIN, Person, createInvitePath, logIn, logOut, newContext, person, register } from './helpers';
 
 test.describe.serial('walkthrough: admin, invite, register, logout, login', () => {
@@ -8,6 +8,12 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
   let user: Page;
   let who: Person;
   let invitePath: string;
+
+  test('the project viewport applies', async ({ page }, testInfo) => {
+    const width = page.viewportSize()!.width;
+    if (testInfo.project.name === 'desktop') expect(width).toBeGreaterThanOrEqual(1200);
+    else expect(width).toBeLessThanOrEqual(450);
+  });
 
   test.beforeAll(async ({ browser }, testInfo) => {
     who = person(testInfo, 'walk');
@@ -37,7 +43,21 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
   test('admin logs out and straight back in without a reload', async () => {
     await admin.goto('/');
     await logOut(admin);
-    await logIn(admin, ADMIN); // regression: the first login after logout used to return 403
+    // Regression: the first login after logout used to return 403 (stale XSRF token). The SPA must
+    // go from logout to a successful login without any full-page navigation or reload in between.
+    const navigations: string[] = [];
+    const onNav = (f: Frame) => {
+      if (f === admin.mainFrame()) navigations.push(f.url());
+    };
+    admin.on('framenavigated', onNav);
+    const loginResponse = admin.waitForResponse(
+      (r) => r.url().endsWith('/api/auth/login') && r.request().method() === 'POST',
+    );
+    await logIn(admin, ADMIN);
+    admin.off('framenavigated', onNav);
+    expect((await loginResponse).status()).toBe(200);
+    // only the in-app route change after the successful login may have happened (to `/`)
+    expect(navigations.every((u) => new URL(u).pathname === '/')).toBe(true);
   });
 
   test('invited person registers and lands on home without an Admin link', async () => {
@@ -50,7 +70,8 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await logOut(user);
     await logIn(user, who);
     await user.goto('/admin/users');
-    await expect(user).not.toHaveURL(/\/admin\//);
+    await expect(user).toHaveURL(/\/$/); // adminGuard redirects non-admins to home
+    await expect(user.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
     await expect(user.getByRole('heading', { name: 'Users' })).toHaveCount(0);
   });
 

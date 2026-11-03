@@ -30,7 +30,7 @@ export function newContext(browser: Browser, testInfo: TestInfo): Promise<Browse
 }
 
 export async function logIn(page: Page, who: Pick<Person, 'email' | 'password' | 'displayName'>) {
-  await page.getByLabel('Email').fill(who.email);
+  await page.getByLabel('Email', { exact: true }).fill(who.email);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
@@ -53,7 +53,7 @@ export async function createInvitePath(page: Page): Promise<string> {
 
 export async function register(page: Page, invitePath: string, who: Person) {
   await page.goto(invitePath);
-  await page.getByLabel('Email').fill(who.email);
+  await page.getByLabel('Email', { exact: true }).fill(who.email);
   await page.getByLabel('Username').fill(who.username);
   await page.getByLabel('Display name').fill(who.displayName);
   await page.getByLabel('Password').fill(who.password);

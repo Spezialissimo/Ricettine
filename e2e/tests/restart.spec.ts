@@ -18,7 +18,7 @@ test('session and avatar survive an app restart', async ({ browser, baseURL }, t
   const src = new URL((await avatar.getAttribute('src'))!, page.url()).toString();
   expect((await page.request.get(src)).status()).toBe(200);
 
-  execFileSync('docker', ['compose', '-p', compose!, 'restart', 'app'], { stdio: 'inherit' });
+  execFileSync('docker', ['compose', '-f', join(import.meta.dirname, '..', '..', 'compose.yaml'), '-p', compose!, 'restart', 'app'], { stdio: 'inherit' });
   await expect
     .poll(
       async () => {

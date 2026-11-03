@@ -11,6 +11,8 @@ TIMEOUT="${E2E_TIMEOUT:-180}"
 cleanup() { docker compose -p "$E2E_COMPOSE_PROJECT" down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+# start from nothing: a crashed earlier run must not leave a used database behind
+docker compose -p "$E2E_COMPOSE_PROJECT" down -v >/dev/null 2>&1 || true
 docker compose -p "$E2E_COMPOSE_PROJECT" up -d --build
 
 echo "Waiting for health (max ${TIMEOUT}s)..."
@@ -25,6 +27,6 @@ until curl -fsS "$BASE_URL/actuator/health" 2>/dev/null | grep -q '"status":"UP"
 done
 
 cd e2e
-[ -d node_modules ] || npm ci
+npm ci
 npx playwright install chromium
 npx playwright test "$@"
