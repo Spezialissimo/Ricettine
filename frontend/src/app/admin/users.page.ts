@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
+import { AuthStore } from '../core/auth.store';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 
 type User = { id: string; username: string; displayName: string; email: string; admin: boolean; createdAt: string };
@@ -34,7 +35,14 @@ type Reset = { name: string; url: string; expiresAt: string };
               @if (u.admin) { <span class="muted"> ({{ t('admin.adminBadge') }})</span> }
               <br /><span class="muted">&#64;{{ u.username }} &middot; {{ u.email }}</span>
             </span>
-            <button type="button" class="btn" (click)="resetPassword(u)">{{ t('admin.resetPassword') }}</button>
+            <span class="actions">
+              @if (canChangeRole(u)) {
+                <button type="button" class="btn" data-action="role" [disabled]="busy()" (click)="toggleAdmin(u)">
+                  {{ t(u.admin ? 'admin.removeAdmin' : 'admin.makeAdmin') }}
+                </button>
+              }
+              <button type="button" class="btn" data-action="reset" (click)="resetPassword(u)">{{ t('admin.resetPassword') }}</button>
+            </span>
           </li>
         }
       </ul>
@@ -43,9 +51,40 @@ type Reset = { name: string; url: string; expiresAt: string };
 })
 export class UsersPage implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthStore);
+  private readonly router = inject(Router);
   readonly users = signal<User[]>([]);
   readonly reset = signal<Reset | null>(null);
   readonly error = signal<string | null>(null);
+  readonly busy = signal(false);
+  private readonly adminCount = computed(() => this.users().filter((u) => u.admin).length);
+
+  /** The last admin can't demote themselves (the server would answer 409 last_admin). */
+  canChangeRole(u: User): boolean {
+    return !(u.id === this.auth.me()?.id && u.admin && this.adminCount() <= 1);
+  }
+
+  async toggleAdmin(u: User): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(
+        this.http.post<User>(`/api/admin/users/${encodeURIComponent(u.id)}/admin`, { admin: !u.admin }),
+      );
+      if (u.id === this.auth.me()?.id) {
+        // A role change ends all of the target's sessions, including this one: sign in again.
+        this.auth.setMe(null);
+        await this.router.navigateByUrl('/login');
+        return;
+      }
+      this.users.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+    } catch (e) {
+      this.error.set(errorKey(toApiError(e)));
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     try {

@@ -69,7 +69,9 @@
     "createdOn": "Created {{date}}",
     "resetPassword": "Reset password",
     "resetReady": "Password reset link for {{name}}",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "makeAdmin": "Make admin",
+    "removeAdmin": "Remove admin"
   },
   "errors": {
     "bad_credentials": "Wrong email or password.",
@@ -82,7 +84,7 @@
     "invalid_email": "Enter a valid email address.",
     "invalid_username": "Username must be 3-30 characters: lowercase letters, digits or underscore.",
     "invite_invalid": "This invite link is invalid, used or expired.",
-    "last_admin": "You are the last administrator and cannot do that.",
+    "last_admin": "You are the last administrator. Make someone else an administrator first.",
     "method_not_allowed": "That action is not supported.",
     "not_authenticated": "Please log in to continue.",
     "not_found": "Not found.",

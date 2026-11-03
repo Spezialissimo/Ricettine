@@ -32,3 +32,4 @@ ul.list { list-style: none; padding: 0; margin: 0; }
 ul.list li { display: flex; align-items: center; justify-content: space-between; gap: t.$space-3; flex-wrap: wrap;
   padding: t.$space-3 0; border-bottom: 1px solid t.$border; }
 .muted { color: t.$muted; font-size: 0.85rem; }
+.actions { display: flex; gap: t.$space-2; flex-wrap: wrap; }
