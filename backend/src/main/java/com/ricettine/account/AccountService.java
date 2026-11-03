@@ -3,6 +3,7 @@ package com.ricettine.account;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountDtos.ProfilePatch;
 import com.ricettine.auth.AuthSessions;
+import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.ApiException;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
@@ -15,8 +16,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AccountService {
@@ -27,9 +26,11 @@ public class AccountService {
 	private final AuthSessions sessions;
 	private final JdbcTemplate jdbc;
 	private final List<AccountDeletionHook> deletionHooks;
+	private final AfterTransaction after;
 
 	public AccountService(UserRepository users, PasswordEncoder encoder, MediaService media, AuthSessions sessions,
-			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks) {
+			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks, AfterTransaction after) {
+		this.after = after;
 		this.users = users;
 		this.encoder = encoder;
 		this.media = media;
@@ -73,7 +74,8 @@ public class AccountService {
 		requirePassword(user, currentPassword);
 		user.setPasswordHash(encoder.encode(validPassword(newPassword)));
 		users.saveAndFlush(user);
-		afterCommit(() -> sessions.invalidateOtherSessions(userId, keepSessionId));
+		after.afterCommit("invalidate other sessions of " + userId,
+				() -> sessions.invalidateOtherSessions(userId, keepSessionId));
 	}
 
 	/** Sets a new password without knowing the old one (reset link) and ends all the user's sessions after commit. */
@@ -82,7 +84,7 @@ public class AccountService {
 		User user = users.findById(userId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "reset_invalid"));
 		user.setPasswordHash(encoder.encode(validPassword(newPassword)));
 		users.saveAndFlush(user);
-		afterCommit(() -> sessions.invalidateAllSessions(userId));
+		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
 	}
 
 	/** Stores the new avatar first, swaps it in, and removes the old blob only once the swap has committed. */
@@ -90,12 +92,12 @@ public class AccountService {
 	public User setAvatar(UUID userId, byte[] image) {
 		User user = users.findById(userId).orElseThrow(AccountService::notAuthenticated);
 		String newKey = media.store(image, Set.of(ImageVariant.AVATAR));
-		afterRollback(() -> media.delete(newKey));
+		after.afterRollback("delete orphaned media " + newKey, () -> media.delete(newKey));
 		String oldKey = user.getAvatarKey();
 		user.setAvatarKey(newKey);
 		users.saveAndFlush(user);
 		if (oldKey != null) {
-			afterCommit(() -> media.delete(oldKey));
+			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
 		}
 		return user;
 	}
@@ -107,7 +109,7 @@ public class AccountService {
 		if (oldKey != null) {
 			user.setAvatarKey(null);
 			users.saveAndFlush(user);
-			afterCommit(() -> media.delete(oldKey));
+			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
 		}
 		return user;
 	}
@@ -132,12 +134,11 @@ public class AccountService {
 		if (users.count() == 0) {
 			jdbc.update("delete from instance_setup");
 		}
-		afterCommit(() -> {
-			if (avatarKey != null) {
-				media.delete(avatarKey);
-			}
-			sessions.invalidateAllSessions(userId);
-		});
+		// Independent best-effort steps: a failed blob delete must never stop session invalidation.
+		if (avatarKey != null) {
+			after.afterCommit("delete media " + avatarKey, () -> media.delete(avatarKey));
+		}
+		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
 	}
 
 	private User saveUnique(User user) {
@@ -176,33 +177,6 @@ public class AccountService {
 
 	private static ApiException notAuthenticated() {
 		return new ApiException(HttpStatus.UNAUTHORIZED, "not_authenticated");
-	}
-
-	private static void afterCommit(Runnable action) {
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			action.run();
-			return;
-		}
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCommit() {
-				action.run();
-			}
-		});
-	}
-
-	private static void afterRollback(Runnable action) {
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			return;
-		}
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCompletion(int status) {
-				if (status == STATUS_ROLLED_BACK) {
-					action.run();
-				}
-			}
-		});
 	}
 
 	private static String rootText(Throwable t) {
