@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: ricettine
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ricettine
+    username: ricettine
+    password: ricettine
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  session:
+    jdbc:
+      initialize-schema: never
+server:
+  forward-headers-strategy: framework
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
