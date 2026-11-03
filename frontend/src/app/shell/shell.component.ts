@@ -17,7 +17,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{
           t('nav.home')
         }}</a>
-        <a routerLink="/settings" routerLinkActive="active">{{ t('nav.settings') }}</a>
+        <!-- Settings (Task 10) and Recipes (Plan 4) links are added when their routes exist. -->
       </nav>
     </ng-container>
   `,

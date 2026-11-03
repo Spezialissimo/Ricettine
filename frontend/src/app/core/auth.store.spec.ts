@@ -51,4 +51,12 @@ describe('AuthStore', () => {
     await p;
     expect(store.me()).toBeNull();
   });
+
+  it('logout clears me even when the request fails', async () => {
+    store.setMe(me);
+    const p = store.logout();
+    http.expectOne('/api/auth/logout').flush({ code: 'not_authenticated' }, { status: 401, statusText: 'x' });
+    await p;
+    expect(store.me()).toBeNull();
+  });
 });

@@ -15,10 +15,21 @@
     "login": "Log in",
     "logout": "Log out",
     "email": "Email",
-    "password": "Password"
+    "password": "Password",
+    "username": "Username",
+    "displayName": "Display name",
+    "usernameHint": "Lowercase letters, digits and underscore, 3-30 characters.",
+    "passwordHint": "At least 10 characters.",
+    "newPassword": "New password",
+    "loggingIn": "Logging in...",
+    "required": "This field is required.",
+    "register": "Create account",
+    "creating": "Creating account..."
   },
   "setup": {
-    "title": "Set up Ricettine"
+    "title": "Set up Ricettine",
+    "intro": "Create the administrator account for your Ricettine.",
+    "submit": "Create administrator"
   },
   "settings": {
     "title": "Settings"
@@ -51,5 +62,19 @@
     "validation_failed": "Please check the highlighted fields.",
     "network_error": "Cannot reach the server. Check your connection.",
     "unknown": "Something went wrong. Please try again."
+  },
+  "invite": {
+    "title": "Join Ricettine",
+    "intro": "You have been invited. Create your account.",
+    "checking": "Checking invite..."
+  },
+  "reset": {
+    "title": "Choose a new password",
+    "submit": "Change password",
+    "done": "Your password has been changed.",
+    "goToLogin": "Go to log in"
+  },
+  "home": {
+    "greeting": "Hi {{name}}"
   }
 }

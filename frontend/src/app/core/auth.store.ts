@@ -37,8 +37,13 @@ export class AuthStore {
   }
 
   async logout(): Promise<void> {
-    await firstValueFrom(this.http.post<void>('/api/auth/logout', null));
-    this._me.set(null);
+    try {
+      await firstValueFrom(this.http.post<void>('/api/auth/logout', null));
+    } catch {
+      // e.g. 401 on an expired session: nothing to revoke server-side, still sign out locally.
+    } finally {
+      this._me.set(null);
+    }
   }
 
   setMe(me: Me | null): void {
