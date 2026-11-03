@@ -29,9 +29,13 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
           }
           <label class="btn">
             {{ uploading() ? t('settings.avatarUploading') : t('settings.avatarChoose') }}
-            <input type="file" accept="image/jpeg,image/png,image/webp" hidden [disabled]="uploading()"
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden [disabled]="uploading() || removing()"
               (change)="onFile($event)" />
           </label>
+          @if (avatar() && !uploading()) {
+            <button type="button" class="btn" data-action="remove-avatar" [disabled]="removing()"
+              (click)="removeAvatar()">{{ t('settings.avatarRemove') }}</button>
+          }
           @if (uploading()) { <span class="spinner" role="progressbar" aria-busy="true"></span> }
         </div>
         @if (avatarError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
@@ -81,6 +85,7 @@ export class ProfilePage {
   readonly error = signal<string | null>(null);
   readonly uploading = signal(false);
   readonly avatarError = signal<string | null>(null);
+  readonly removing = signal(false);
 
   protected avatar = () => mediaUrl(this.auth.me()?.avatarUrl);
   protected initial = () => (this.auth.me()?.displayName ?? '?').charAt(0).toUpperCase();
@@ -134,6 +139,19 @@ export class ProfilePage {
     } finally {
       this.uploading.set(false);
       input.value = ''; // allow re-selecting the same file
+    }
+  }
+
+  async removeAvatar(): Promise<void> {
+    if (this.removing() || this.uploading()) return;
+    this.removing.set(true);
+    this.avatarError.set(null);
+    try {
+      this.auth.setMe(await firstValueFrom(this.http.delete<Me>('/api/me/avatar')));
+    } catch (e) {
+      this.avatarError.set(errorKey(toApiError(e)));
+    } finally {
+      this.removing.set(false);
     }
   }
 }

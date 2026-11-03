@@ -9,11 +9,11 @@ import { ProfilePage } from './profile.page';
 const me: Me = { id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false };
 
 describe('ProfilePage', () => {
-  function setup() {
+  function setup(user: Me = me) {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
     });
-    TestBed.inject(AuthStore).setMe(me);
+    TestBed.inject(AuthStore).setMe(user);
     const http = TestBed.inject(HttpTestingController);
     const f = TestBed.createComponent(ProfilePage);
     return { http, f, el: f.nativeElement as HTMLElement };
@@ -83,5 +83,41 @@ describe('ProfilePage', () => {
     http.expectOne('/api/me/avatar').flush({ code: 'unsupported_image' }, { status: 415, statusText: 'x' });
     await settle(f);
     expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.unsupported_image);
+  });
+
+  const removeButton = (el: HTMLElement) => el.querySelector('button[data-action="remove-avatar"]') as HTMLButtonElement | null;
+
+  it('has no remove button without an avatar', async () => {
+    const { f, el } = setup();
+    await settle(f);
+    expect(removeButton(el)).toBeNull();
+  });
+
+  it('removes the avatar and updates the AuthStore', async () => {
+    const { http, f, el } = setup({ ...me, avatarUrl: '/media/avatars/x.jpg' });
+    await settle(f);
+    const btn = removeButton(el)!;
+    expect(btn.textContent?.trim()).toBe(en.settings.avatarRemove);
+    btn.click();
+    await settle(f);
+    const req = http.expectOne('/api/me/avatar');
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ ...me, avatarUrl: null });
+    await settle(f);
+    expect(TestBed.inject(AuthStore).me()?.avatarUrl).toBeNull();
+    expect(el.querySelector('img')).toBeNull();
+    expect(removeButton(el)).toBeNull();
+    http.verify();
+  });
+
+  it('shows a server error when removal fails and keeps the avatar', async () => {
+    const { http, f, el } = setup({ ...me, avatarUrl: '/media/avatars/x.jpg' });
+    await settle(f);
+    removeButton(el)!.click();
+    await settle(f);
+    http.expectOne('/api/me/avatar').flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
+    await settle(f);
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.internal_error);
+    expect(TestBed.inject(AuthStore).me()?.avatarUrl).toBe('/media/avatars/x.jpg');
   });
 });
