@@ -6,7 +6,7 @@ import com.ricettine.auth.AuthSessions;
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.ApiException;
 import com.ricettine.common.TokenPurpose;
-import com.ricettine.invite.OneTimeTokenRepository;
+import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
 import java.util.List;

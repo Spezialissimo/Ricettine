@@ -1,4 +1,4 @@
-package com.ricettine.invite;
+package com.ricettine.common;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -4,6 +4,8 @@ import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.OneTimeToken;
+import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.common.OneTimeTokens;
 import com.ricettine.common.TokenPurpose;
 import com.ricettine.common.Tokens;
