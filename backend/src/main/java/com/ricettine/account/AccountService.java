@@ -8,6 +8,7 @@ import com.ricettine.common.ApiException;
 import com.ricettine.common.TokenPurpose;
 import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.media.ImageVariant;
+import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
 import java.util.List;
 import java.util.Set;
@@ -128,13 +129,12 @@ public class AccountService {
 	@Transactional
 	public User setAvatar(UUID userId, byte[] image) {
 		User user = users.findById(userId).orElseThrow(AccountService::notAuthenticated);
-		String newKey = media.store(image, Set.of(ImageVariant.AVATAR));
-		after.afterRollback("delete orphaned media " + newKey, () -> media.delete(newKey));
+		String newKey = media.store(image, Set.of(ImageVariant.AVATAR), userId, MediaKind.AVATAR, null);
 		String oldKey = user.getAvatarKey();
 		user.setAvatarKey(newKey);
 		users.saveAndFlush(user);
 		if (oldKey != null) {
-			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
+			media.delete(oldKey);
 		}
 		return user;
 	}
@@ -146,13 +146,13 @@ public class AccountService {
 		if (oldKey != null) {
 			user.setAvatarKey(null);
 			users.saveAndFlush(user);
-			after.afterCommit("delete media " + oldKey, () -> media.delete(oldKey));
+			media.delete(oldKey);
 		}
 		return user;
 	}
 
 	/**
-	 * Deletes the account: hooks run first, then the row (FK cascades remove tokens); the avatar blob and the
+	 * Deletes the account: hooks run first, then the row (FK cascades remove tokens); the avatar blobs and the
 	 * user's sessions go after commit. The last admin cannot leave while other users remain.
 	 */
 	@Transactional
@@ -166,14 +166,13 @@ public class AccountService {
 		}
 		deletionHooks.forEach(h -> h.beforeDelete(userId));
 		String avatarKey = user.getAvatarKey();
+		if (avatarKey != null) {
+			media.delete(avatarKey); // row now, blobs after commit; other media rows cascade with the user
+		}
 		users.delete(user);
 		users.flush();
 		if (users.count() == 0) {
 			jdbc.update("delete from instance_setup");
-		}
-		// Independent best-effort steps: a failed blob delete must never stop session invalidation.
-		if (avatarKey != null) {
-			after.afterCommit("delete media " + avatarKey, () -> media.delete(avatarKey));
 		}
 		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
 	}

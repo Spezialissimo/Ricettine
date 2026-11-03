@@ -16,7 +16,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 public abstract class IntegrationTest {
 
 	@ServiceConnection
-	static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+	protected static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
 	static {
 		postgres.start();

@@ -32,9 +32,24 @@ class MediaIT extends IntegrationTest {
 	@Value("${ricettine.storage.local.path}")
 	String root;
 
+	@Autowired
+	org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+	@Autowired
+	com.ricettine.account.AccountService accounts;
+
+	java.util.UUID owner;
+
+	@org.junit.jupiter.api.BeforeEach
+	void owner() {
+		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
+		owner = accounts.create(new com.ricettine.account.AccountDtos.NewAccountRequest("m@x.com",
+				com.ricettine.Sessions.PASSWORD, "mediaowner", "Media"), true).getId();
+	}
+
 	@Test
 	void storedImageIsServedWithImmutableCache() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY));
+		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY), owner, MediaKind.AVATAR, null);
 		assertThat(media.url(id, ImageVariant.THUMB)).isEqualTo("/media/" + id + "/thumb.jpg");
 		byte[] body = mvc.perform(get(media.url(id, ImageVariant.THUMB))).andExpect(status().isOk())
 				.andExpect(content().contentType("image/jpeg"))
@@ -55,7 +70,7 @@ class MediaIT extends IntegrationTest {
 	@Test
 	void failedStoreLeavesNothingBehind() throws Exception {
 		long before = countBlobs();
-		assertThatThrownBy(() -> media.store(TestImages.fakeJpgPdf(), Set.of(ImageVariant.values())))
+		assertThatThrownBy(() -> media.store(TestImages.fakeJpgPdf(), Set.of(ImageVariant.values()), owner, MediaKind.AVATAR, null))
 				.isInstanceOf(ApiException.class);
 		assertThat(countBlobs()).isEqualTo(before);
 	}
@@ -81,8 +96,8 @@ class MediaIT extends IntegrationTest {
 				m.remove(key);
 			}
 		};
-		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, java.time.Duration.ofSeconds(30)));
-		assertThatThrownBy(() -> svc.store(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values())))
+		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, java.time.Duration.ofSeconds(30)), null, null);
+		assertThatThrownBy(() -> svc.store(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values()), owner, MediaKind.AVATAR, null))
 				.isInstanceOf(IllegalStateException.class);
 		assertThat(((java.util.Map<?, ?>) readField(failing)).isEmpty()).isTrue();
 	}
