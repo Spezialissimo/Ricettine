@@ -314,4 +314,67 @@ class RecipePhotoIT extends IntegrationTest {
 		mvc.perform(get(url).param("s", "wrong")).andExpect(status().isNotFound());
 		mvc.perform(get(url)).andExpect(status().isNotFound());
 	}
+
+	void publish(Cookie who, String id, long version) throws Exception {
+		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
+			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + version + "}"))
+			.andExpect(status().isOk());
+	}
+
+	String token(String id) {
+		return jdbc.queryForObject("select share_token from recipe where id = ?::uuid", String.class, id);
+	}
+
+	@Test
+	void shareTokenOfAnotherRecipeOfTheSameAuthorDoesNotUnlockThePhoto() throws Exception {
+		String a = create(me);
+		save(me, a, body(0, null, (String) null)).andExpect(status().isOk());
+		publish(me, a, 1);
+		String b = create(me);
+		String photo = uploadOk(me, b);
+		save(me, b, body(0, photo, (String) null)).andExpect(status().isOk());
+		String url = "/media/" + photo + "/thumb.jpg";
+		mvc.perform(get(url).param("s", token(a))).andExpect(status().isNotFound());
+		publish(me, b, 1);
+		mvc.perform(get(url).param("s", token(a))).andExpect(status().isNotFound());
+		mvc.perform(get(url).param("s", token(b))).andExpect(status().isOk());
+	}
+
+	@Test
+	void shareTokenOfAnotherUsersRecipeDoesNotUnlockThePhoto() throws Exception {
+		String mine = create(me);
+		save(me, mine, body(0, null, (String) null)).andExpect(status().isOk());
+		publish(me, mine, 1);
+		String theirs = create(other);
+		String photo = uploadOk(other, theirs);
+		save(other, theirs, body(0, photo, (String) null)).andExpect(status().isOk());
+		publish(other, theirs, 1);
+		mvc.perform(get("/media/" + photo + "/thumb.jpg").param("s", token(mine))).andExpect(status().isNotFound());
+		mvc.perform(get("/media/" + photo + "/thumb.jpg").param("s", token(theirs))).andExpect(status().isOk());
+	}
+
+	@Test
+	void aPhotoMovedBetweenStepsInOneSaveSurvives() throws Exception {
+		String id = create(me);
+		String photo = uploadOk(me, id);
+		save(me, id, body(0, null, null, photo, null)).andExpect(status().isOk());
+		save(me, id, body(1, null, null, null, photo)).andExpect(status().isOk())
+			.andExpect(jsonPath("$.steps[2].photo.mediaId").value(photo));
+		assertThat(blobExists(photo)).isTrue();
+		assertThat(mediaRows(photo)).isEqualTo(1);
+	}
+
+	@Test
+	void removingOneOfTwoReferencesToThePhotoKeepsIt() throws Exception {
+		String id = create(me);
+		String photo = uploadOk(me, id);
+		save(me, id, body(0, photo, photo)).andExpect(status().isOk());
+		save(me, id, body(1, null, photo)).andExpect(status().isOk());
+		assertThat(blobExists(photo)).isTrue();
+		assertThat(mediaRows(photo)).isEqualTo(1);
+		save(me, id, body(2, photo, (String) null)).andExpect(status().isOk());
+		assertThat(blobExists(photo)).isTrue();
+		save(me, id, body(3, null, (String) null)).andExpect(status().isOk());
+		assertThat(blobExists(photo)).isFalse();
+	}
 }
