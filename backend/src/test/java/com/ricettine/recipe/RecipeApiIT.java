@@ -292,7 +292,7 @@ class RecipeApiIT extends IntegrationTest {
 	}
 
 	@Test
-	void photosAreRejectedUntilTheyExist() throws Exception {
+	void unknownPhotoIdIs400() throws Exception {
 		String id = create(me).get("id").asText();
 		String body = full(0, "t", 1).replace("\"steps\":[{\"text\":\"step 0\"}]",
 				"\"steps\":[{\"text\":\"a\",\"photoMediaId\":\"abc\"}]");
@@ -375,6 +375,40 @@ class RecipeApiIT extends IntegrationTest {
 		assertThat(jdbc.queryForObject("select count(*) from ingredient", Integer.class)).isZero();
 		assertThat(jdbc.queryForObject("select count(*) from ingredient_group", Integer.class)).isZero();
 		assertThat(fetch(other, keep).get("id").asText()).isEqualTo(keep);
+	}
+
+	@Test
+	void versionedDeleteRejectsStaleVersion() throws Exception {
+		String id = create(me).get("id").asText();
+		putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk());
+		mvc.perform(delete("/api/recipes/" + id).param("version", "0").with(csrf()).cookie(me))
+			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("recipe_conflict"));
+		assertThat(fetch(me, id).get("title").asText()).isEqualTo("T");
+		mvc.perform(delete("/api/recipes/" + id).param("version", "1").with(csrf()).cookie(other))
+			.andExpect(status().isNotFound());
+		mvc.perform(delete("/api/recipes/" + id).param("version", "1").with(csrf()).cookie(me))
+			.andExpect(status().isNoContent());
+		mvc.perform(get("/api/recipes/" + id).cookie(me)).andExpect(status().isNotFound());
+		// without a version the delete is unconditional (backwards compatible)
+		String id2 = create(me).get("id").asText();
+		putRecipe(me, id2, full(0, "T", 1)).andExpect(status().isOk());
+		mvc.perform(delete("/api/recipes/" + id2).with(csrf()).cookie(me)).andExpect(status().isNoContent());
+		mvc.perform(get("/api/recipes/" + id2).cookie(me)).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void hugeGroupListIsRejectedWithoutIterating() throws Exception {
+		String id = create(me).get("id").asText();
+		String groups = String.join(",", java.util.Collections.nCopies(1001, "{\"name\":\"\",\"ingredients\":[]}"));
+		String body = """
+			{"version":0,"title":"t","portions":1,"visibility":"PRIVATE","groups":[%s],"steps":[]}"""
+			.formatted(groups);
+		putRecipe(me, id, body).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("validation_failed"))
+			.andExpect(jsonPath("$.fields.groups").value("too_many"));
+		// 1000 dropped (empty) groups are still fine
+		putRecipe(me, id, body.replaceFirst("\\{\"name\":\"\",\"ingredients\":\\[\\]\\},", ""))
+			.andExpect(status().isOk());
 	}
 
 	@Test

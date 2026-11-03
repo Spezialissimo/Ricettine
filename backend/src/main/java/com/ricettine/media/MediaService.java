@@ -3,6 +3,7 @@ package com.ricettine.media;
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.Tokens;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -82,8 +83,19 @@ public class MediaService {
 	/** Deletes the row now (inside the caller's transaction, if any) and the blobs once it has committed. */
 	@Transactional
 	public void delete(String mediaId) {
-		repo.deleteRow(mediaId);
+		repo.deleteRows(List.of(mediaId));
 		after.afterCommit("delete media blobs " + mediaId, () -> deleteBlobs(mediaId));
+	}
+
+	/** {@link #delete} for several ids: one statement now, every id's blobs once it has committed. */
+	@Transactional
+	public void deleteAll(Collection<String> mediaIds) {
+		if (mediaIds.isEmpty()) {
+			return;
+		}
+		List<String> ids = List.copyOf(mediaIds);
+		repo.deleteRows(ids);
+		after.afterCommit("delete media blobs " + ids, () -> ids.forEach(this::deleteBlobsBestEffort));
 	}
 
 	/**

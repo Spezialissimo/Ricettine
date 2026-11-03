@@ -2,14 +2,22 @@ package com.ricettine.recipe;
 
 import com.ricettine.common.ApiException;
 import com.ricettine.common.Tokens;
+import com.ricettine.media.ImageVariant;
+import com.ricettine.media.MediaKind;
+import com.ricettine.media.MediaRepository;
+import com.ricettine.media.MediaService;
+import com.ricettine.media.ProcessedUpload;
 import com.ricettine.recipe.RecipeDtos.GroupDto;
 import com.ricettine.recipe.RecipeDtos.IngredientDto;
+import com.ricettine.recipe.RecipeDtos.PhotoDto;
 import com.ricettine.recipe.RecipeDtos.RecipeDto;
 import com.ricettine.recipe.RecipeDtos.RecipeInput;
 import com.ricettine.recipe.RecipeDtos.RecipeSummary;
 import com.ricettine.recipe.RecipeDtos.StepDto;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,9 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecipeService {
 
 	private final RecipeRepository recipes;
+	private final MediaService media;
+	private final MediaRepository mediaRows;
 
-	public RecipeService(RecipeRepository recipes) {
+	public RecipeService(RecipeRepository recipes, MediaService media, MediaRepository mediaRows) {
 		this.recipes = recipes;
+		this.media = media;
+		this.mediaRows = mediaRows;
 	}
 
 	public RecipeDto create(UUID authorId) {
@@ -41,11 +53,35 @@ public class RecipeService {
 	public List<RecipeSummary> mine(UUID authorId) {
 		return recipes.findByAuthorIdOrderByUpdatedAtDescIdAsc(authorId).stream()
 			.map(r -> new RecipeSummary(r.getId(), r.getTitle(), r.getStatus().name(), r.getVisibility().name(),
-					null, r.getUpdatedAt()))
+					r.getCoverMediaId() == null ? null : media.url(r.getCoverMediaId(), ImageVariant.THUMB),
+					r.getUpdatedAt()))
 			.toList();
 	}
 
-	/** Whole-document save. Precedence: not owner (404), stale version (409), validation (400), incomplete (400). */
+	/** Cheap author-scoped check, run before an upload is processed so a non-owner can't use processing slots. */
+	@Transactional(readOnly = true)
+	public void requireOwned(UUID authorId, UUID id) {
+		if (!recipes.existsByIdAndAuthorId(id, authorId)) {
+			throw new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found");
+		}
+	}
+
+	/**
+	 * Registers an already processed photo for the author's recipe. The recipe is share-locked so a concurrent
+	 * delete either sees this photo (and deletes it) or has already removed the recipe (404). The photo is not
+	 * referenced until a save puts its id in the cover or a step.
+	 */
+	public PhotoDto addPhoto(UUID authorId, UUID id, ProcessedUpload upload) {
+		Recipe r = recipes.findForShareByIdAndAuthorId(id, authorId)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		return photo(media.register(upload, authorId, MediaKind.RECIPE, r.getId()));
+	}
+
+	/**
+	 * Whole-document save. Precedence: not owner (404), stale version (409), validation (400), photo reference
+	 * (400), incomplete (400). Photos referenced before the save and by nothing after it are deleted (blobs after
+	 * commit).
+	 */
 	public RecipeDto update(UUID authorId, UUID id, RecipeInput in) {
 		Recipe r = ownedForUpdate(authorId, id);
 		checkVersion(r, in.version());
@@ -54,18 +90,20 @@ public class RecipeService {
 			boolean unit = errors.containsValue(RecipeValidator.INVALID_UNIT);
 			throw new ApiException(HttpStatus.BAD_REQUEST, unit ? "invalid_unit" : "validation_failed", errors);
 		}
-		// Photos arrive with the media endpoints; until then no photo may be referenced.
-		boolean photo = in.coverMediaId() != null
-				|| (in.steps() != null && in.steps().stream().anyMatch(s -> s != null && s.photoMediaId() != null));
-		if (photo) {
+		Set<String> after = referenced(in);
+		if (!after.isEmpty() && mediaRows.recipeMediaIdsAmong(r.getId(), after).size() != after.size()) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "photo_not_in_recipe");
 		}
 		if (r.getStatus() == RecipeStatus.PUBLISHED) {
 			requireComplete(RecipeValidator.missingForPublish(in));
 		}
+		Set<String> removed = referenced(r);
+		removed.removeAll(after);
 		apply(r, in);
 		r.touch();
-		return toDto(recipes.saveAndFlush(r));
+		RecipeDto dto = toDto(recipes.saveAndFlush(r));
+		media.deleteAll(removed);
+		return dto;
 	}
 
 	public RecipeDto publish(UUID authorId, UUID id, Long version) {
@@ -81,9 +119,39 @@ public class RecipeService {
 		return toDto(recipes.saveAndFlush(r));
 	}
 
-	public void delete(UUID authorId, UUID id) {
-		recipes.delete(owned(authorId, id));
+	/** Deletes the recipe and all its photos (blobs after commit). A given {@code version} must be current (409). */
+	public void delete(UUID authorId, UUID id, Long version) {
+		Recipe r = ownedForUpdate(authorId, id);
+		if (version != null && r.getVersion() != version) {
+			throw new ApiException(HttpStatus.CONFLICT, "recipe_conflict");
+		}
+		List<String> photos = mediaRows.recipeMediaIds(r.getId());
+		recipes.delete(r);
 		recipes.flush();
+		media.deleteAll(photos);
+	}
+
+	/** Media ids the input references (cover and step photos). */
+	private static Set<String> referenced(RecipeInput in) {
+		Set<String> ids = new HashSet<>();
+		if (RecipeValidator.clean(in.coverMediaId()) != null) {
+			ids.add(RecipeValidator.clean(in.coverMediaId()));
+		}
+		if (in.steps() != null) {
+			in.steps().stream().filter(s -> s != null && RecipeValidator.clean(s.photoMediaId()) != null)
+				.forEach(s -> ids.add(RecipeValidator.clean(s.photoMediaId())));
+		}
+		return ids;
+	}
+
+	/** Media ids the stored recipe references (cover and step photos). */
+	private static Set<String> referenced(Recipe r) {
+		Set<String> ids = new LinkedHashSet<>();
+		if (r.getCoverMediaId() != null) {
+			ids.add(r.getCoverMediaId());
+		}
+		r.getSteps().stream().filter(s -> s.getPhotoMediaId() != null).forEach(s -> ids.add(s.getPhotoMediaId()));
+		return ids;
 	}
 
 	private Recipe owned(UUID authorId, UUID id) {
@@ -122,7 +190,7 @@ public class RecipeService {
 		r.setSource(RecipeValidator.clean(in.source()));
 		r.setNotes(RecipeValidator.clean(in.notes()));
 		r.setVisibility(Visibility.valueOf(in.visibility()));
-		r.setCoverMediaId(null);
+		r.setCoverMediaId(RecipeValidator.clean(in.coverMediaId()));
 		r.getGroups().clear();
 		r.getSteps().clear();
 		int gp = 0;
@@ -142,7 +210,7 @@ public class RecipeService {
 		int sp = 0;
 		for (var s : in.steps() == null ? List.<RecipeDtos.StepInput>of() : in.steps()) {
 			String text = RecipeValidator.clean(s.text());
-			r.getSteps().add(new Step(sp++, text == null ? "" : text, null));
+			r.getSteps().add(new Step(sp++, text == null ? "" : text, RecipeValidator.clean(s.photoMediaId())));
 		}
 	}
 
@@ -154,15 +222,21 @@ public class RecipeService {
 		return n.scale() < 0 ? n.setScale(0) : n;
 	}
 
-	private static RecipeDto toDto(Recipe r) {
+	private PhotoDto photo(String mediaId) {
+		return mediaId == null ? null
+				: new PhotoDto(mediaId, media.url(mediaId, ImageVariant.THUMB), media.url(mediaId, ImageVariant.DISPLAY));
+	}
+
+	private RecipeDto toDto(Recipe r) {
 		List<GroupDto> groups = r.getGroups().stream()
 			.map(g -> new GroupDto(g.getName(), g.getIngredients().stream()
 				.map(i -> new IngredientDto(normalize(i.getAmount()), i.getUnit(), i.getName(), i.getNote()))
 				.toList()))
 			.toList();
-		List<StepDto> steps = r.getSteps().stream().map(s -> new StepDto(s.getText(), null)).toList();
+		List<StepDto> steps = r.getSteps().stream().map(s -> new StepDto(s.getText(), photo(s.getPhotoMediaId())))
+			.toList();
 		return new RecipeDto(r.getId(), r.getStatus().name(), r.getVisibility().name(), r.getTitle(),
-				r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(), r.getSource(), r.getNotes(), null, groups,
+				r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(), r.getSource(), r.getNotes(), photo(r.getCoverMediaId()), groups,
 				steps, r.getVersion(), null, r.getCreatedAt(), r.getUpdatedAt(), r.getPublishedAt());
 	}
 }

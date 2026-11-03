@@ -18,6 +18,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * A recipe document. {@code version} is the optimistic-lock counter: it is also the client-visible document
@@ -57,10 +58,12 @@ public class Recipe {
 	@Column(name = "published_at")
 	private Instant publishedAt;
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@BatchSize(size = 50)
 	@JoinColumn(name = "recipe_id", nullable = false)
 	@OrderBy("position")
 	private List<IngredientGroup> groups = new ArrayList<>();
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@BatchSize(size = 50)
 	@JoinColumn(name = "recipe_id", nullable = false)
 	@OrderBy("position")
 	private List<Step> steps = new ArrayList<>();
