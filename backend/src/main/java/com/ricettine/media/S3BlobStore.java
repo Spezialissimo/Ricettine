@@ -1,8 +1,11 @@
 package com.ricettine.media;
 
+import java.net.URI;
 import java.util.Optional;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -16,6 +19,18 @@ public class S3BlobStore implements BlobStore {
 	public S3BlobStore(S3Client client, String bucket) {
 		this.client = client;
 		this.bucket = bucket;
+	}
+
+	/** Builds a store with the default AWS credential chain; blank region/endpoint fall back to SDK defaults. */
+	public static S3BlobStore create(String bucket, String region, String endpoint, boolean pathStyle) {
+		S3ClientBuilder b = S3Client.builder().forcePathStyle(pathStyle);
+		if (region != null && !region.isBlank()) {
+			b.region(Region.of(region));
+		}
+		if (endpoint != null && !endpoint.isBlank()) {
+			b.endpointOverride(URI.create(endpoint));
+		}
+		return new S3BlobStore(b.build(), bucket);
 	}
 
 	@Override
