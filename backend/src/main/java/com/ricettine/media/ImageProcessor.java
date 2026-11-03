@@ -32,6 +32,8 @@ public class ImageProcessor {
 	private static final long MAX_PIXELS = 250_000_000L;
 	/** The WebP reader decodes the full frame before subsampling, so it gets a much lower cap. */
 	private static final long MAX_WEBP_PIXELS = 50_000_000L;
+	/** Progressive JPEG: libjpeg buffers all DCT coefficients of the frame natively, whatever the subsampling. */
+	private static final long MAX_PROGRESSIVE_JPEG_PIXELS = 50_000_000L;
 	private static final float QUALITY = 0.85f;
 
 	static {
@@ -43,11 +45,11 @@ public class ImageProcessor {
 	}
 
 	ProcessedImage processDetailed(byte[] input, Set<ImageVariant> variants) {
-		boolean jpeg = sniff(input);
+		Format format = sniff(input);
 		int target = variants.stream().mapToInt(ImageVariant::maxEdge).max().orElse(1);
-		Decoded dec = decode(input, target, isWebp(input));
+		Decoded dec = decode(input, target, maxPixels(input, format));
 		BufferedImage src = dec.image();
-		int orientation = jpeg ? orientation(input) : 1;
+		int orientation = format == Format.JPEG ? orientation(input) : 1;
 		Map<ImageVariant, byte[]> out = new EnumMap<>(ImageVariant.class);
 		for (ImageVariant v : variants) {
 			try {
@@ -68,30 +70,100 @@ public class ImageProcessor {
 	private record Decoded(BufferedImage image, int factor) {
 	}
 
-	private static boolean isWebp(byte[] b) {
-		return b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W'
-				&& b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
+	private enum Format { JPEG, PNG, WEBP }
+
+	/**
+	 * Header-dimension cap. WebP and progressive JPEG decoders hold the whole frame (WebP pixels, libjpeg every DCT
+	 * coefficient, natively) regardless of subsampling, so they get the lower cap. A progressive JPEG is checked
+	 * against the dimensions in its frame header here, before any decoder sees it.
+	 */
+	private static long maxPixels(byte[] input, Format format) {
+		return switch (format) {
+			case WEBP -> MAX_WEBP_PIXELS;
+			case PNG -> MAX_PIXELS;
+			case JPEG -> {
+				JpegFrame frame = jpegFrame(input);
+				if (frame == null || !frame.progressive()) {
+					yield MAX_PIXELS;
+				}
+				if ((long) frame.width() * frame.height() > MAX_PROGRESSIVE_JPEG_PIXELS) {
+					throw tooLarge();
+				}
+				yield MAX_PROGRESSIVE_JPEG_PIXELS;
+			}
+		};
 	}
 
-	/** @return true when JPEG (the only format we read EXIF from) */
-	private static boolean sniff(byte[] b) {
-		if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
-			return true;
+	/** Frame header (SOFn) of a JPEG: whether it is progressive and the declared size. */
+	record JpegFrame(boolean progressive, int width, int height) {
+	}
+
+	static boolean isProgressiveJpeg(byte[] b) {
+		JpegFrame f = jpegFrame(b);
+		return f != null && f.progressive();
+	}
+
+	/**
+	 * Scans the JPEG marker segments up to the first frame header. Progressive = SOF2/SOF6/SOF10/SOF14 (Huffman or
+	 * arithmetic, plain or differential). Returns null when no frame header is found before the first scan.
+	 */
+	static JpegFrame jpegFrame(byte[] b) {
+		if (b.length < 4 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) {
+			return null;
 		}
-		boolean png = b.length >= 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G';
-		boolean webp = b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W'
-				&& b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
-		if (png || webp) {
-			return false;
+		int i = 2;
+		while (i + 1 < b.length) {
+			if ((b[i] & 0xFF) != 0xFF) {
+				return null;
+			}
+			int marker = b[i + 1] & 0xFF;
+			if (marker == 0xFF) { // fill byte
+				i++;
+				continue;
+			}
+			if (marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { // standalone markers
+				i += 2;
+				continue;
+			}
+			if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 && marker != 0xCC) {
+				if (i + 8 >= b.length) {
+					return null;
+				}
+				int h = ((b[i + 5] & 0xFF) << 8) | (b[i + 6] & 0xFF);
+				int w = ((b[i + 7] & 0xFF) << 8) | (b[i + 8] & 0xFF);
+				return new JpegFrame(marker == 0xC2 || marker == 0xC6 || marker == 0xCA || marker == 0xCE, w, h);
+			}
+			if (marker == 0xDA || marker == 0xD9 || i + 3 >= b.length) { // scan / end before any frame header
+				return null;
+			}
+			i += 2 + (((b[i + 2] & 0xFF) << 8) | (b[i + 3] & 0xFF));
+		}
+		return null;
+	}
+
+	private static Format sniff(byte[] b) {
+		if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
+			return Format.JPEG;
+		}
+		if (b.length >= 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') {
+			return Format.PNG;
+		}
+		if (b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W'
+				&& b[9] == 'E' && b[10] == 'B' && b[11] == 'P') {
+			return Format.WEBP;
 		}
 		throw unsupported();
+	}
+
+	private static ApiException tooLarge() {
+		return new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large");
 	}
 
 	private static ApiException unsupported() {
 		return new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_image");
 	}
 
-	private static Decoded decode(byte[] input, int target, boolean webp) {
+	private static Decoded decode(byte[] input, int target, long maxPixels) {
 		try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(input))) {
 			var readers = ImageIO.getImageReaders(in);
 			if (!readers.hasNext()) {
@@ -102,8 +174,8 @@ public class ImageProcessor {
 				reader.setInput(in, true, true);
 				int w = reader.getWidth(0);
 				int h = reader.getHeight(0);
-				if ((long) w * h > (webp ? MAX_WEBP_PIXELS : MAX_PIXELS)) {
-					throw new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large");
+				if ((long) w * h > maxPixels) {
+					throw tooLarge();
 				}
 				int f = subsampleFactor(w, h, target);
 				ImageReadParam param = reader.getDefaultReadParam();

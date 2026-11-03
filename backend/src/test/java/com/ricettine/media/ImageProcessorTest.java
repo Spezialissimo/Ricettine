@@ -271,4 +271,43 @@ class ImageProcessorTest {
 					assertThat(e.getStatus().value()).isEqualTo(413);
 				});
 	}
+
+	@Test
+	void progressiveJpegOverItsLowerCapIs413WithoutDecoding() {
+		// 56 MP: under the baseline cap, over the progressive one (libjpeg buffers every DCT coefficient natively).
+		assertThatThrownBy(() -> processor.process(TestImages.jpegHeaderOnly(0xC2, 8000, 7000), Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> {
+					assertThat(e.getCode()).isEqualTo("image_too_large");
+					assertThat(e.getStatus().value()).isEqualTo(413);
+				});
+	}
+
+	@Test
+	void progressiveSofVariantsAreDetected() {
+		for (int sof : new int[] {0xC2, 0xC6, 0xCA, 0xCE}) {
+			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isTrue();
+		}
+		for (int sof : new int[] {0xC0, 0xC1, 0xC3, 0xC9}) {
+			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isFalse();
+		}
+		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.progressiveJpeg(64, 48))).isTrue();
+		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegWithExif(64, 48, 6))).isFalse();
+	}
+
+	@Test
+	void baselineJpegHeaderOf56MegapixelsPassesTheCapCheck() {
+		// Header-only, so decoding fails afterwards (415) - but it must not be rejected as too large.
+		assertThatThrownBy(() -> processor.process(TestImages.jpegHeaderOnly(0xC0, 8000, 7000), Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isNotEqualTo("image_too_large"));
+	}
+
+	@Test
+	void smallProgressiveJpegStillDecodes() throws Exception {
+		byte[] in = TestImages.progressiveJpeg(400, 300);
+		BufferedImage img = decode(processor.process(in, Set.of(ImageVariant.DISPLAY)).get(ImageVariant.DISPLAY));
+		assertThat(img.getWidth()).isEqualTo(400);
+		assertThat(img.getHeight()).isEqualTo(300);
+		assertThat(isReddish(rgb(img, 50, 150))).isTrue();
+		assertThat(isBluish(rgb(img, 350, 150))).isTrue();
+	}
 }

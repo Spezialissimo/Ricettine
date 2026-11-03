@@ -156,4 +156,30 @@ public final class TestImages {
 		b.put((byte) ((h - 1) & 0xFF)).put((byte) (((h - 1) >> 8) & 0xFF)).put((byte) (((h - 1) >> 16) & 0xFF));
 		return b.array();
 	}
+
+	/** SOI + a single SOF segment ({@code sof} = 0xC0 baseline, 0xC2 progressive, ...) declaring w x h + EOI. */
+	public static byte[] jpegHeaderOnly(int sof, int w, int h) {
+		return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) sof, 0x00, 0x11, 0x08,
+				(byte) (h >> 8), (byte) h, (byte) (w >> 8), (byte) w, 0x03,
+				0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01, (byte) 0xFF, (byte) 0xD9};
+	}
+
+	/** A real progressive JPEG (SOF2), written by the JDK encoder in progressive mode. */
+	public static byte[] progressiveJpeg(int w, int h) {
+		try {
+			javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+			javax.imageio.ImageWriteParam p = writer.getDefaultWriteParam();
+			p.setProgressiveMode(javax.imageio.ImageWriteParam.MODE_DEFAULT);
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
+				writer.setOutput(ios);
+				writer.write(null, new javax.imageio.IIOImage(halves(w, h), null, null), p);
+			}
+			writer.dispose();
+			return out.toByteArray();
+		}
+		catch (Exception e) {
+			throw new IllegalStateException(e);
+		}
+	}
 }
