@@ -27,11 +27,12 @@ export function photoProblem(file: File): string | null {
   `,
   template: `
     <button type="button" [attr.aria-label]="ariaLabel() || null" (click)="file.click()">{{ label() }}</button>
-    <input #file type="file" hidden aria-hidden="true" tabindex="-1" accept="image/jpeg,image/png,image/webp"
+    <input #file type="file" hidden aria-hidden="true" tabindex="-1" [accept]="accept"
       [attr.capture]="capture() ? 'environment' : null" (change)="onChange(file)" />
   `,
 })
 export class PhotoPickerComponent {
+  protected readonly accept = PHOTO_ACCEPT;
   readonly label = input.required<string>();
   readonly ariaLabel = input<string>('');
   readonly capture = input(false);
@@ -42,7 +43,7 @@ export class PhotoPickerComponent {
     const file = input.files?.[0];
     input.value = ''; // picking the same file again must fire again
     if (!file) return;
-    const problem = file.size > MAX_PHOTO_BYTES ? 'errors.file_too_large' : null;
+    const problem = photoProblem(file);
     if (problem) this.rejected.emit(problem);
     else this.picked.emit(file);
   }

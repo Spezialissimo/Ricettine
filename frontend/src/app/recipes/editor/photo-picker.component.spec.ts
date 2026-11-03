@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { en, provideTestTransloco, settle } from '../../testing/transloco';
-import { MAX_PHOTO_BYTES, PhotoPickerComponent } from './photo-picker.component';
+import { MAX_PHOTO_BYTES, PHOTO_ACCEPT, PhotoPickerComponent } from './photo-picker.component';
 
 async function mount(capture = false) {
   TestBed.configureTestingModule({ providers: [provideTestTransloco()] });
@@ -26,7 +26,8 @@ const file = (size: number, type = 'image/jpeg') => new File([new Uint8Array(siz
 describe('PhotoPickerComponent', () => {
   it('has a hidden image input and an accessible button that opens it', async () => {
     const { el, input } = await mount();
-    expect(input.accept).toBe('image/jpeg,image/png,image/webp');
+    expect(input.accept).toBe(PHOTO_ACCEPT);
+    expect(PHOTO_ACCEPT).toBe('image/jpeg,image/png,image/webp');
     expect(input.hasAttribute('capture')).toBe(false);
     expect(input.hidden || input.getAttribute('aria-hidden') === 'true').toBe(true);
     const button = el.querySelector('button') as HTMLButtonElement;
@@ -48,6 +49,13 @@ describe('PhotoPickerComponent', () => {
     choose(f);
     expect(picked).toEqual([f]);
     expect(rejected).toEqual([]);
+  });
+
+  it('rejects a non-image file client-side, like a drop does', async () => {
+    const { picked, rejected, choose } = await mount();
+    choose(file(10, 'application/pdf'));
+    expect(picked).toEqual([]);
+    expect(rejected).toEqual(['errors.unsupported_image']);
   });
 
   it('rejects a 16 MB file client-side', async () => {

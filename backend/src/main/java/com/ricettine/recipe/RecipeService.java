@@ -91,8 +91,12 @@ public class RecipeService {
 			throw new ApiException(HttpStatus.BAD_REQUEST, unit ? "invalid_unit" : "validation_failed", errors);
 		}
 		Set<String> after = referenced(in);
-		if (!after.isEmpty() && mediaRows.recipeMediaIdsAmong(r.getId(), after).size() != after.size()) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "photo_not_in_recipe");
+		if (!after.isEmpty()) {
+			Set<String> ok = new java.util.HashSet<>(mediaRows.recipeMediaIdsAmong(r.getId(), after));
+			List<String> bad = after.stream().filter((m) -> !ok.contains(m)).sorted().toList();
+			if (!bad.isEmpty()) {
+				throw new ApiException(HttpStatus.BAD_REQUEST, "photo_not_in_recipe").with("mediaIds", bad);
+			}
 		}
 		if (r.getStatus() == RecipeStatus.PUBLISHED) {
 			requireComplete(RecipeValidator.missingForPublish(in));

@@ -184,24 +184,50 @@ describe('cover photo and photo_not_in_recipe', () => {
     expect(store.recipe().coverMediaId).toBeNull();
   });
 
-  it('a save refused with photo_not_in_recipe drops the unsaved photo references, says so, and saves again', async () => {
+  it('a save refused with photo_not_in_recipe drops only the ids the server names, says so, and saves again', async () => {
     try {
-      const gone = new HttpErrorResponse({ status: 400, error: { code: 'photo_not_in_recipe' } });
+      const gone = new HttpErrorResponse({ status: 400, error: { code: 'photo_not_in_recipe', mediaIds: ['stale'] } });
       const save = vi.fn().mockRejectedValueOnce(gone).mockImplementation(async () => serverRecipe({ version: 2 }));
-      const { store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('old')), save });
+      const uploadPhoto = vi.fn().mockResolvedValueOnce(photo('stale')).mockResolvedValueOnce(photo('fresh'));
+      const { store } = await mount({ uploadPhoto, save });
       vi.useFakeTimers();
       await store.uploadPhoto(0, jpeg());
       await store.uploadPhoto('cover', jpeg());
       await vi.advanceTimersByTimeAsync(1000);
       expect(save).toHaveBeenCalledTimes(2);
       expect(save.mock.calls[1][1].steps[0].photoMediaId).toBeNull();
-      expect(save.mock.calls[1][1].coverMediaId).toBeNull();
+      expect(save.mock.calls[1][1].coverMediaId).toBe('fresh');
+      expect(store.recipe().coverMediaId).toBe('fresh');
       expect(store.recipe().steps[0].photoMediaId).toBeNull();
       expect(store.photoGone()).toBe(true);
       expect(store.status()).toBe('saved');
-      expect(store.saveError()).toBeNull();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('without mediaIds nothing is dropped and the error shows', async () => {
+    try {
+      const gone = new HttpErrorResponse({ status: 400, error: { code: 'photo_not_in_recipe' } });
+      const save = vi.fn().mockRejectedValue(gone);
+      const { store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('a')), save });
+      vi.useFakeTimers();
+      await store.uploadPhoto('cover', jpeg());
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(store.recipe().coverMediaId).toBe('a');
+      expect(store.photoGone()).toBe(false);
+      expect(store.saveError()).toBe('errors.photo_not_in_recipe');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('publish() refuses while a photo is uploading', async () => {
+    const publish = vi.fn();
+    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})), publish });
+    void store.uploadPhoto('cover', jpeg());
+    expect(await store.publish()).toBe('blocked');
+    expect(publish).not.toHaveBeenCalled();
   });
 });

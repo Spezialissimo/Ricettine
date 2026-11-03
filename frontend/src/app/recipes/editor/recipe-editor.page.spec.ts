@@ -46,6 +46,23 @@ describe('RecipeEditorPage', () => {
     expect(el.textContent).toContain(en.editor.waitingForUploads);
   });
 
+  it('Done stays on the page with a message while a photo uploads', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const { f, el, nav } = await mount({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const input = el.querySelector('.cover input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new Event('change'));
+    await settle(f);
+    byText(el.querySelector('.editor-header')!, 'button', en.editor.done)!.click();
+    await settle(f);
+    expect(nav).not.toHaveBeenCalled();
+    expect(el.textContent).toContain(en.editor.uploadsInProgress);
+  });
+
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
 
   it('loads the recipe into labelled fields laid out per the mockups', async () => {

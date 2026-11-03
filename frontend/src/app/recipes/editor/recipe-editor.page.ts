@@ -285,6 +285,11 @@ export class RecipeEditorPage {
    */
   async done(): Promise<void> {
     if (this.busy()) return;
+    if (this.store.uploading()) {
+      // a photo still going up is not saved yet: stay, so it is not lost
+      this.actionError.set('editor.uploadsInProgress');
+      return;
+    }
     if (this.store.hasUnsavedInput()) {
       // input that cannot be saved (invalid amount, nameless ingredient with data): stay, so nothing is lost
       this.actionError.set('editor.unsavedInput');

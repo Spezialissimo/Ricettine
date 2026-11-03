@@ -259,6 +259,7 @@
     "replaceStepPhoto": "Replace photo of step {{n}}",
     "removeStepPhoto": "Remove photo of step {{n}}",
     "photoGone": "A photo you added was removed from the server before it was saved, so it was taken off the recipe. Add it again.",
-    "waitingForUploads": "Waiting for photos to finish uploading…"
+    "waitingForUploads": "Waiting for photos to finish uploading…",
+    "uploadsInProgress": "A photo is still uploading. Wait for it to finish before leaving."
   }
 }

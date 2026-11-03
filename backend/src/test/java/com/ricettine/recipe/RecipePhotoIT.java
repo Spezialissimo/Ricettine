@@ -161,7 +161,8 @@ class RecipePhotoIT extends IntegrationTest {
 		String othersRecipe = create(other);
 		String othersPhoto = uploadOk(other, othersRecipe);
 		save(me, id, body(0, foreign)).andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("photo_not_in_recipe"));
+			.andExpect(jsonPath("$.code").value("photo_not_in_recipe"))
+			.andExpect(jsonPath("$.mediaIds.length()").value(1)).andExpect(jsonPath("$.mediaIds[0]").value(foreign));
 		save(me, id, body(0, null, othersPhoto)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("photo_not_in_recipe"));
 		save(me, id, body(0, "no-such-media")).andExpect(status().isBadRequest())
@@ -174,6 +175,15 @@ class RecipePhotoIT extends IntegrationTest {
 		assertThat(jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id)).isZero();
 		assertThat(blobExists(foreign)).isTrue();
 		assertThat(blobExists(othersPhoto)).isTrue();
+	}
+
+	@Test
+	void photoNotInRecipeNamesOnlyTheOffendingIds() throws Exception {
+		String id = create(me);
+		String fresh = uploadOk(me, id);
+		save(me, id, body(0, fresh, "gone-1", fresh)).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("photo_not_in_recipe"))
+			.andExpect(jsonPath("$.mediaIds.length()").value(1)).andExpect(jsonPath("$.mediaIds[0]").value("gone-1"));
 	}
 
 	@Test

@@ -234,24 +234,24 @@ export class EditorStore {
 
   /**
    * An upload that nothing referenced for 24 h is orphan-cleaned; saving its reference then gives 400
-   * `photo_not_in_recipe`. Drop the references the server never confirmed, tell the person, and save again.
+   * `photo_not_in_recipe` naming exactly those ids. Drop only them, tell the person, and save again.
+   * Without the ids nothing is dropped and the error shows.
    */
   private async saveDroppingGonePhotos(input: RecipeInput): Promise<Recipe> {
     try {
       return await this.api.save(this._id!, input);
     } catch (e) {
-      if (toApiError(e).code !== 'photo_not_in_recipe') throw e;
-      const known = new Set(
-        [this._server()?.cover, ...(this._server()?.steps.map((s) => s.photo) ?? [])].flatMap((p) => (p ? [p.mediaId] : [])),
-      );
-      const keep = (id: string | null) => (id !== null && known.has(id) ? id : null);
+      const err = toApiError(e);
+      if (err.code !== 'photo_not_in_recipe' || !err.mediaIds?.length) throw e;
+      const gone = new Set(err.mediaIds);
+      const keep = (id: string | null) => (id !== null && gone.has(id) ? null : id);
       const strip = (r: RecipeInput): RecipeInput => ({
         ...r,
         coverMediaId: keep(r.coverMediaId),
         steps: r.steps.map((s) => ({ ...s, photoMediaId: keep(s.photoMediaId) })),
       });
       const fixed = strip(input);
-      if (JSON.stringify(fixed) === JSON.stringify(input)) throw e; // nothing to drop: a real error
+      if (JSON.stringify(fixed) === JSON.stringify(input)) throw e;
       this._recipe.update(strip);
       this._photoGone.set(true);
       return this.api.save(this._id!, fixed);
@@ -289,7 +289,7 @@ export class EditorStore {
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
-    if (!this._id) return 'blocked';
+    if (!this._id || this.uploading()) return 'blocked';
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();

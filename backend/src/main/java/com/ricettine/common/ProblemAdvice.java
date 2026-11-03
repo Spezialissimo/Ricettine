@@ -32,6 +32,7 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 		if (ex.getFields() != null) {
 			pd.setProperty("fields", ex.getFields());
 		}
+		ex.getProperties().forEach(pd::setProperty);
 		return ResponseEntity.status(ex.getStatus()).body(pd);
 	}
 
