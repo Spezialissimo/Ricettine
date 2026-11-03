@@ -22,6 +22,14 @@ export function isUntouchedDraft(server: Recipe | null, r: RecipeInput): boolean
   );
 }
 
+/**
+ * What is sent to the server: ingredient rows without a name are held back (the server rejects them,
+ * and a row being typed must not show "Not saved"). They stay in the working copy.
+ */
+export function withoutBlankIngredients(r: RecipeInput): RecipeInput {
+  return { ...r, groups: r.groups.map((g) => ({ ...g, ingredients: g.ingredients.filter((i) => !blank(i.name)) })) };
+}
+
 /** The user's own words, for the copyable block shown on a conflict: title, notes, then steps. */
 export function conflictText(r: RecipeInput): string {
   return [r.title, r.notes, ...r.steps.map((s) => s.text)]
@@ -39,11 +47,13 @@ export class EditorStore {
   private readonly _recipe = signal<RecipeInput>(EMPTY);
   private readonly _server = signal<Recipe | null>(null);
   private readonly _loadError = signal<string | null>(null);
+  private readonly _invalidAmounts = signal(0);
+  private readonly _epoch = signal(0);
   private _id: string | null = null;
 
   readonly autosave = new Autosave({
     save: (input) => this.api.save(this._id!, input),
-    read: () => this._recipe(),
+    read: () => withoutBlankIngredients(this._recipe()),
     saved: (r) => {
       this._server.set(r);
       this._recipe.update((cur) => ({ ...cur, version: r.version }));
@@ -54,6 +64,10 @@ export class EditorStore {
   readonly status: Signal<SaveStatus> = this.autosave.status;
   /** Last server copy (id, status, share link, photo URLs), refreshed by load and every save. */
   readonly server: Signal<Recipe | null> = this._server.asReadonly();
+  /** Number of ingredient amount fields currently holding text that is not a valid amount (reported by the ingredients editor). */
+  readonly invalidAmounts: Signal<number> = this._invalidAmounts.asReadonly();
+  /** Bumped whenever a server copy replaces the working copy (load, load latest, publish): editors drop local text. */
+  readonly epoch: Signal<number> = this._epoch.asReadonly();
   readonly loaded = computed(() => this._server() !== null);
   /** i18n key of the load failure, if any. */
   readonly loadError: Signal<string | null> = this._loadError.asReadonly();
@@ -96,6 +110,10 @@ export class EditorStore {
     this.autosave.changed();
   }
 
+  setInvalidAmounts(n: number): void {
+    this._invalidAmounts.set(n);
+  }
+
   flush(): Promise<void> {
     return this.autosave.flush();
   }
@@ -112,20 +130,32 @@ export class EditorStore {
     this._server.set(r);
     this._recipe.set(toInput(r));
     this.autosave.reset();
+    this._epoch.update((n) => n + 1);
   }
 
   /**
-   * Publishes: saves pending changes first, and publishes only if that left nothing wrong (no error,
-   * conflict or offline). Resolves true once published (the store then adopts the returned recipe);
-   * false when it did not publish. A server refusal (recipe_incomplete, ...) is thrown.
+   * Publishes: refuses while an amount field holds invalid text ('invalid'); otherwise saves pending
+   * changes first and publishes only if that left nothing wrong (no error, conflict or offline:
+   * 'blocked'). On 'published' the store adopts the returned recipe. A 409 moves the store into
+   * `conflict`; other server refusals (recipe_incomplete, ...) are thrown.
    */
-  async publish(): Promise<boolean> {
-    if (!this._id) return false;
+  async publish(): Promise<'published' | 'invalid' | 'blocked'> {
+    if (!this._id) return 'blocked';
+    if (this._invalidAmounts() > 0) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
-    if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return false;
-    this.replace(await this.api.publish(this._id, this._recipe().version));
-    return true;
+    if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return 'blocked';
+    try {
+      this.replace(await this.api.publish(this._id, this._recipe().version));
+    } catch (e) {
+      const err = toApiError(e);
+      if (err.status === 409 || err.code === 'recipe_conflict') {
+        this.autosave.markConflict(err);
+        return 'blocked';
+      }
+      throw e;
+    }
+    return 'published';
   }
 
   isUntouchedDraft(): boolean {

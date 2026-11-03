@@ -42,7 +42,7 @@ export const MAX_STEP_TEXT = 5000;
       @if (published() && total() <= 1) {
         <p class="hint" [id]="hintId">{{ t('editor.needsOne') }}</p>
       }
-      <button type="button" class="btn add-step" [disabled]="steps.length >= maxSteps" (click)="addStep()">
+      <button type="button" class="btn add-step" [id]="base + '-add'" [disabled]="steps.length >= maxSteps" (click)="addStep()">
         {{ t('editor.addStep') }}
       </button>
     </ng-container>
@@ -51,7 +51,7 @@ export const MAX_STEP_TEXT = 5000;
 export class StepsEditorComponent {
   protected readonly store = inject(EditorStore);
   private readonly injector = inject(Injector);
-  private readonly base = uid('step');
+  protected readonly base = uid('step');
   protected readonly hintId = this.base + '-hint';
   protected readonly maxSteps = MAX_STEPS;
   protected readonly maxText = MAX_STEP_TEXT;
@@ -101,7 +101,14 @@ export class StepsEditorComponent {
   }
 
   protected remove(i: number): void {
-    this.active.set(null);
     this.store.update((r) => ({ ...r, steps: r.steps.filter((_, si) => si !== i) }));
+    // focus the previous step, else the next one (now at the same index), else the add button
+    const left = this.store.recipe().steps.length;
+    const target = i > 0 ? i - 1 : left > 0 ? 0 : null;
+    this.active.set(target);
+    afterNextRender(
+      () => (document.getElementById(target === null ? this.base + '-add' : this.id(target)) as HTMLElement | null)?.focus(),
+      { injector: this.injector },
+    );
   }
 }

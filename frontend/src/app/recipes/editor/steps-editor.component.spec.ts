@@ -91,4 +91,20 @@ describe('StepsEditorComponent', () => {
     await settle(f);
     expect((el.querySelector('button.delete-step') as HTMLButtonElement).disabled).toBe(false);
   });
+
+  it('after deleting, focus goes to the previous step, else the next, else the add button', async () => {
+    const { f, el } = await mount(['a', 'b', 'c']);
+    const del = async (i: number) => {
+      areas(el)[i].focus();
+      await settle(f);
+      (el.querySelector('button.delete-step') as HTMLButtonElement).click();
+      await settle(f);
+    };
+    await del(1);
+    expect(document.activeElement).toBe(areas(el)[0]);
+    await del(0);
+    expect(document.activeElement).toBe(areas(el)[0]); // 'c', the next one
+    await del(0);
+    expect(document.activeElement).toBe(el.querySelector('button.add-step'));
+  });
 });

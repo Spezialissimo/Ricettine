@@ -161,7 +161,8 @@
       "saved": "Saved ✓",
       "error": "Not saved",
       "conflict": "Not saved: changed elsewhere",
-      "offline": "Offline: will save when you reconnect"
+      "offline": "Offline: will save when you reconnect",
+      "invalid": "Not saved: fix the amount"
     },
     "title": "Title",
     "titlePlaceholder": "Recipe title",
@@ -239,6 +240,8 @@
     "needsOne": "A published recipe needs at least one.",
     "addStep": "+ Add step",
     "stepN": "Step {{n}}",
-    "deleteStep": "Delete step"
+    "deleteStep": "Delete step",
+    "amountsInvalid": "Fix the highlighted amounts before publishing.",
+    "publishBlocked": "Not published: your latest changes could not be saved yet."
   }
 }

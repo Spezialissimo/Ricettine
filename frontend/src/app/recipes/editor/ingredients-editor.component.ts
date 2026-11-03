@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatAmount, parseAmount } from '../amount';
 import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
@@ -78,14 +78,14 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
             </div>
           }
           @if (groups.length > 0) {
-            <button type="button" class="btn add-ingredient" [disabled]="count() >= maxIngredients"
+            <button type="button" class="btn add-ingredient" [id]="id(gi, -1, 'add')" [disabled]="count() >= maxIngredients"
               (click)="addIngredient(gi)">{{ t('editor.addIngredient') }}</button>
           }
         </div>
       }
       <div class="ing-actions">
         @if (groups.length === 0) {
-          <button type="button" class="btn add-ingredient" (click)="addIngredient(0)">{{ t('editor.addIngredient') }}</button>
+          <button type="button" class="btn add-ingredient" [id]="id(0, -1, 'add')" (click)="addIngredient(0)">{{ t('editor.addIngredient') }}</button>
         } @else {
           <button type="button" class="btn add-group" [disabled]="groups.length >= maxGroups" (click)="addGroup()">
             {{ t('editor.addGroup') }}
@@ -115,6 +115,37 @@ export class IngredientsEditorComponent {
   /** Ingredients that count for publishing (non-blank name). */
   protected readonly total = computed(() => countingIngredients(this.store.recipe().groups));
   protected readonly count = computed(() => this.store.recipe().groups.reduce((n, g) => n + g.ingredients.length, 0));
+
+  protected readonly invalidKeys = computed(() =>
+    Object.entries(this.texts()).filter(([, t]) => parseAmount(t) === 'invalid').map(([k]) => k),
+  );
+
+  constructor() {
+    // A server copy replaced the working copy (publish, Load latest): drop typed text.
+    effect(() => {
+      this.store.epoch();
+      untracked(() => this.texts.set({}));
+    });
+    // Tell the store how many amounts are invalid (status "not saved: fix", Publish refuses).
+    effect(() => {
+      const n = this.invalidKeys().length;
+      untracked(() => this.store.setInvalidAmounts(n));
+    });
+  }
+
+  /** Scrolls to and focuses the first amount field holding invalid text. */
+  focusFirstInvalid(): void {
+    const key = this.invalidKeys().sort((a, b) => {
+      const [ag, ai] = a.split('.').map(Number);
+      const [bg, bi] = b.split('.').map(Number);
+      return ag - bg || ai - bi;
+    })[0];
+    if (!key) return;
+    const [g, i] = key.split('.').map(Number);
+    const el = document.getElementById(this.id(g, i, 'amount'));
+    el?.scrollIntoView?.({ block: 'center' });
+    el?.focus();
+  }
 
   protected id = (g: number, i: number, part: string) => `${this.base}-${g}-${i}-${part}`;
 
@@ -174,14 +205,34 @@ export class IngredientsEditorComponent {
     this.edit((groups) => [...groups, { name: null, ingredients: [] }]);
   }
   protected deleteIngredient(g: number, i: number): void {
-    this.texts.set({});
+    this.rekey((gi, ii) => (gi !== g ? [gi, ii] : ii === i ? null : [gi, ii > i ? ii - 1 : ii]));
     this.edit((groups) =>
       groups.map((grp, gi) => (gi === g ? { ...grp, ingredients: grp.ingredients.filter((_, ii) => ii !== i) } : grp)),
     );
+    // focus the previous row's name, else the next one's (now at the same index), else the group's add button
+    const left = this.store.recipe().groups[g]?.ingredients.length ?? 0;
+    this.focusLater(i > 0 ? this.id(g, i - 1, 'name') : left > 0 ? this.id(g, 0, 'name') : this.id(g, -1, 'add'));
   }
   protected deleteGroup(g: number): void {
-    this.texts.set({});
+    this.rekey((gi, ii) => (gi === g ? null : [gi > g ? gi - 1 : gi, ii]));
     this.edit((groups) => groups.filter((_, gi) => gi !== g));
+    const n = this.store.recipe().groups.length;
+    this.focusLater(g > 0 ? this.id(g - 1, -1, 'group') : n > 0 ? this.id(0, -1, 'group') : this.id(0, -1, 'add'));
+  }
+
+  /** Moves typed amount texts to their new row positions after a delete (`null` drops the entry). */
+  private rekey(map: (g: number, i: number) => [number, number] | null): void {
+    const next: Record<string, string> = {};
+    for (const [k, v] of Object.entries(this.texts())) {
+      const [g, i] = k.split('.').map(Number);
+      const m = map(g, i);
+      if (m) next[`${m[0]}.${m[1]}`] = v;
+    }
+    this.texts.set(next);
+  }
+
+  private focusLater(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   private edit(fn: (groups: Group[]) => Group[]): void {

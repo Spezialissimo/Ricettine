@@ -158,6 +158,13 @@ export class Autosave {
     });
   }
 
+  /** A 409 learned elsewhere (e.g. from publish): block saving like a failed save would. */
+  markConflict(err: ApiError): void {
+    this.clearTimers();
+    this._error.set(err);
+    this._status.set('conflict');
+  }
+
   private async send(): Promise<void> {
     const sentRev = this.rev();
     this._status.set('saving');

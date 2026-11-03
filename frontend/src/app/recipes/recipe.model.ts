@@ -10,20 +10,23 @@ export type Photo = { mediaId: string; thumbUrl: string; displayUrl: string };
 
 export type Ingredient = { amount: number | null; unit: Unit | null; name: string; note: string | null };
 export type Group = { name: string | null; ingredients: Ingredient[] };
-export type Step = { text: string; photo: Photo | null };
+/** Server JSON can carry null for blank text (a fresh draft has `title: null`); `toInput` normalizes it once. */
+export type ServerIngredient = Omit<Ingredient, 'name'> & { name: string | null };
+export type ServerGroup = { name: string | null; ingredients: ServerIngredient[] };
+export type Step = { text: string | null; photo: Photo | null };
 
 export type Recipe = {
   id: string;
   status: RecipeStatus;
   visibility: Visibility;
-  title: string;
+  title: string | null;
   portions: number;
   prepMinutes: number | null;
   cookMinutes: number | null;
   source: string | null;
   notes: string | null;
   cover: Photo | null;
-  groups: Group[];
+  groups: ServerGroup[];
   steps: Step[];
   version: number;
   shareUrl: string | null;
@@ -61,7 +64,7 @@ export type RecipeSummary = {
 export function toInput(r: Recipe): RecipeInput {
   return {
     version: r.version,
-    title: r.title,
+    title: r.title ?? '',
     portions: r.portions,
     prepMinutes: r.prepMinutes,
     cookMinutes: r.cookMinutes,
@@ -71,8 +74,8 @@ export function toInput(r: Recipe): RecipeInput {
     coverMediaId: r.cover?.mediaId ?? null,
     groups: r.groups.map((g) => ({
       name: g.name,
-      ingredients: g.ingredients.map((i) => ({ amount: i.amount, unit: i.unit, name: i.name, note: i.note })),
+      ingredients: g.ingredients.map((i) => ({ amount: i.amount, unit: i.unit, name: i.name ?? '', note: i.note })),
     })),
-    steps: r.steps.map((s) => ({ text: s.text, photoMediaId: s.photo?.mediaId ?? null })),
+    steps: r.steps.map((s) => ({ text: s.text ?? '', photoMediaId: s.photo?.mediaId ?? null })),
   };
 }

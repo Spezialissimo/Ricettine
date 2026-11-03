@@ -17,7 +17,7 @@
 .state { font-size: 0.85rem; color: t.$muted; }
 .save-status { font-size: 0.85rem; color: t.$muted; }
 .save-status[data-status='saved'] { color: #3b7a3b; }
-.save-status[data-status='error'], .save-status[data-status='conflict'] { color: #b3261e; }
+.save-status[data-status='error'], .save-status[data-status='conflict'], .save-status[data-status='invalid'] { color: #b3261e; }
 .spacer { flex: 1; }
 .menu { background: t.$surface; border: 1px solid t.$border; border-radius: 10px; padding: t.$space-1; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); }
 .menu-item { @include t.touch-target; display: block; width: 100%; padding: 0 t.$space-4; border: 0; background: none; text-align: left; cursor: pointer; }

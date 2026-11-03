@@ -1,8 +1,9 @@
+import { toInput } from '../recipe.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
-import { EditorStore, conflictText, isUntouchedDraft } from './editor-store';
+import { EditorStore, conflictText, isUntouchedDraft, withoutBlankIngredients } from './editor-store';
 import { emptyInput, serverRecipe } from './editor-store.testing';
 
 function setup(api: Partial<RecipeApi>) {
@@ -95,7 +96,24 @@ describe('EditorStore', () => {
   });
 });
 
+describe('withoutBlankIngredients', () => {
+  it('holds back ingredient rows without a name, keeps everything else', () => {
+    const ing = (name: string) => ({ amount: null, unit: null, name, note: null });
+    const r = emptyInput({ title: 'T', groups: [{ name: 'A', ingredients: [ing('milk'), ing(' ')] }, { name: null, ingredients: [ing('')] }] });
+    const out = withoutBlankIngredients(r);
+    expect(out.groups).toEqual([{ name: 'A', ingredients: [ing('milk')] }, { name: null, ingredients: [] }]);
+    expect(out.title).toBe('T');
+    expect(r.groups[0].ingredients.length).toBe(2); // working copy untouched
+  });
+});
+
 describe('isUntouchedDraft', () => {
+  it('treats null and empty text the same (toInput normalizes a null title)', () => {
+    const fresh = serverRecipe({ title: null });
+    expect(toInput(fresh).title).toBe('');
+    expect(isUntouchedDraft(fresh, toInput(fresh))).toBe(true);
+    expect(isUntouchedDraft(serverRecipe({ title: '' }), toInput(serverRecipe({ title: '' })))).toBe(true);
+  });
   it('is true only for a draft with every field empty or default', () => {
     expect(isUntouchedDraft(serverRecipe(), emptyInput())).toBe(true);
     expect(isUntouchedDraft(serverRecipe(), emptyInput({ source: '' , notes: '  ', title: ' ' }))).toBe(true);

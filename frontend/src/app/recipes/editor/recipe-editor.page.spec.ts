@@ -287,8 +287,48 @@ describe('RecipeEditorPage', () => {
       expect(el.querySelector(`#${input.getAttribute('aria-describedby')}`)?.textContent).toContain(en.errors.recipe_incomplete);
     });
 
+    it('an invalid amount shows a distinct status, and Publish refuses and focuses it', async () => {
+      const publish = vi.fn();
+      const get = vi.fn().mockResolvedValue(serverRecipe({ groups: [{ name: null, ingredients: [{ amount: 1, unit: null, name: 'milk', note: null }] }] }));
+      const { f, el } = await mount({ get, save: vi.fn().mockResolvedValue(serverRecipe()), publish });
+      const amount = el.querySelector('input.amount') as HTMLInputElement;
+      type(amount, '2x');
+      await settle(f);
+      expect(el.querySelector('.editor-header [role="status"]')?.textContent).toContain(en.editor.status.invalid);
+      expect(el.querySelector('.editor-header [role="status"]')?.textContent).not.toContain('✓');
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(publish).not.toHaveBeenCalled();
+      expect(el.querySelector('.ingredients')!.classList.contains('missing')).toBe(true);
+      expect(el.querySelector('.ingredients .section-error')?.textContent).toContain(en.editor.amountsInvalid);
+      expect(document.activeElement).toBe(amount);
+      type(amount, '2');
+      await settle(f);
+      expect(el.querySelector('.ingredients')!.classList.contains('missing')).toBe(false);
+    });
+
+    it('a 409 from publish moves the editor into conflict', async () => {
+      const publish = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), publish });
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(el.querySelector('.conflict')).toBeTruthy();
+      expect(el.querySelector('.editor-header [role="status"]')?.textContent).toContain(en.editor.status.conflict);
+    });
+
+    it('tells the person when Publish was declined because saving failed', async () => {
+      const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+      const publish = vi.fn();
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, publish });
+      type(el.querySelector('#recipe-title') as HTMLInputElement, 'T');
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(publish).not.toHaveBeenCalled();
+      expect(el.textContent).toContain(en.editor.publishBlocked);
+    });
+
     it('renders a fresh draft whose title the server sends as null', async () => {
-      const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: null as never })) });
+      const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: null })) });
       expect(el.querySelector('.steps')).toBeTruthy();
       expect(el.querySelector('#recipe-title-error')).toBeNull();
     });

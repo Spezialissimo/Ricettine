@@ -11,11 +11,17 @@ export const emptyInput = (over: Partial<RecipeInput> = {}): RecipeInput => ({
 export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe['status'] = 'DRAFT') {
   const recipe = signal(emptyInput(over));
   const server = signal(serverRecipe({ status }));
+  const epoch = signal(0);
+  const invalid = signal(0);
   return {
     recipe: recipe.asReadonly(),
     server: server.asReadonly(),
+    epoch: epoch.asReadonly(),
+    bumpEpoch: () => epoch.update((n) => n + 1),
+    invalidAmounts: invalid.asReadonly(),
+    setInvalidAmounts: (n: number) => invalid.set(n),
     update: (fn: (r: RecipeInput) => RecipeInput) => recipe.set(fn(recipe())),
-  } as unknown as EditorStore & { recipe: () => RecipeInput };
+  } as unknown as EditorStore & { recipe: () => RecipeInput; bumpEpoch: () => void };
 }
 
 export const serverRecipe = (over: Partial<Recipe> = {}): Recipe => ({

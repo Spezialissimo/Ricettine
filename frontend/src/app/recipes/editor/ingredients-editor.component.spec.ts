@@ -14,6 +14,7 @@ async function mount(groups: Group[] = [], status: 'DRAFT' | 'PUBLISHED' = 'DRAF
     providers: [provideTestTransloco(), { provide: EditorStore, useValue: store }],
   });
   const f = TestBed.createComponent(IngredientsEditorComponent);
+  document.body.appendChild(f.nativeElement);
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, store };
 }
@@ -109,5 +110,65 @@ describe('IngredientsEditorComponent', () => {
     const { el } = await mount([group(null, 'milk', 'eggs')], 'PUBLISHED');
     for (const b of Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[]) expect(b.disabled).toBe(false);
     expect(el.textContent).not.toContain(en.editor.needsOne);
+  });
+
+  describe('invalid amounts and deletes', () => {
+    afterEach(() => document.querySelectorAll('app-ingredients-editor').forEach((e) => e.remove()));
+    const amounts = (el: HTMLElement) => Array.from(el.querySelectorAll('input.amount')) as HTMLInputElement[];
+
+    it('reports the number of invalid amounts to the store and focuses the first one on request', async () => {
+      const { f, el, store } = await mount([group(null, 'a', 'b')]);
+      type(amounts(el)[1], 'x');
+      await settle(f);
+      expect(store.invalidAmounts()).toBe(1);
+      f.componentInstance.focusFirstInvalid();
+      expect(document.activeElement).toBe(amounts(el)[1]);
+      type(amounts(el)[1], '3');
+      await settle(f);
+      expect(store.invalidAmounts()).toBe(0);
+    });
+
+    it('re-keys typed amount text when a row is deleted', async () => {
+      const { f, el, store } = await mount([group(null, 'a', 'b')]);
+      type(amounts(el)[1], '2x');
+      await settle(f);
+      (el.querySelector('button.delete-ingredient') as HTMLButtonElement).click(); // delete row 0
+      await settle(f);
+      expect(amounts(el)[0].value).toBe('2x');
+      expect(amounts(el)[0].getAttribute('aria-invalid')).toBe('true');
+      expect(store.invalidAmounts()).toBe(1);
+    });
+
+    it('drops typed text when a server copy replaces the working copy', async () => {
+      const { f, el, store } = await mount([group(null, 'a')]);
+      type(amounts(el)[0], '2x');
+      await settle(f);
+      store.bumpEpoch();
+      await settle(f);
+      expect(amounts(el)[0].value).toBe('');
+      expect(store.invalidAmounts()).toBe(0);
+    });
+
+    it('focuses the neighbouring name (previous, else next) after deleting a row, else the add button', async () => {
+      const { f, el } = await mount([group(null, 'a', 'b', 'c')]);
+      const names = () => Array.from(el.querySelectorAll('input.name')) as HTMLInputElement[];
+      const del = (i: number) => (el.querySelectorAll('button.delete-ingredient')[i] as HTMLButtonElement).click();
+      del(1);
+      await settle(f);
+      expect(document.activeElement).toBe(names()[0]);
+      del(0);
+      await settle(f);
+      expect(document.activeElement).toBe(names()[0]); // the next one, now first
+      del(0);
+      await settle(f);
+      expect(document.activeElement).toBe(el.querySelector('button.add-ingredient'));
+    });
+
+    it('focuses a neighbouring group after deleting a group', async () => {
+      const { f, el } = await mount([group('A', 'a'), group('B', 'b')]);
+      (el.querySelectorAll('button.delete-group')[1] as HTMLButtonElement).click();
+      await settle(f);
+      expect(document.activeElement).toBe(el.querySelector('input.group-name'));
+    });
   });
 });

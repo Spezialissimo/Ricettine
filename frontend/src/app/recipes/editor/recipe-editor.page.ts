@@ -47,8 +47,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
               ? t('editor.published', { visibility: t('recipes.status.' + badge()) })
               : t('recipes.status.' + badge())
           }}</span>
-          <span class="save-status" role="status" [attr.data-status]="store.status()">{{
-            store.status() === 'idle' ? '' : t('editor.status.' + store.status())
+          <span class="save-status" role="status" [attr.data-status]="statusKey()">{{
+            statusKey() === 'idle' ? '' : t('editor.status.' + statusKey())
           }}</span>
           <span class="spacer"></span>
           @if (store.server()?.status === 'DRAFT') {
@@ -73,7 +73,10 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
             <button type="button" class="btn primary" (click)="loadLatest()">{{ t('editor.loadLatest') }}</button>
           </section>
         }
-        @if (store.saveError() ?? actionError(); as e) {
+        @if (store.saveError(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
+        @if (actionError(); as e) {
           <p class="alert" role="alert">{{ t(e) }}</p>
         }
 
@@ -101,10 +104,13 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 </label>
               }
             </fieldset>
-            <section class="ingredients" [class.missing]="missing().includes('ingredients')" aria-labelledby="ingredients-heading">
+            <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid()" aria-labelledby="ingredients-heading">
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>
               @if (missing().includes('ingredients')) {
                 <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
+              }
+              @if (showInvalid()) {
+                <p class="section-error field-error" role="alert">{{ t('editor.amountsInvalid') }}</p>
               }
               <app-ingredients-editor />
             </section>
@@ -145,6 +151,15 @@ export class RecipeEditorPage {
   protected readonly busy = signal(false);
   protected readonly actionError = signal<string | null>(null);
   private readonly steps = viewChild(StepsEditorComponent);
+  private readonly ingredients = viewChild(IngredientsEditorComponent);
+  /** Set by a refused Publish while an amount is invalid; clears once all amounts are valid. */
+  private readonly invalidAttempt = signal(false);
+  protected readonly showInvalid = computed(() => this.invalidAttempt() && this.store.invalidAmounts() > 0);
+  /** Save status shown in the header: invalid amounts are not "Saved" (they are held back from the server). */
+  protected readonly statusKey = computed(() => {
+    const s = this.store.status();
+    return this.store.invalidAmounts() > 0 && (s === 'idle' || s === 'saved' || s === 'saving') ? 'invalid' : s;
+  });
   /** Sections the last publish attempt reported as missing; each clears as soon as it is complete again. */
   private readonly requested = signal<readonly ('title' | 'ingredients' | 'steps')[]>([]);
   protected readonly missing = computed(() => {
@@ -183,8 +198,15 @@ export class RecipeEditorPage {
     this.busy.set(true);
     this.actionError.set(null);
     this.requested.set([]);
+    this.invalidAttempt.set(false);
     try {
-      await this.store.publish();
+      const result = await this.store.publish();
+      if (result === 'invalid') {
+        this.invalidAttempt.set(true);
+        afterNextRender(() => this.ingredients()?.focusFirstInvalid(), { injector: this.injector });
+      } else if (result === 'blocked') {
+        this.actionError.set('editor.publishBlocked');
+      }
     } catch (e) {
       const err = toApiError(e);
       if (err.code === 'recipe_incomplete') {

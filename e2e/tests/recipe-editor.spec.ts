@@ -155,3 +155,47 @@ test('createRecipe helper builds a saved recipe through the UI', async ({ browse
   await expect(page.getByRole('textbox', { name: /^Step \d+$/ })).toHaveCount(2);
   await context.close();
 });
+
+test('a published recipe can never become incomplete', async ({ browser }, testInfo) => {
+  const desktop = testInfo.project.name === 'desktop';
+  const { page, context } = await newUserPage(browser, testInfo, 'guard');
+  const editUrl = await createRecipe(page, { title: 'Soup', ingredients: ['leek'], steps: ['Chop'] });
+  const stepBoxes = page.getByRole('textbox', { name: /^Step \d+$/ });
+  const ingredients = page.locator('section.ingredients');
+  const steps = page.locator('section.steps');
+  const hint = 'A published recipe needs at least one.';
+
+  // a blank step is saved but does not count; a blank-name ingredient row is held back from saving
+  await addStep(page, desktop, stepBoxes.nth(0));
+  await expect(stepBoxes).toHaveCount(2);
+  await ingredients.getByRole('button', { name: '+ Ingredient' }).click();
+  await expect(ingredients.getByLabel('Ingredient', { exact: true })).toHaveCount(2);
+  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(page.locator('.editor-header .state')).toContainText('Published');
+
+  // (c) R10: the real step is the last counting one even though a blank step exists
+  await stepBoxes.nth(0).click();
+  await expect(page.getByRole('button', { name: 'Delete step' })).toBeDisabled();
+  await expect(steps.getByText(hint)).toBeVisible();
+  await stepBoxes.nth(1).click();
+  await expect(page.getByRole('button', { name: 'Delete step' })).toBeEnabled();
+
+  // (b) the last ingredient and the last group cannot be deleted (the blank row was never saved: publishing adopts the server copy)
+  const rows = ingredients.locator('.ing-row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0).getByRole('button', { name: 'Delete ingredient' })).toBeDisabled();
+  await expect(ingredients.getByRole('button', { name: 'Delete group' })).toBeDisabled();
+  await expect(ingredients.getByText(hint)).toBeVisible();
+
+  // (a) clearing the title is rejected, the recipe stays published with its title
+  await page.getByLabel('Title').fill('');
+  await expect(page.locator('.title-field .field-error')).toContainText('A published recipe needs a title');
+  await expect(page.getByRole('status').getByText('Not saved')).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Title')).toHaveValue('Soup');
+  await expect(page.locator('.editor-header .state')).toContainText('Published');
+  await context.close();
+  void editUrl;
+});
