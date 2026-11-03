@@ -41,6 +41,8 @@ public class PasswordResetService {
 		if (!users.existsById(userId)) {
 			throw new ApiException(HttpStatus.NOT_FOUND, "not_found");
 		}
+		// Only the newest link works: issuing one revokes the user's earlier, still-outstanding links.
+		tokens.revokeOutstanding(userId, TokenPurpose.PASSWORD_RESET.name());
 		String token = Tokens.newToken();
 		OneTimeToken t = tokens.save(new OneTimeToken(TokenPurpose.PASSWORD_RESET.name(), Tokens.hash(token),
 				userId, adminId, Instant.now().plus(TTL)));

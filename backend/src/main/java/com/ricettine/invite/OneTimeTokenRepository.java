@@ -22,4 +22,10 @@ public interface OneTimeTokenRepository extends JpaRepository<OneTimeToken, UUID
 	@Query(value = "update one_time_token set revoked_at = now() where id = :id and purpose = :purpose "
 			+ "and revoked_at is null", nativeQuery = true)
 	int revoke(UUID id, String purpose);
+
+	/** Revokes every outstanding (unused, unrevoked) token of the purpose that belongs to {@code userId}. */
+	@Modifying
+	@Query(value = "update one_time_token set revoked_at = now() where user_id = :userId and purpose = :purpose "
+			+ "and used_at is null and revoked_at is null", nativeQuery = true)
+	int revokeOutstanding(UUID userId, String purpose);
 }

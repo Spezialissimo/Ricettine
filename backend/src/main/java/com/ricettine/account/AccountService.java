@@ -5,6 +5,8 @@ import com.ricettine.account.AccountDtos.ProfilePatch;
 import com.ricettine.auth.AuthSessions;
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.TokenPurpose;
+import com.ricettine.invite.OneTimeTokenRepository;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
 import java.util.List;
@@ -27,10 +29,13 @@ public class AccountService {
 	private final JdbcTemplate jdbc;
 	private final List<AccountDeletionHook> deletionHooks;
 	private final AfterTransaction after;
+	private final OneTimeTokenRepository tokens;
 
 	public AccountService(UserRepository users, PasswordEncoder encoder, MediaService media, AuthSessions sessions,
-			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks, AfterTransaction after) {
+			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks, AfterTransaction after,
+			OneTimeTokenRepository tokens) {
 		this.after = after;
+		this.tokens = tokens;
 		this.users = users;
 		this.encoder = encoder;
 		this.media = media;
@@ -67,24 +72,36 @@ public class AccountService {
 		}
 	}
 
-	/** Changes the password; every session of the user except {@code keepSessionId} is ended after commit. */
+	/**
+	 * Changes the password; outstanding reset links are revoked and every session of the user except
+	 * {@code keepSessionId} is ended after commit.
+	 */
 	@Transactional
 	public void changePassword(UUID userId, String currentPassword, String newPassword, String keepSessionId) {
 		User user = users.findById(userId).orElseThrow(AccountService::notAuthenticated);
 		requirePassword(user, currentPassword);
 		user.setPasswordHash(encoder.encode(validPassword(newPassword)));
 		users.saveAndFlush(user);
+		revokeResetLinks(userId);
 		after.afterCommit("invalidate other sessions of " + userId,
 				() -> sessions.invalidateOtherSessions(userId, keepSessionId));
 	}
 
-	/** Sets a new password without knowing the old one (reset link) and ends all the user's sessions after commit. */
+	/**
+	 * Sets a new password without knowing the old one (reset link): the user's other outstanding reset links are
+	 * revoked (the redeemed one is already marked used) and all the user's sessions end after commit.
+	 */
 	@Transactional
 	public void resetPassword(UUID userId, String newPassword) {
 		User user = users.findById(userId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "reset_invalid"));
 		user.setPasswordHash(encoder.encode(validPassword(newPassword)));
 		users.saveAndFlush(user);
+		revokeResetLinks(userId);
 		after.afterCommit("invalidate sessions of " + userId, () -> sessions.invalidateAllSessions(userId));
+	}
+
+	private void revokeResetLinks(UUID userId) {
+		tokens.revokeOutstanding(userId, TokenPurpose.PASSWORD_RESET.name());
 	}
 
 	/** Stores the new avatar first, swaps it in, and removes the old blob only once the swap has committed. */

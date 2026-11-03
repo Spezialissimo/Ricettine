@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,7 +13,11 @@ import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
+import com.ricettine.common.TokenPurpose;
 import com.ricettine.common.Tokens;
+import com.ricettine.invite.OneTimeToken;
+import com.ricettine.invite.OneTimeTokenRepository;
+import java.time.Instant;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +34,7 @@ class PasswordResetIT extends IntegrationTest {
 	@Autowired JdbcTemplate jdbc;
 	@Autowired AccountService accounts;
 	@Autowired ObjectMapper json;
+	@Autowired OneTimeTokenRepository tokenRepo;
 
 	Cookie admin;
 	User member;
@@ -74,6 +80,46 @@ class PasswordResetIT extends IntegrationTest {
 		MvcResult again = redeem(token, "another-password-9");
 		assertThat(again.getResponse().getStatus()).isEqualTo(404);
 		assertThat(again.getResponse().getContentAsString()).contains("reset_invalid");
+	}
+
+	@Test
+	void newLinkRevokesOlderLinks() throws Exception {
+		String first = createLink(member.getId());
+		String second = createLink(member.getId());
+		assertThat(redeem(first, "fresh-password-9").getResponse().getStatus()).isEqualTo(404);
+		assertThat(redeem(second, "fresh-password-9").getResponse().getStatus()).isEqualTo(204);
+	}
+
+	@Test
+	void redeemingRevokesTheUsersOtherLinks() throws Exception {
+		String used = createLink(member.getId());
+		// a second outstanding link (e.g. issued before links revoked each other) plus another user's link
+		String other = Tokens.newToken();
+		tokenRepo.saveAndFlush(new OneTimeToken(TokenPurpose.PASSWORD_RESET.name(), Tokens.hash(other),
+				member.getId(), null, Instant.now().plusSeconds(3600)));
+		User bystander = accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bystander", "B"), false);
+		String bystanderLink = createLink(bystander.getId());
+
+		assertThat(redeem(used, "fresh-password-9").getResponse().getStatus()).isEqualTo(204);
+		assertThat(redeem(other, "another-password-9").getResponse().getStatus()).isEqualTo(404);
+		assertThat(Sessions.login(mvc, "m@x.com", "fresh-password-9")).isNotNull();
+		assertThat(jdbc.queryForObject("select count(*) from one_time_token where token_hash = ? and revoked_at is not null",
+				Integer.class, Tokens.hash(other))).isEqualTo(1);
+		// other users' links are untouched
+		assertThat(redeem(bystanderLink, "fresh-password-9").getResponse().getStatus()).isEqualTo(204);
+	}
+
+	@Test
+	void changingPasswordRevokesOutstandingLinks() throws Exception {
+		String token = createLink(member.getId());
+		Cookie session = Sessions.login(mvc, "m@x.com");
+		mvc.perform(put("/api/me/password").with(csrf()).cookie(session).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"currentPassword\":\"%s\",\"newPassword\":\"changed-password-9\"}".formatted(Sessions.PASSWORD)))
+			.andExpect(status().isNoContent());
+		MvcResult r = redeem(token, "fresh-password-9");
+		assertThat(r.getResponse().getStatus()).isEqualTo(404);
+		assertThat(r.getResponse().getContentAsString()).contains("reset_invalid");
+		assertThat(Sessions.login(mvc, "m@x.com", "changed-password-9")).isNotNull();
 	}
 
 	@Test
