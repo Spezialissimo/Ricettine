@@ -31,7 +31,7 @@ public final class RecipeDtos {
 	public record StepInput(String text, String photoMediaId) {
 	}
 
-	public record RecipeInput(long version, String title, int portions, Integer prepMinutes, Integer cookMinutes,
+	public record RecipeInput(Long version, String title, int portions, Integer prepMinutes, Integer cookMinutes,
 			String source, String notes, String visibility, String coverMediaId, List<GroupDto> groups,
 			List<StepInput> steps) {
 	}
@@ -40,6 +40,6 @@ public final class RecipeDtos {
 			Instant updatedAt) {
 	}
 
-	public record PublishRequest(long version) {
+	public record PublishRequest(Long version) {
 	}
 }

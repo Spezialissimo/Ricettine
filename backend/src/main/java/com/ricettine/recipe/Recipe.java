@@ -14,6 +14,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -74,12 +75,12 @@ public class Recipe {
 		r.visibility = Visibility.PRIVATE;
 		r.portions = 1;
 		r.shareToken = shareToken;
-		r.createdAt = Instant.now();
+		r.createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 		r.updatedAt = r.createdAt;
 		return r;
 	}
 
-	public void touch() { this.updatedAt = Instant.now(); }
+	public void touch() { this.updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS); }
 
 	public void setTitle(String title) { this.title = title; }
 	public void setPortions(int portions) { this.portions = portions; }
@@ -93,7 +94,7 @@ public class Recipe {
 	public void publish() {
 		this.status = RecipeStatus.PUBLISHED;
 		if (this.publishedAt == null) {
-			this.publishedAt = Instant.now();
+			this.publishedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 		}
 	}
 

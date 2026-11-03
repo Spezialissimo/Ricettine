@@ -5,6 +5,8 @@ import com.ricettine.recipe.RecipeDtos.IngredientDto;
 import com.ricettine.recipe.RecipeDtos.RecipeInput;
 import com.ricettine.recipe.RecipeDtos.StepInput;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,6 +58,9 @@ public final class RecipeValidator {
 		String title = clean(in.title());
 		if (title != null && title.length() > MAX_TITLE) {
 			e.put("title", TOO_LONG);
+		}
+		if (in.version() == null) {
+			e.put("version", REQUIRED);
 		}
 		if (in.portions() < 1 || in.portions() > 100) {
 			e.put("portions", OUT_OF_RANGE);
@@ -161,31 +166,34 @@ public final class RecipeValidator {
 		}
 	}
 
-	/** What a recipe still lacks to be published: a subset of {title, ingredients, steps}. */
-	public static Set<String> missingForPublish(String title, int ingredientCount, int stepCount) {
+	/**
+	 * The one publish-completeness rule: a non-blank title, at least one ingredient with a non-blank name, and at
+	 * least one step with non-blank text or a photo. Returns a subset of {title, ingredients, steps}.
+	 */
+	public static Set<String> missingForPublish(String title, Collection<String> ingredientNames,
+			Collection<StepInput> steps) {
 		Set<String> missing = new LinkedHashSet<>();
 		if (clean(title) == null) {
 			missing.add("title");
 		}
-		if (ingredientCount < 1) {
+		if (ingredientNames.stream().noneMatch(n -> clean(n) != null)) {
 			missing.add("ingredients");
 		}
-		if (stepCount < 1) {
+		if (steps.stream().noneMatch(s -> s != null && (clean(s.text()) != null || s.photoMediaId() != null))) {
 			missing.add("steps");
 		}
 		return missing;
 	}
 
 	public static Set<String> missingForPublish(RecipeInput in) {
-		int ingredients = 0;
+		List<String> names = new ArrayList<>();
 		if (in.groups() != null) {
 			for (GroupDto g : in.groups()) {
 				if (g != null && g.ingredients() != null) {
-					ingredients += (int) g.ingredients().stream().filter(i -> i != null && clean(i.name()) != null)
-						.count();
+					g.ingredients().stream().filter(i -> i != null).forEach(i -> names.add(i.name()));
 				}
 			}
 		}
-		return missingForPublish(in.title(), ingredients, in.steps() == null ? 0 : in.steps().size());
+		return missingForPublish(in.title(), names, in.steps() == null ? List.of() : in.steps());
 	}
 }

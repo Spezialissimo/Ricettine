@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 class RecipeValidatorTest {
 
 	static RecipeInput input(String title, int portions, List<GroupDto> groups, List<StepInput> steps) {
-		return new RecipeInput(0, title, portions, null, null, null, null, "PRIVATE", null, groups, steps);
+		return new RecipeInput(0L, title, portions, null, null, null, null, "PRIVATE", null, groups, steps);
 	}
 
 	static RecipeInput ok() {
@@ -111,8 +111,23 @@ class RecipeValidatorTest {
 	}
 
 	@Test
+	void blankStepsAndIngredientsDoNotCountForPublish() {
+		RecipeInput in = input("t", 1, List.of(group(ing(null, null, "  "))),
+				List.of(new StepInput("", null), new StepInput("   ", null)));
+		assertThat(RecipeValidator.missingForPublish(in)).isEqualTo(Set.of("ingredients", "steps"));
+		RecipeInput photo = input("t", 1, ok().groups(), List.of(new StepInput(" ", "m1")));
+		assertThat(RecipeValidator.missingForPublish(photo)).isEmpty();
+	}
+
+	@Test
+	void versionIsRequired() {
+		RecipeInput in = new RecipeInput(null, "t", 1, null, null, null, null, "PRIVATE", null, List.of(), List.of());
+		assertThat(RecipeValidator.validate(in)).containsEntry("version", "required").hasSize(1);
+	}
+
+	@Test
 	void otherLimits() {
-		RecipeInput bad = new RecipeInput(0, "t", 1, 10081, -1, "s".repeat(501), "n".repeat(10001), "SECRET", null,
+		RecipeInput bad = new RecipeInput(0L, "t", 1, 10081, -1, "s".repeat(501), "n".repeat(10001), "SECRET", null,
 				List.of(new GroupDto("g".repeat(101), List.of())), List.of());
 		assertThat(RecipeValidator.validate(bad)).containsOnlyKeys("prepMinutes", "cookMinutes", "source", "notes",
 				"visibility", "groups[0].name");

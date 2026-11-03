@@ -47,7 +47,7 @@ public class RecipeService {
 
 	/** Whole-document save. Precedence: not owner (404), stale version (409), validation (400), incomplete (400). */
 	public RecipeDto update(UUID authorId, UUID id, RecipeInput in) {
-		Recipe r = owned(authorId, id);
+		Recipe r = ownedForUpdate(authorId, id);
 		checkVersion(r, in.version());
 		Map<String, String> errors = RecipeValidator.validate(in);
 		if (!errors.isEmpty()) {
@@ -68,11 +68,14 @@ public class RecipeService {
 		return toDto(recipes.saveAndFlush(r));
 	}
 
-	public RecipeDto publish(UUID authorId, UUID id, long version) {
-		Recipe r = owned(authorId, id);
+	public RecipeDto publish(UUID authorId, UUID id, Long version) {
+		Recipe r = ownedForUpdate(authorId, id);
 		checkVersion(r, version);
-		int ingredients = r.getGroups().stream().mapToInt(g -> g.getIngredients().size()).sum();
-		requireComplete(RecipeValidator.missingForPublish(r.getTitle(), ingredients, r.getSteps().size()));
+		List<String> names = r.getGroups().stream().flatMap(g -> g.getIngredients().stream())
+			.map(Ingredient::getName).toList();
+		List<RecipeDtos.StepInput> steps = r.getSteps().stream()
+			.map(s -> new RecipeDtos.StepInput(s.getText(), s.getPhotoMediaId())).toList();
+		requireComplete(RecipeValidator.missingForPublish(r.getTitle(), names, steps));
 		r.publish();
 		r.touch();
 		return toDto(recipes.saveAndFlush(r));
@@ -88,7 +91,16 @@ public class RecipeService {
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
 	}
 
-	private static void checkVersion(Recipe r, long version) {
+	private Recipe ownedForUpdate(UUID authorId, UUID id) {
+		return recipes.findForUpdateByIdAndAuthorId(id, authorId)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+	}
+
+	private static void checkVersion(Recipe r, Long version) {
+		if (version == null) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "validation_failed",
+					Map.of("version", RecipeValidator.REQUIRED));
+		}
 		if (r.getVersion() != version) {
 			throw new ApiException(HttpStatus.CONFLICT, "recipe_conflict");
 		}

@@ -201,6 +201,76 @@ class RecipeApiIT extends IntegrationTest {
 	}
 
 	@Test
+	void concurrentSavesOfPopulatedRecipeGiveOne200AndOne409() throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		try {
+			for (int round = 0; round < 5; round++) {
+				String id = create(me).get("id").asText();
+				putRecipe(me, id, full(0, "Base", 3)).andExpect(status().isOk());
+				putRecipe(me, id, full(1, "Base2", 4)).andExpect(status().isOk());
+				CountDownLatch go = new CountDownLatch(1);
+				List<Future<Integer>> calls = new ArrayList<>();
+				for (int t = 0; t < 2; t++) {
+					String body = full(2, "R" + t, 2 + t);
+					calls.add(pool.submit(() -> {
+						go.await();
+						return putRecipe(me, id, body).andReturn().getResponse().getStatus();
+					}));
+				}
+				go.countDown();
+				List<Integer> codes = new ArrayList<>();
+				for (Future<Integer> f : calls) {
+					codes.add(f.get());
+				}
+				assertThat(codes).containsExactlyInAnyOrder(200, 409);
+				assertThat(fetch(me, id).get("version").asLong()).isEqualTo(3);
+			}
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	@Test
+	void putResponseUpdatedAtMatchesFollowingGet() throws Exception {
+		String id = create(me).get("id").asText();
+		JsonNode put = json.readTree(putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk()).andReturn()
+			.getResponse().getContentAsString());
+		assertThat(fetch(me, id).get("updatedAt").asText()).isEqualTo(put.get("updatedAt").asText());
+		JsonNode pub = json.readTree(publish(me, id, 1).andExpect(status().isOk()).andReturn().getResponse()
+			.getContentAsString());
+		JsonNode got = fetch(me, id);
+		assertThat(got.get("updatedAt").asText()).isEqualTo(pub.get("updatedAt").asText());
+		assertThat(got.get("publishedAt").asText()).isEqualTo(pub.get("publishedAt").asText());
+	}
+
+	@Test
+	void versionIsRequired() throws Exception {
+		String id = create(me).get("id").asText();
+		putRecipe(me, id, full(0, "T", 1).replace("\"version\":0,", "")).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("validation_failed")).andExpect(jsonPath("$.fields.version")
+				.value("required"));
+		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(me)
+			.contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("validation_failed"))
+			.andExpect(jsonPath("$.fields.version").value("required"));
+	}
+
+	@Test
+	void blankStepsDoNotCountAsSteps() throws Exception {
+		String id = create(me).get("id").asText();
+		String blank = full(0, "T", 0).replace("\"steps\":[]", "\"steps\":[{\"text\":\"  \"},{\"text\":\"\"}]");
+		putRecipe(me, id, blank).andExpect(status().isOk());
+		publish(me, id, 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("recipe_incomplete"))
+			.andExpect(jsonPath("$.fields.steps").exists()).andExpect(jsonPath("$.fields.length()").value(1));
+		putRecipe(me, id, full(1, "T", 1)).andExpect(status().isOk());
+		publish(me, id, 2).andExpect(status().isOk());
+		putRecipe(me, id, blank.replace("\"version\":0", "\"version\":3")).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("recipe_incomplete")).andExpect(jsonPath("$.fields.steps").exists());
+		assertThat(fetch(me, id).get("steps")).hasSize(1);
+	}
+
+	@Test
 	void validationFailuresUseDottedFieldPaths() throws Exception {
 		String id = create(me).get("id").asText();
 		String body = """
