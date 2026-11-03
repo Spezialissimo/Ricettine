@@ -42,14 +42,14 @@ public class RecipePhotoController {
 		UUID authorId = currentUser.id();
 		UUID recipeId = RecipeController.parse(id);
 		recipes.requireOwned(authorId, recipeId);
-		byte[] bytes;
-		try {
-			bytes = file.getBytes();
-		}
-		catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-		ProcessedUpload upload = media.process(bytes, VARIANTS);
+		ProcessedUpload upload = media.process(() -> {
+			try {
+				return file.getBytes();
+			}
+			catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}, VARIANTS);
 		return ResponseEntity.status(HttpStatus.CREATED).body(recipes.addPhoto(authorId, recipeId, upload));
 	}
 }
