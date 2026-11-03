@@ -121,11 +121,17 @@ describe('IngredientsEditorComponent', () => {
       type(amounts(el)[1], 'x');
       await settle(f);
       expect(store.invalidAmounts()).toBe(1);
-      f.componentInstance.focusFirstInvalid();
+      f.componentInstance.focusFirstProblem();
       expect(document.activeElement).toBe(amounts(el)[1]);
       type(amounts(el)[1], '3');
       await settle(f);
       expect(store.invalidAmounts()).toBe(0);
+    });
+
+    it('focusFirstProblem falls back to a nameless row that holds data', async () => {
+      const { f, el } = await mount([{ name: null, ingredients: [ing('milk'), { amount: 2, unit: null, name: '', note: null }] }]);
+      f.componentInstance.focusFirstProblem();
+      expect(document.activeElement).toBe(el.querySelectorAll('input.name')[1]);
     });
 
     it('re-keys typed amount text when a row is deleted', async () => {

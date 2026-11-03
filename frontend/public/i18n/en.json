@@ -162,7 +162,8 @@
       "error": "Not saved",
       "conflict": "Not saved: changed elsewhere",
       "offline": "Offline: will save when you reconnect",
-      "invalid": "Not saved: fix the amount"
+      "invalid": "Not saved: fix the amount",
+      "unnamedIngredient": "Not saved: name the ingredient"
     },
     "title": "Title",
     "titlePlaceholder": "Recipe title",
@@ -242,6 +243,8 @@
     "stepN": "Step {{n}}",
     "deleteStep": "Delete step",
     "amountsInvalid": "Fix the highlighted amounts before publishing.",
-    "publishBlocked": "Not published: your latest changes could not be saved yet."
+    "publishBlocked": "Not published: your latest changes could not be saved yet.",
+    "unnamedIngredientHint": "Give each ingredient you started a name, or clear it.",
+    "unsavedInput": "Some ingredient input is not saved yet. Fix it or clear it before leaving."
   }
 }

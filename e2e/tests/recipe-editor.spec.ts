@@ -18,7 +18,6 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
 
   await newRecipeLink(page, testInfo.project.name).click();
   await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
-  const editUrl = page.url();
 
   // layout
   const ingHead = (await page.getByRole('heading', { name: 'Ingredients' }).boundingBox())!;
@@ -142,7 +141,6 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page).toHaveURL(/\/recipes$/);
   await expect(page.locator('a.recipe')).toHaveCount(1);
-  void editUrl;
   await context.close();
 });
 
@@ -159,7 +157,7 @@ test('createRecipe helper builds a saved recipe through the UI', async ({ browse
 test('a published recipe can never become incomplete', async ({ browser }, testInfo) => {
   const desktop = testInfo.project.name === 'desktop';
   const { page, context } = await newUserPage(browser, testInfo, 'guard');
-  const editUrl = await createRecipe(page, { title: 'Soup', ingredients: ['leek'], steps: ['Chop'] });
+  await createRecipe(page, { title: 'Soup', ingredients: ['leek'], steps: ['Chop'] });
   const stepBoxes = page.getByRole('textbox', { name: /^Step \d+$/ });
   const ingredients = page.locator('section.ingredients');
   const steps = page.locator('section.steps');
@@ -197,5 +195,4 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await expect(page.getByLabel('Title')).toHaveValue('Soup');
   await expect(page.locator('.editor-header .state')).toContainText('Published');
   await context.close();
-  void editUrl;
 });

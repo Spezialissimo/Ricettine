@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
-import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
@@ -104,13 +104,16 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 </label>
               }
             </fieldset>
-            <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid()" aria-labelledby="ingredients-heading">
+            <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid() || showUnnamed()" aria-labelledby="ingredients-heading">
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>
               @if (missing().includes('ingredients')) {
                 <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
               }
               @if (showInvalid()) {
                 <p class="section-error field-error" role="alert">{{ t('editor.amountsInvalid') }}</p>
+              }
+              @if (showUnnamed()) {
+                <p class="section-error field-error" role="alert">{{ t('editor.unnamedIngredientHint') }}</p>
               }
               <app-ingredients-editor />
             </section>
@@ -155,10 +158,13 @@ export class RecipeEditorPage {
   /** Set by a refused Publish while an amount is invalid; clears once all amounts are valid. */
   private readonly invalidAttempt = signal(false);
   protected readonly showInvalid = computed(() => this.invalidAttempt() && this.store.invalidAmounts() > 0);
+  protected readonly showUnnamed = computed(() => this.invalidAttempt() && this.store.unnamedIngredients() > 0);
   /** Save status shown in the header: invalid amounts are not "Saved" (they are held back from the server). */
   protected readonly statusKey = computed(() => {
     const s = this.store.status();
-    return this.store.invalidAmounts() > 0 && (s === 'idle' || s === 'saved' || s === 'saving') ? 'invalid' : s;
+    if (s !== 'idle' && s !== 'saved' && s !== 'saving') return s;
+    if (this.store.invalidAmounts() > 0) return 'invalid';
+    return this.store.unnamedIngredients() > 0 ? 'unnamedIngredient' : s;
   });
   /** Sections the last publish attempt reported as missing; each clears as soon as it is complete again. */
   private readonly requested = signal<readonly ('title' | 'ingredients' | 'steps')[]>([]);
@@ -185,6 +191,10 @@ export class RecipeEditorPage {
   });
 
   constructor() {
+    // a later successful save clears an earlier action message (e.g. "Not published")
+    effect(() => {
+      if (this.store.status() === 'saved') untracked(() => this.actionError.set(null));
+    });
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
   }
 
@@ -202,8 +212,7 @@ export class RecipeEditorPage {
     try {
       const result = await this.store.publish();
       if (result === 'invalid') {
-        this.invalidAttempt.set(true);
-        afterNextRender(() => this.ingredients()?.focusFirstInvalid(), { injector: this.injector });
+        this.revealUnsavedInput();
       } else if (result === 'blocked') {
         this.actionError.set('editor.publishBlocked');
       }
@@ -219,6 +228,11 @@ export class RecipeEditorPage {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  private revealUnsavedInput(): void {
+    this.invalidAttempt.set(true);
+    afterNextRender(() => this.ingredients()?.focusFirstProblem(), { injector: this.injector });
   }
 
   private revealFirstMissing(first: 'title' | 'ingredients' | 'steps' | undefined): void {
@@ -251,6 +265,12 @@ export class RecipeEditorPage {
    */
   async done(): Promise<void> {
     if (this.busy()) return;
+    if (this.store.hasUnsavedInput()) {
+      // input that cannot be saved (invalid amount, nameless ingredient with data): stay, so nothing is lost
+      this.actionError.set('editor.unsavedInput');
+      this.revealUnsavedInput();
+      return;
+    }
     this.busy.set(true);
     this.actionError.set(null);
     try {

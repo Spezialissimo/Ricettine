@@ -314,6 +314,60 @@ describe('RecipeEditorPage', () => {
       await settle(f);
       expect(el.querySelector('.conflict')).toBeTruthy();
       expect(el.querySelector('.editor-header [role="status"]')?.textContent).toContain(en.editor.status.conflict);
+      expect(el.textContent).not.toContain(en.editor.publishBlocked); // the conflict banner is the message
+    });
+
+    it('clears the "not published" message once a later save succeeds', async () => {
+      const save = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 0 })).mockResolvedValue(serverRecipe({ version: 2 }));
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, publish: vi.fn() });
+      type(el.querySelector('#recipe-title') as HTMLInputElement, 'T');
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(el.textContent).toContain(en.editor.publishBlocked);
+      await f.componentInstance['store'].flush();
+      await settle(f);
+      expect(el.textContent).not.toContain(en.editor.publishBlocked);
+    });
+
+    describe('nameless ingredient rows', () => {
+      const withRow = (row: object) =>
+        serverRecipe({ groups: [{ name: null, ingredients: [{ amount: null, unit: null, name: 'milk', note: null }, row as never] }] });
+      const statusText = (el: HTMLElement) => el.querySelector('.editor-header [role="status"]')?.textContent ?? '';
+
+      it('a completely empty nameless row is invisible: normal status', async () => {
+        const { el } = await mount({ get: vi.fn().mockResolvedValue(withRow({ amount: null, unit: null, name: '', note: null })) });
+        expect(statusText(el)).not.toContain(en.editor.status.unnamedIngredient);
+      });
+
+      it('a nameless row with data shows its own status, Publish refuses and focuses its name', async () => {
+        const publish = vi.fn();
+        const get = vi.fn().mockResolvedValue(withRow({ amount: 2, unit: null, name: '', note: null }));
+        const { f, el } = await mount({ get, publish, save: vi.fn() });
+        expect(statusText(el)).toContain(en.editor.status.unnamedIngredient);
+        expect(statusText(el)).not.toContain('✓');
+        publishBtn(el)!.click();
+        await settle(f);
+        expect(publish).not.toHaveBeenCalled();
+        expect(el.querySelector('.ingredients .section-error')?.textContent).toContain(en.editor.unnamedIngredientHint);
+        expect(document.activeElement).toBe(el.querySelectorAll('input.name')[1]);
+      });
+
+      it('Done stays on the page with a warning', async () => {
+        const get = vi.fn().mockResolvedValue(withRow({ amount: null, unit: 'g', name: '', note: null }));
+        const { f, el, nav } = await mount({ get, save: vi.fn(), remove: vi.fn() });
+        byText(el, 'button', en.editor.done)!.click();
+        await settle(f);
+        expect(nav).not.toHaveBeenCalled();
+        expect(el.textContent).toContain(en.editor.unsavedInput);
+      });
+
+      it('naming the row clears the state', async () => {
+        const get = vi.fn().mockResolvedValue(withRow({ amount: 2, unit: null, name: '', note: null }));
+        const { f, el } = await mount({ get, save: vi.fn().mockResolvedValue(serverRecipe()) });
+        type(el.querySelectorAll('input.name')[1] as HTMLInputElement, 'eggs');
+        await settle(f);
+        expect(statusText(el)).not.toContain(en.editor.status.unnamedIngredient);
+      });
     });
 
     it('tells the person when Publish was declined because saving failed', async () => {

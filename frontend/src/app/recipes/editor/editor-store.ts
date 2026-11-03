@@ -3,6 +3,7 @@ import { errorKey, toApiError } from '../../core/api-error';
 import { RecipeApi } from '../recipe.api';
 import { Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
+import { unnamedRows } from './completeness';
 
 const EMPTY: RecipeInput = {
   version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
@@ -68,6 +69,10 @@ export class EditorStore {
   readonly invalidAmounts: Signal<number> = this._invalidAmounts.asReadonly();
   /** Bumped whenever a server copy replaces the working copy (load, load latest, publish): editors drop local text. */
   readonly epoch: Signal<number> = this._epoch.asReadonly();
+  /** Nameless ingredient rows holding an amount, unit or note: never saved, so an unsaved state to the person. */
+  readonly unnamedIngredients = computed(() => unnamedRows(this._recipe().groups).length);
+  /** True while typed input exists that cannot be saved (invalid amounts, nameless rows with data). */
+  readonly hasUnsavedInput = computed(() => this._invalidAmounts() > 0 || this.unnamedIngredients() > 0);
   readonly loaded = computed(() => this._server() !== null);
   /** i18n key of the load failure, if any. */
   readonly loadError: Signal<string | null> = this._loadError.asReadonly();
@@ -134,14 +139,14 @@ export class EditorStore {
   }
 
   /**
-   * Publishes: refuses while an amount field holds invalid text ('invalid'); otherwise saves pending
+   * Publishes: refuses while input cannot be saved ('invalid': an invalid amount or a nameless ingredient row with data); otherwise saves pending
    * changes first and publishes only if that left nothing wrong (no error, conflict or offline:
    * 'blocked'). On 'published' the store adopts the returned recipe. A 409 moves the store into
-   * `conflict`; other server refusals (recipe_incomplete, ...) are thrown.
+   * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
-  async publish(): Promise<'published' | 'invalid' | 'blocked'> {
+  async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
     if (!this._id) return 'blocked';
-    if (this._invalidAmounts() > 0) return 'invalid';
+    if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
     if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return 'blocked';
@@ -151,7 +156,7 @@ export class EditorStore {
       const err = toApiError(e);
       if (err.status === 409 || err.code === 'recipe_conflict') {
         this.autosave.markConflict(err);
-        return 'blocked';
+        return 'conflict';
       }
       throw e;
     }

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatAmount, parseAmount } from '../amount';
 import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
-import { countingIngredients, countsIngredient } from './completeness';
+import { countingIngredients, countsIngredient, unnamedRows } from './completeness';
 import { uid } from './editor-sheet';
 import { EditorStore } from './editor-store';
 
@@ -133,16 +133,22 @@ export class IngredientsEditorComponent {
     });
   }
 
-  /** Scrolls to and focuses the first amount field holding invalid text. */
-  focusFirstInvalid(): void {
-    const key = this.invalidKeys().sort((a, b) => {
+  /** Scrolls to and focuses the first problem: an invalid amount, else a nameless row holding data. */
+  focusFirstProblem(): void {
+    const key = [...this.invalidKeys()].sort((a, b) => {
       const [ag, ai] = a.split('.').map(Number);
       const [bg, bi] = b.split('.').map(Number);
       return ag - bg || ai - bi;
     })[0];
-    if (!key) return;
-    const [g, i] = key.split('.').map(Number);
-    const el = document.getElementById(this.id(g, i, 'amount'));
+    let target: string | null = null;
+    if (key) {
+      const [g, i] = key.split('.').map(Number);
+      target = this.id(g, i, 'amount');
+    } else {
+      const first = unnamedRows(this.store.recipe().groups)[0];
+      if (first) target = this.id(first[0], first[1], 'name');
+    }
+    const el = target ? document.getElementById(target) : null;
     el?.scrollIntoView?.({ block: 'center' });
     el?.focus();
   }
