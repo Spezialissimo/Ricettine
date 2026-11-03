@@ -74,8 +74,9 @@ public class ImageProcessor {
 
 	/**
 	 * Header-dimension cap. WebP and progressive JPEG decoders hold the whole frame (WebP pixels, libjpeg every DCT
-	 * coefficient, natively) regardless of subsampling, so they get the lower cap. A progressive JPEG is checked
-	 * against the dimensions in its frame header here, before any decoder sees it.
+	 * coefficient, natively) regardless of subsampling, so they get the lower cap. JPEG fails closed: only a cleanly
+	 * parsed baseline frame header gets the full cap; a progressive, unparseable or irregular (stray bytes) stream
+	 * gets the lower one, and when its frame header can be read it is checked here, before any decoder sees it.
 	 */
 	private static long maxPixels(byte[] input, Format format) {
 		return switch (format) {
@@ -83,10 +84,10 @@ public class ImageProcessor {
 			case PNG -> MAX_PIXELS;
 			case JPEG -> {
 				JpegFrame frame = jpegFrame(input);
-				if (frame == null || !frame.progressive()) {
+				if (frame != null && frame.clean() && !frame.progressive()) {
 					yield MAX_PIXELS;
 				}
-				if ((long) frame.width() * frame.height() > MAX_PROGRESSIVE_JPEG_PIXELS) {
+				if (frame != null && (long) frame.width() * frame.height() > MAX_PROGRESSIVE_JPEG_PIXELS) {
 					throw tooLarge();
 				}
 				yield MAX_PROGRESSIVE_JPEG_PIXELS;
@@ -94,8 +95,11 @@ public class ImageProcessor {
 		};
 	}
 
-	/** Frame header (SOFn) of a JPEG: whether it is progressive and the declared size. */
-	record JpegFrame(boolean progressive, int width, int height) {
+	/**
+	 * Frame header (SOFn) of a JPEG: whether it is progressive, the declared size, and whether every byte before it
+	 * belonged to a well-formed marker segment ({@code clean}).
+	 */
+	record JpegFrame(boolean progressive, int width, int height, boolean clean) {
 	}
 
 	static boolean isProgressiveJpeg(byte[] b) {
@@ -105,23 +109,28 @@ public class ImageProcessor {
 
 	/**
 	 * Scans the JPEG marker segments up to the first frame header. Progressive = SOF2/SOF6/SOF10/SOF14 (Huffman or
-	 * arithmetic, plain or differential). Returns null when no frame header is found before the first scan.
+	 * arithmetic, plain or differential). Like libjpeg, stray bytes between segments are skipped (the frame is then
+	 * not {@code clean}). Returns null when no complete frame header is found before the first scan.
 	 */
 	static JpegFrame jpegFrame(byte[] b) {
 		if (b.length < 4 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) {
 			return null;
 		}
+		boolean clean = true;
 		int i = 2;
 		while (i + 1 < b.length) {
-			if ((b[i] & 0xFF) != 0xFF) {
-				return null;
+			if ((b[i] & 0xFF) != 0xFF) { // stray byte: libjpeg skips to the next 0xFF
+				clean = false;
+				i++;
+				continue;
 			}
 			int marker = b[i + 1] & 0xFF;
 			if (marker == 0xFF) { // fill byte
 				i++;
 				continue;
 			}
-			if (marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { // standalone markers
+			if (marker == 0x00 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { // no length
+				clean &= marker != 0x00;
 				i += 2;
 				continue;
 			}
@@ -131,12 +140,16 @@ public class ImageProcessor {
 				}
 				int h = ((b[i + 5] & 0xFF) << 8) | (b[i + 6] & 0xFF);
 				int w = ((b[i + 7] & 0xFF) << 8) | (b[i + 8] & 0xFF);
-				return new JpegFrame(marker == 0xC2 || marker == 0xC6 || marker == 0xCA || marker == 0xCE, w, h);
+				return new JpegFrame(marker == 0xC2 || marker == 0xC6 || marker == 0xCA || marker == 0xCE, w, h, clean);
 			}
 			if (marker == 0xDA || marker == 0xD9 || i + 3 >= b.length) { // scan / end before any frame header
 				return null;
 			}
-			i += 2 + (((b[i + 2] & 0xFF) << 8) | (b[i + 3] & 0xFF));
+			int len = ((b[i + 2] & 0xFF) << 8) | (b[i + 3] & 0xFF);
+			if (len < 2) { // a segment length includes its own two bytes
+				clean = false;
+			}
+			i += 2 + Math.max(len, 2);
 		}
 		return null;
 	}

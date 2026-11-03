@@ -182,4 +182,26 @@ public final class TestImages {
 			throw new IllegalStateException(e);
 		}
 	}
+
+	/** {@code jpeg} with a stray 0x00 byte inserted after the first segment following SOI (decoders skip it). */
+	public static byte[] withPaddingAfterFirstSegment(byte[] jpeg) {
+		int len = ((jpeg[4] & 0xFF) << 8) | (jpeg[5] & 0xFF);
+		int at = 4 + len;
+		byte[] out = new byte[jpeg.length + 1];
+		System.arraycopy(jpeg, 0, out, 0, at);
+		System.arraycopy(jpeg, at, out, at + 1, jpeg.length - at);
+		return out;
+	}
+
+	/** Header-only JPEG: SOI, a COM segment, a stray 0x00 byte, then the SOF segment. */
+	public static byte[] jpegHeaderOnlyWithPaddingBeforeSof(int sof, int w, int h) {
+		byte[] b = jpegHeaderOnly(sof, w, h);
+		byte[] com = {(byte) 0xFF, (byte) 0xFE, 0x00, 0x04, 'h', 'i', 0x00};
+		byte[] out = new byte[b.length + com.length];
+		out[0] = b[0];
+		out[1] = b[1];
+		System.arraycopy(com, 0, out, 2, com.length);
+		System.arraycopy(b, 2, out, 2 + com.length, b.length - 2);
+		return out;
+	}
 }

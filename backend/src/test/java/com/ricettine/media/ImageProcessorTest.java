@@ -310,4 +310,33 @@ class ImageProcessorTest {
 		assertThat(isReddish(rgb(img, 50, 150))).isTrue();
 		assertThat(isBluish(rgb(img, 350, 150))).isTrue();
 	}
+
+	@Test
+	void paddedProgressiveHeaderOverCapIs413() {
+		// libjpeg skips stray bytes between segments: a padding byte must not downgrade the frame to the baseline cap.
+		assertThatThrownBy(() -> processor.process(TestImages.jpegHeaderOnlyWithPaddingBeforeSof(0xC2, 8000, 7000),
+				Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> {
+					assertThat(e.getCode()).isEqualTo("image_too_large");
+					assertThat(e.getStatus().value()).isEqualTo(413);
+				});
+	}
+
+	@Test
+	void paddedBaselineHeaderOver50MegapixelsFailsClosed() {
+		// Irregular stream: the baseline 250 MP cap only applies to a cleanly parsed baseline frame.
+		assertThatThrownBy(() -> processor.process(TestImages.jpegHeaderOnlyWithPaddingBeforeSof(0xC0, 8000, 7000),
+				Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("image_too_large"));
+	}
+
+	@Test
+	void smallProgressiveJpegWithPaddingStillDecodes() throws Exception {
+		byte[] in = TestImages.withPaddingAfterFirstSegment(TestImages.progressiveJpeg(400, 300));
+		BufferedImage img = decode(processor.process(in, Set.of(ImageVariant.DISPLAY)).get(ImageVariant.DISPLAY));
+		assertThat(img.getWidth()).isEqualTo(400);
+		assertThat(img.getHeight()).isEqualTo(300);
+		assertThat(isReddish(rgb(img, 50, 150))).isTrue();
+		assertThat(isBluish(rgb(img, 350, 150))).isTrue();
+	}
 }
