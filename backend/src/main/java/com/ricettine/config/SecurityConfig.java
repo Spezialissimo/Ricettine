@@ -15,6 +15,7 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.requestMatchers("/api/setup/**").permitAll()
 				.requestMatchers(RegexRequestMatcher.regexMatcher(HttpMethod.GET, "^/(?!(api|media|actuator)(/|$)).*"))
 					.permitAll()
 				.anyRequest().authenticated())
