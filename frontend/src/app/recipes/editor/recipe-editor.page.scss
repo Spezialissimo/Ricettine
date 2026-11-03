@@ -53,6 +53,8 @@ label, legend { font-size: 0.8rem; color: t.$muted; }
   border: 0; border-bottom: 1px solid t.$border; background: transparent; padding: t.$space-1 0;
 }
 #recipe-title[aria-invalid='true'] { border-bottom-color: #b3261e; }
+.section-error { margin: 0 0 t.$space-2; }
+.missing { outline: 2px solid #b3261e; outline-offset: 4px; border-radius: 8px; }
 .field-error { margin: t.$space-1 0 0; color: #b3261e; font-size: 0.85rem; }
 h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
 .notes textarea { width: 100%; font: inherit; padding: t.$space-2; border: 1px solid t.$border; border-radius: 8px; background: t.$bg; }

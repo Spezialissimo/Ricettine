@@ -222,6 +222,23 @@
       "too_many": "There are too many items.",
       "invalid": "This value is not valid.",
       "invalid_unit": "That unit is not supported."
-    }
+    },
+    "published": "Published · {{visibility}}",
+    "addIngredient": "+ Ingredient",
+    "addGroup": "+ Group",
+    "deleteIngredient": "Delete ingredient",
+    "deleteGroup": "Delete group",
+    "groupName": "Group name",
+    "groupNamePlaceholder": "e.g. Sauce (optional)",
+    "amount": "Amount",
+    "unit": "Unit",
+    "noUnit": "No unit",
+    "ingredientName": "Ingredient",
+    "ingredientNote": "Note",
+    "amountInvalid": "Enter a number such as 0.5, 1/2 or 1 1/2.",
+    "needsOne": "A published recipe needs at least one.",
+    "addStep": "+ Add step",
+    "stepN": "Step {{n}}",
+    "deleteStep": "Delete step"
   }
 }

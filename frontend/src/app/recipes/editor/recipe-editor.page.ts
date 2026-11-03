@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +10,9 @@ import { ConfirmDeleteDialog } from './confirm-delete.dialog';
 import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore, conflictText } from './editor-store';
 import { openEditorSheet } from './editor-sheet';
+import { IngredientsEditorComponent } from './ingredients-editor.component';
+import { StepsEditorComponent } from './steps-editor.component';
+import { countingIngredients, countingSteps } from './completeness';
 
 export const MAX_TITLE = 200;
 export const MAX_NOTES = 10_000;
@@ -25,7 +28,7 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
  */
 @Component({
   selector: 'app-recipe-editor-page',
-  imports: [TranslocoDirective, DetailChipsComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
   providers: [EditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-editor.page.scss',
@@ -39,13 +42,17 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         @let r = store.recipe();
         <header class="editor-header">
           <button type="button" class="btn back" [disabled]="busy()" (click)="done()">{{ t('editor.done') }}</button>
-          <span class="state">{{ t('recipes.status.' + badge()) }}</span>
+          <span class="state">{{
+            store.server()?.status === 'PUBLISHED'
+              ? t('editor.published', { visibility: t('recipes.status.' + badge()) })
+              : t('recipes.status.' + badge())
+          }}</span>
           <span class="save-status" role="status" [attr.data-status]="store.status()">{{
             store.status() === 'idle' ? '' : t('editor.status.' + store.status())
           }}</span>
           <span class="spacer"></span>
           @if (store.server()?.status === 'DRAFT') {
-            <button type="button" class="btn primary publish" disabled>{{ t('editor.publish') }}</button>
+            <button type="button" class="btn primary publish" [disabled]="busy()" (click)="publish()">{{ t('editor.publish') }}</button>
           }
           <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [disabled]="busy()"
             [cdkMenuTriggerFor]="menu">⋯</button>
@@ -79,8 +86,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 [value]="r.title" [attr.aria-invalid]="!!titleError()"
                 [attr.aria-describedby]="titleError() ? 'recipe-title-error' : null"
                 (input)="set('title', $any($event.target).value)" />
-              @if (titleError(); as code) {
-                <p id="recipe-title-error" class="field-error">{{ t(fieldKey(code)) }}</p>
+              @if (titleError(); as key) {
+                <p id="recipe-title-error" class="field-error">{{ t(key) }}</p>
               }
             </div>
             <app-detail-chips />
@@ -94,8 +101,12 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 </label>
               }
             </fieldset>
-            <section class="ingredients" aria-labelledby="ingredients-heading">
+            <section class="ingredients" [class.missing]="missing().includes('ingredients')" aria-labelledby="ingredients-heading">
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>
+              @if (missing().includes('ingredients')) {
+                <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
+              }
+              <app-ingredients-editor />
             </section>
             <div class="notes">
               <h2><label for="recipe-notes">{{ t('editor.notes') }}</label></h2>
@@ -104,15 +115,19 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
             </div>
           </div>
           <div class="col-right">
-            <section class="steps" aria-labelledby="steps-heading">
+            <section class="steps" [class.missing]="missing().includes('steps')" aria-labelledby="steps-heading">
               <h2 id="steps-heading">{{ t('editor.steps') }}</h2>
+              @if (missing().includes('steps')) {
+                <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
+              }
+              <app-steps-editor />
             </section>
           </div>
         </div>
 
         <div class="bottom-bar">
           <button type="button" class="btn" disabled>{{ t('editor.photo') }}</button>
-          <button type="button" class="btn primary" disabled>{{ t('editor.nextStep') }}</button>
+          <button type="button" class="btn primary" (click)="nextStep()">{{ t('editor.nextStep') }}</button>
         </div>
       }
     </ng-container>
@@ -127,10 +142,26 @@ export class RecipeEditorPage {
   protected readonly maxTitle = MAX_TITLE;
   protected readonly maxNotes = MAX_NOTES;
   protected readonly visibilities: readonly Visibility[] = ['PRIVATE', 'PUBLIC'];
-  protected readonly fieldKey = fieldErrorKey;
   protected readonly busy = signal(false);
   protected readonly actionError = signal<string | null>(null);
-  protected readonly titleError = computed(() => this.store.fieldErrors()['title'] ?? null);
+  private readonly steps = viewChild(StepsEditorComponent);
+  /** Sections the last publish attempt reported as missing; each clears as soon as it is complete again. */
+  private readonly requested = signal<readonly ('title' | 'ingredients' | 'steps')[]>([]);
+  protected readonly missing = computed(() => {
+    const r = this.store.recipe();
+    return this.requested().filter((f) =>
+      f === 'title' ? (r.title ?? '').trim() === '' : f === 'ingredients' ? countingIngredients(r.groups) === 0 : countingSteps(r.steps) === 0,
+    );
+  });
+  /** i18n key of the title problem: the server's field code, or an empty title that publishing needs. */
+  protected readonly titleError = computed(() => {
+    const code = this.store.fieldErrors()['title'];
+    if (code) return fieldErrorKey(code);
+    const blank = (this.store.recipe().title ?? '').trim() === '';
+    return blank && (this.store.server()?.status === 'PUBLISHED' || this.missing().includes('title'))
+      ? 'errors.recipe_incomplete'
+      : null;
+  });
   protected readonly conflictCopy = computed(() => conflictText(this.store.recipe()));
   protected readonly badge = computed(() => {
     const s = this.store.server();
@@ -140,6 +171,44 @@ export class RecipeEditorPage {
 
   constructor() {
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
+  }
+
+  protected nextStep(): void {
+    this.steps()?.addStep();
+  }
+
+  /** Publish: save first, then publish. recipe_incomplete highlights the missing sections. */
+  async publish(): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.actionError.set(null);
+    this.requested.set([]);
+    try {
+      await this.store.publish();
+    } catch (e) {
+      const err = toApiError(e);
+      if (err.code === 'recipe_incomplete') {
+        const fields = (['title', 'ingredients', 'steps'] as const).filter((f) => f in (err.fields ?? {}));
+        this.requested.set(fields);
+        this.revealFirstMissing(fields[0]);
+      } else {
+        this.actionError.set(errorKey(err));
+      }
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private revealFirstMissing(first: 'title' | 'ingredients' | 'steps' | undefined): void {
+    if (!first) return;
+    afterNextRender(
+      () => {
+        const el = document.getElementById(first === 'title' ? 'recipe-title' : `${first}-heading`);
+        el?.scrollIntoView?.({ block: 'center' });
+        if (first === 'title') el?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected set<K extends 'title'>(key: K, value: RecipeInput[K]): void {

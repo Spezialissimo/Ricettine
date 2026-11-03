@@ -223,4 +223,83 @@ describe('RecipeEditorPage', () => {
     });
     expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.recipe_not_found);
   });
+
+  describe('publishing', () => {
+    const incomplete = (fields: Record<string, string>) =>
+      new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields } });
+    const publishBtn = (el: HTMLElement) => byText(el.querySelector('.editor-header')!, 'button', en.editor.publish);
+
+    it('flushes pending changes, then publishes at the saved version and adopts the result', async () => {
+      const order: string[] = [];
+      const save = vi.fn().mockImplementation(async (_id: string, i: Recipe) => {
+        order.push('save');
+        return serverRecipe({ ...(i as object), version: 2 } as never);
+      });
+      const publish = vi.fn().mockImplementation(async () => {
+        order.push('publish');
+        return serverRecipe({ status: 'PUBLISHED', title: 'T', version: 3, groups: [{ name: null, ingredients: [{ amount: null, unit: null, name: 'a', note: null }] }], steps: [{ text: 's', photo: null }] });
+      });
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, publish });
+      type(el.querySelector('#recipe-title') as HTMLInputElement, 'T');
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(order).toEqual(['save', 'publish']);
+      expect(publish).toHaveBeenCalledWith('r1', 2);
+      expect(publishBtn(el)).toBeUndefined();
+      expect(el.querySelector('.editor-header .state')?.textContent).toContain('Published · Private');
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('T');
+    });
+
+    it('does not publish when the flush ends in a conflict', async () => {
+      const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+      const publish = vi.fn();
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, publish });
+      type(el.querySelector('#recipe-title') as HTMLInputElement, 'T');
+      publishBtn(el)!.click();
+      await settle(f);
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it('recipe_incomplete highlights the missing sections with the message and scrolls to the first', async () => {
+      const publish = vi.fn().mockRejectedValue(incomplete({ steps: 'required' }));
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save: vi.fn(), publish });
+      const scroll = vi.fn();
+      (el.querySelector('#steps-heading') as HTMLElement).scrollIntoView = scroll;
+      publishBtn(el)!.click();
+      await settle(f);
+      const steps = el.querySelector('.steps')!;
+      expect(steps.classList.contains('missing')).toBe(true);
+      expect(steps.querySelector('.section-error')?.textContent).toContain(en.errors.recipe_incomplete);
+      expect(el.querySelector('.ingredients')?.classList.contains('missing')).toBe(false);
+      expect(scroll).toHaveBeenCalled();
+      // fixing it clears the highlight
+      steps.querySelector<HTMLButtonElement>('button.add-step')!.click();
+      await settle(f);
+      type(steps.querySelector('textarea') as HTMLTextAreaElement, 'Boil');
+      await settle(f);
+      expect(el.querySelector('.steps')!.classList.contains('missing')).toBe(false);
+    });
+
+    it('a published recipe with an empty title shows recipe_incomplete under the title', async () => {
+      const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: '' })) });
+      const input = el.querySelector('#recipe-title') as HTMLInputElement;
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(el.querySelector(`#${input.getAttribute('aria-describedby')}`)?.textContent).toContain(en.errors.recipe_incomplete);
+    });
+
+    it('renders a fresh draft whose title the server sends as null', async () => {
+      const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: null as never })) });
+      expect(el.querySelector('.steps')).toBeTruthy();
+      expect(el.querySelector('#recipe-title-error')).toBeNull();
+    });
+
+    it('the bottom-bar "+ Next step" adds a step', async () => {
+      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()) });
+      const next = byText(el.querySelector('.bottom-bar')!, 'button', en.editor.nextStep) as HTMLButtonElement;
+      expect(next.disabled).toBe(false);
+      next.click();
+      await settle(f);
+      expect(el.querySelectorAll('.steps textarea').length).toBe(1);
+    });
+  });
 });

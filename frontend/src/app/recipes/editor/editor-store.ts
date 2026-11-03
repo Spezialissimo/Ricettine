@@ -107,11 +107,25 @@ export class EditorStore {
     this.replace(await this.api.get(this._id));
   }
 
-  /** Replaces the working copy with a server copy (load, load latest, publish in Task 8). */
+  /** Replaces the working copy with a server copy (load, load latest, publish). */
   replace(r: Recipe): void {
     this._server.set(r);
     this._recipe.set(toInput(r));
     this.autosave.reset();
+  }
+
+  /**
+   * Publishes: saves pending changes first, and publishes only if that left nothing wrong (no error,
+   * conflict or offline). Resolves true once published (the store then adopts the returned recipe);
+   * false when it did not publish. A server refusal (recipe_incomplete, ...) is thrown.
+   */
+  async publish(): Promise<boolean> {
+    if (!this._id) return false;
+    await this.autosave.flush();
+    const st = this.status();
+    if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return false;
+    this.replace(await this.api.publish(this._id, this._recipe().version));
+    return true;
   }
 
   isUntouchedDraft(): boolean {

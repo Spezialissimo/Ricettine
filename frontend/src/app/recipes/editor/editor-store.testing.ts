@@ -8,10 +8,12 @@ export const emptyInput = (over: Partial<RecipeInput> = {}): RecipeInput => ({
 });
 
 /** Minimal stand-in for components that only read `recipe` and call `update` (the sheets and chips). */
-export function fakeEditorStore(over: Partial<RecipeInput> = {}) {
+export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe['status'] = 'DRAFT') {
   const recipe = signal(emptyInput(over));
+  const server = signal(serverRecipe({ status }));
   return {
     recipe: recipe.asReadonly(),
+    server: server.asReadonly(),
     update: (fn: (r: RecipeInput) => RecipeInput) => recipe.set(fn(recipe())),
   } as unknown as EditorStore & { recipe: () => RecipeInput };
 }
