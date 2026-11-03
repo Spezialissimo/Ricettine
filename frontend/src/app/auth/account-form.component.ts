@@ -1,9 +1,20 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { ApiError, errorKey } from '../core/api-error';
 
 export type AccountValues = { email: string; username: string; displayName: string; password: string };
+
+const RESERVED_USERNAMES = new Set([
+  'admin', 'api', 'media', 'r', 'c', 'setup', 'login', 'logout', 'register', 'reset', 'settings',
+  'invite', 'me', 'new',
+]);
+
+const reservedUsername: ValidatorFn = (c) => (RESERVED_USERNAMES.has(c.value) ? { reserved: true } : null);
+const notBlank: ValidatorFn = (c) => (String(c.value ?? '').trim() ? null : { required: true });
+const maxTrimmed =
+  (n: number): ValidatorFn =>
+  (c) => (String(c.value ?? '').trim().length > n ? { maxlength: true } : null);
 
 const FIELD_OF_CODE: Record<string, 'email' | 'username' | 'password'> = {
   email_taken: 'email',
@@ -87,11 +98,11 @@ export class AccountFormComponent {
     }),
     username: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.pattern(/^[a-z0-9_]{3,30}$/)],
+      validators: [Validators.required, Validators.pattern(/^[a-z0-9_]{3,30}$/), reservedUsername],
     }),
     displayName: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(60)],
+      validators: [notBlank, maxTrimmed(80)],
     }),
     password: new FormControl('', {
       nonNullable: true,
@@ -118,7 +129,7 @@ export class AccountFormComponent {
       const er = c.errors ?? {};
       switch (name) {
         case 'email': return er['required'] || er['email'] || er['maxlength'] ? 'errors.invalid_email' : null;
-        case 'username': return 'errors.invalid_username';
+        case 'username': return er['reserved'] ? 'errors.username_reserved' : 'errors.invalid_username';
         case 'displayName': return 'auth.required';
         case 'password': return er['maxlength'] ? 'errors.password_too_long' : 'errors.password_too_short';
       }
@@ -133,6 +144,7 @@ export class AccountFormComponent {
     const invalid = relevant.some((k) => this.form.get(k)!.invalid);
     this.form.markAllAsTouched();
     if (invalid) return;
-    this.submitted.emit(this.form.getRawValue());
+    const v = this.form.getRawValue();
+    this.submitted.emit({ ...v, displayName: v.displayName.trim() });
   }
 }

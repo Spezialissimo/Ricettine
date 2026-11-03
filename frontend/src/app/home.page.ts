@@ -8,6 +8,10 @@ import { AuthStore } from './core/auth.store';
   selector: 'app-home-page',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    @use '../styles/tokens' as t;
+    button { @include t.touch-target; padding: 0 t.$space-4; }
+  `,
   template: `
     <ng-container *transloco="let t">
       <h1>{{ t('home.greeting', { name: auth.me()?.displayName }) }}</h1>

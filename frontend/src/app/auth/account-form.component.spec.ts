@@ -67,4 +67,43 @@ describe('AccountFormComponent', () => {
       email: 'a@b.co', username: 'davide_1', displayName: 'Davide', password: 'longenough1',
     });
   });
+
+  it('rejects a reserved username without emitting', async () => {
+    const f = create();
+    const spy = vi.fn();
+    f.componentInstance.submitted.subscribe(spy);
+    await f.whenStable();
+    const el = f.nativeElement as HTMLElement;
+    type(el, 'input[name=email]', 'a@b.co');
+    type(el, 'input[name=username]', 'api');
+    type(el, 'input[name=displayName]', 'D');
+    type(el, 'input[name=password]', 'longenough1');
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await f.whenStable();
+    expect(spy).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.username_reserved);
+  });
+
+  it('accepts an 80-char display name and rejects whitespace-only', async () => {
+    const f = create();
+    const spy = vi.fn();
+    f.componentInstance.submitted.subscribe(spy);
+    await f.whenStable();
+    const el = f.nativeElement as HTMLElement;
+    type(el, 'input[name=email]', 'a@b.co');
+    type(el, 'input[name=username]', 'davide');
+    type(el, 'input[name=password]', 'longenough1');
+    type(el, 'input[name=displayName]', '   ');
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await f.whenStable();
+    expect(spy).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-error=displayName]')).toBeTruthy();
+    type(el, 'input[name=displayName]', ` ${'x'.repeat(80)} `);
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    expect(spy).toHaveBeenCalledOnce();
+    expect(spy.mock.calls[0][0].displayName).toBe('x'.repeat(80));
+    type(el, 'input[name=displayName]', 'x'.repeat(81));
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    expect(spy).toHaveBeenCalledOnce();
+  });
 });
