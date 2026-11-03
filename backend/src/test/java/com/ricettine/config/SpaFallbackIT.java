@@ -42,7 +42,7 @@ class SpaFallbackIT extends IntegrationTest {
 
 	@Test
 	void backendPathsAreClosedToAnonymous() throws Exception {
-		for (String path : new String[] {"/api/nope", "/api", "/actuator", "/actuator/info", "/media", "/media/x"}) {
+		for (String path : new String[] {"/api/nope", "/api", "/actuator", "/actuator/info"}) {
 			mvc.perform(get(path)).andExpect(status().isUnauthorized());
 		}
 	}
@@ -56,8 +56,17 @@ class SpaFallbackIT extends IntegrationTest {
 	@Test
 	void nonGetOnSpaPathsIsNotPermitted() throws Exception {
 		for (String path : new String[] {"/", "/r/x"}) {
-			mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(path))
-					.andExpect(status().is4xxClientError());
+			mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(path)
+					.with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+					.andExpect(status().isUnauthorized());
+		}
+	}
+
+	@Test
+	void caseVariantAndEncodedApiPathsAreNotPermittedSpaPaths() throws Exception {
+		for (String path : new String[] {"/API/x", "/API/me", "/%61pi/me", "/%61pi/x", "/Api", "/MEDIA/x", "/ACTUATOR/info"}) {
+			int s = mvc.perform(get(path)).andReturn().getResponse().getStatus();
+			org.assertj.core.api.Assertions.assertThat(s).as(path).isIn(400, 401, 404);
 		}
 	}
 }

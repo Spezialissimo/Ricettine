@@ -2,6 +2,9 @@ package com.ricettine.setup;
 
 import com.ricettine.account.AccountDtos.MeDto;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
+import com.ricettine.auth.AuthSessions;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -15,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class SetupController {
 
 	private final SetupService setup;
+	private final AuthSessions authSessions;
 
-	public SetupController(SetupService setup) {
+	public SetupController(SetupService setup, AuthSessions authSessions) {
 		this.setup = setup;
+		this.authSessions = authSessions;
 	}
 
 	@GetMapping("/api/setup/status")
@@ -27,7 +32,10 @@ public class SetupController {
 
 	@PostMapping("/api/setup/admin")
 	@ResponseStatus(HttpStatus.CREATED)
-	public MeDto createAdmin(@Valid @RequestBody NewAccountRequest req) {
-		return MeDto.of(setup.createAdmin(req));
+	public MeDto createAdmin(@Valid @RequestBody NewAccountRequest req, HttpServletRequest request,
+			HttpServletResponse response) {
+		var admin = setup.createAdmin(req);
+		authSessions.login(admin, request, response);
+		return MeDto.of(admin);
 	}
 }

@@ -4,7 +4,6 @@ import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.common.ApiException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,12 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountService {
 
-	private static final PasswordEncoder ENCODER = PasswordEncoderFactories.createDelegatingPasswordEncoder();
-
 	private final UserRepository users;
+	private final PasswordEncoder encoder;
 
-	public AccountService(UserRepository users) {
+	public AccountService(UserRepository users, PasswordEncoder encoder) {
 		this.users = users;
+		this.encoder = encoder;
 	}
 
 	@Transactional
@@ -36,7 +35,7 @@ public class AccountService {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "validation_failed");
 		}
 		try {
-			return users.saveAndFlush(new User(email, username, displayName, ENCODER.encode(password), admin));
+			return users.saveAndFlush(new User(email, username, displayName, encoder.encode(password), admin));
 		}
 		catch (DataIntegrityViolationException e) {
 			String text = rootText(e);

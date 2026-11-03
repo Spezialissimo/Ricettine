@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,11 +21,25 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class ProblemAdvice extends ResponseEntityExceptionHandler {
 
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ProblemAdvice.class);
+
 	@ExceptionHandler(ApiException.class)
 	ResponseEntity<Object> handleApi(ApiException ex) {
 		ProblemDetail pd = ProblemDetail.forStatus(ex.getStatus());
 		pd.setProperty("code", ex.getCode());
 		return ResponseEntity.status(ex.getStatus()).body(pd);
+	}
+
+	/** Catch-all: never leak exception details. Security exceptions go back to the security filter chain. */
+	@ExceptionHandler(Exception.class)
+	ResponseEntity<Object> handleUnexpected(Exception ex) throws Exception {
+		if (ex instanceof AccessDeniedException || ex instanceof AuthenticationException) {
+			throw ex;
+		}
+		log.error("Unhandled exception", ex);
+		ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+		pd.setProperty("code", "internal_error");
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(pd);
 	}
 
 	@Override

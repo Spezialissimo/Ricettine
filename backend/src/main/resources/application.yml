@@ -13,10 +13,14 @@ spring:
       ddl-auto: validate
     open-in-view: false
   session:
+    timeout: 30d
     jdbc:
       initialize-schema: never
 server:
   forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30d
 management:
   endpoints:
     web:

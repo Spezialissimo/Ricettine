@@ -23,6 +23,7 @@ class BaselineMigrationIT extends IntegrationTest {
 
 	@Test
 	void otherEndpointsAreDeniedByDefault() throws Exception {
-		mvc.perform(get("/api/anything")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/anything")).andExpect(status().isUnauthorized())
+			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("not_authenticated"));
 	}
 }
