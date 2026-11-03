@@ -4,13 +4,16 @@ import { newUserPage } from './helpers';
 test('responsive shell: the right navigation shows for the viewport', async ({ browser }, testInfo) => {
   const { page, context } = await newUserPage(browser, testInfo, 'shell');
   const main = page.getByRole('navigation', { name: 'Main' });
-  const bottom = page.getByRole('navigation', { name: 'Bottom' });
+  const bottom = page.getByRole('navigation', { name: 'Sections' });
   if (testInfo.project.name === 'desktop') {
     await expect(main).toBeVisible();
     await expect(main.getByRole('link', { name: '+ New recipe' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'My recipes' })).toHaveAttribute('aria-current', 'page');
+    await expect(main.getByRole('link', { name: 'Settings' })).not.toHaveAttribute('aria-current', 'page');
     await expect(bottom).toBeHidden();
   } else {
     await expect(bottom).toBeVisible();
+    await expect(bottom.getByRole('link', { name: 'My recipes' })).toHaveAttribute('aria-current', 'page');
     await expect(main).toBeHidden();
     await expect(page.getByRole('link', { name: 'New recipe' })).toBeVisible();
   }

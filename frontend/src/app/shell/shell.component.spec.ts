@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { Injectable } from '@angular/core';
+import { Component, Injectable } from '@angular/core';
 import { of } from 'rxjs';
 import { TranslocoLoader, provideTransloco } from '@jsverse/transloco';
 import { AuthStore } from '../core/auth.store';
@@ -53,8 +53,8 @@ describe('ShellComponent', () => {
     const el = await navFor(false);
     expect(el.querySelector('nav[aria-label="Main"] a[href="/recipes"]')).toBeTruthy();
     expect(el.querySelector('nav[aria-label="Main"] a[href="/recipes/new"]')).toBeTruthy();
-    expect(el.querySelector('nav[aria-label="Bottom"] a[href="/recipes"]')).toBeTruthy();
-    expect(el.querySelector('nav[aria-label="Bottom"] a[href="/settings/profile"]')).toBeTruthy();
+    expect(el.querySelector('nav[aria-label="Sections"] a[href="/recipes"]')).toBeTruthy();
+    expect(el.querySelector('nav[aria-label="Sections"] a[href="/settings/profile"]')).toBeTruthy();
     expect(el.querySelector('header a[aria-label="New recipe"][href="/recipes/new"]')).toBeTruthy();
     expect(el.querySelector('header button.logout')?.textContent).toContain('Log out');
   });
@@ -76,6 +76,27 @@ describe('ShellComponent', () => {
     await new Promise((r) => setTimeout(r));
     expect(TestBed.inject(AuthStore).me()).toBeNull();
     expect(nav).toHaveBeenCalledWith('/login');
+  });
+
+  it('marks the link of the current section with aria-current="page"', async () => {
+    @Component({ template: '' })
+    class Blank {}
+    TestBed.configureTestingModule({
+      imports: [ShellComponent],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideTestTransloco(),
+        provideRouter([{ path: 'recipes', component: Blank }, { path: 'settings/profile', component: Blank }]),
+      ],
+    });
+    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false });
+    const f = TestBed.createComponent(ShellComponent);
+    await TestBed.inject(Router).navigateByUrl('/recipes');
+    await f.whenStable();
+    const el = f.nativeElement as HTMLElement;
+    for (const nav of ['Main', 'Sections']) {
+      expect(el.querySelector(`nav[aria-label="${nav}"] a[href="/recipes"]`)?.getAttribute('aria-current'), nav).toBe('page');
+      expect(el.querySelector(`nav[aria-label="${nav}"] a[href="/settings/profile"]`)?.hasAttribute('aria-current'), nav).toBe(false);
+    }
   });
 
   it('hides admin links for non-admins', async () => {

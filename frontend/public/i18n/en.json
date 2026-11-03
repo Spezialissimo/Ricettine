@@ -19,7 +19,7 @@
     "newRecipe": "+ New recipe",
     "newRecipeShort": "New recipe",
     "main": "Main",
-    "bottom": "Bottom"
+    "sections": "Sections"
   },
   "auth": {
     "login": "Log in",
