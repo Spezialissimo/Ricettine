@@ -3,9 +3,11 @@ package com.ricettine.media;
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.Tokens;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -42,11 +44,19 @@ public class MediaService {
 	 * transaction. Throws {@link IllegalStateException} when a transaction is active.
 	 */
 	public ProcessedUpload process(byte[] input, Set<ImageVariant> variants) {
+		return process(() -> input, variants);
+	}
+
+	/**
+	 * Like {@link #process(byte[], Set)} but the input bytes are only read (by {@code input}) once a processing
+	 * permit is held, so queued uploads do not each keep a full copy of their image on the heap while waiting.
+	 */
+	public ProcessedUpload process(Supplier<byte[]> input, Set<ImageVariant> variants) {
 		if (TransactionSynchronizationManager.isActualTransactionActive()) {
 			throw new IllegalStateException(
 					"MediaService.process must not run inside a transaction: process first, then register");
 		}
-		return new ProcessedUpload(limiter.run(() -> processor.process(input, variants)));
+		return new ProcessedUpload(limiter.run(() -> processor.process(input.get(), variants)));
 	}
 
 	/**
@@ -82,8 +92,19 @@ public class MediaService {
 	/** Deletes the row now (inside the caller's transaction, if any) and the blobs once it has committed. */
 	@Transactional
 	public void delete(String mediaId) {
-		repo.deleteRow(mediaId);
+		repo.deleteRows(List.of(mediaId));
 		after.afterCommit("delete media blobs " + mediaId, () -> deleteBlobs(mediaId));
+	}
+
+	/** {@link #delete} for several ids: one statement now, every id's blobs once it has committed. */
+	@Transactional
+	public void deleteAll(Collection<String> mediaIds) {
+		if (mediaIds.isEmpty()) {
+			return;
+		}
+		List<String> ids = List.copyOf(mediaIds);
+		repo.deleteRows(ids);
+		after.afterCommit("delete media blobs " + ids, () -> ids.forEach(this::deleteBlobsBestEffort));
 	}
 
 	/**

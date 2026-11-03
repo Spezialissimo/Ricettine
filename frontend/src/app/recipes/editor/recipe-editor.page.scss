@@ -34,12 +34,13 @@
 .cols { display: flex; flex-direction: column; gap: t.$space-3; }
 .col-left, .col-right { display: contents; }
 .cover {
-  order: 1; height: 140px; display: flex; align-items: center; justify-content: center; color: t.$muted;
+  order: 1; min-height: 140px; display: flex; align-items: center; justify-content: center; color: t.$muted;
   border: 2px dashed t.$border; border-radius: t.$radius;
   background: repeating-linear-gradient(45deg, #efe9e1, #efe9e1 10px, #f6f2ec 10px, #f6f2ec 20px);
 }
-.cover { gap: t.$space-1; }
-.cover::before { content: '📷' / ''; }
+.cover.drop-over { outline: 2px dashed t.$accent; outline-offset: 4px; }
+.cover.has-photo { height: auto; min-height: 140px; padding: t.$space-2; border-style: solid; background: none; }
+.hint { margin: 0 0 t.$space-2; color: t.$muted; font-size: 0.85rem; }
 .title-field { order: 2; }
 app-detail-chips { order: 3; }
 .visibility { order: 4; }

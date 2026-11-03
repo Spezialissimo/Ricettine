@@ -246,6 +246,20 @@
     "amountsInvalid": "Fix the highlighted amounts before publishing.",
     "publishBlocked": "Not published: your latest changes could not be saved yet.",
     "unnamedIngredientHint": "Give each ingredient you started a name, or clear it.",
-    "unsavedInput": "Some ingredient input is not saved yet. Fix it or clear it before leaving."
+    "unsavedInput": "Some ingredient input is not saved yet. Fix it or clear it before leaving.",
+    "uploading": "Uploading…",
+    "coverAlt": "Cover photo",
+    "stepPhotoAlt": "Photo of step {{n}}",
+    "addPhoto": "Add photo",
+    "replace": "Replace",
+    "remove": "Remove",
+    "replaceCover": "Replace cover photo",
+    "removeCover": "Remove cover photo",
+    "addStepPhoto": "Add photo to step {{n}}",
+    "replaceStepPhoto": "Replace photo of step {{n}}",
+    "removeStepPhoto": "Remove photo of step {{n}}",
+    "photoGone": "A photo you added was removed from the server before it was saved, so it was taken off the recipe. Add it again.",
+    "waitingForUploads": "Waiting for photos to finish uploading…",
+    "uploadsInProgress": "A photo is still uploading. Wait for it to finish before leaving."
   }
 }

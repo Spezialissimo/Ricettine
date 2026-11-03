@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { Recipe, RecipeInput, RecipeSummary } from './recipe.model';
+import { Photo, Recipe, RecipeInput, RecipeSummary } from './recipe.model';
 
 @Injectable({ providedIn: 'root' })
 export class RecipeApi {
@@ -21,6 +21,11 @@ export class RecipeApi {
   }
   remove(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`/api/recipes/${encodeURIComponent(id)}`));
+  }
+  uploadPhoto(id: string, file: File): Promise<Photo> {
+    const body = new FormData();
+    body.append('file', file);
+    return firstValueFrom(this.http.post<Photo>(`/api/recipes/${encodeURIComponent(id)}/photos`, body));
   }
   mine(): Promise<RecipeSummary[]> {
     return firstValueFrom(this.http.get<RecipeSummary[]>('/api/recipes/mine'));

@@ -12,6 +12,7 @@ textarea {
   width: 100%; min-height: t.$touch-target; font: inherit; padding: t.$space-2; border: 1px solid t.$border;
   border-radius: 8px; background: t.$bg; color: t.$ink; resize: vertical; field-sizing: content;
 }
+.step.drop-over { outline: 2px dashed t.$accent; outline-offset: 4px; border-radius: 8px; }
 .step.active textarea { border-color: t.$accent; }
 .hint { margin: 0 0 t.$space-2; color: t.$muted; font-size: 0.85rem; }
 .btn {

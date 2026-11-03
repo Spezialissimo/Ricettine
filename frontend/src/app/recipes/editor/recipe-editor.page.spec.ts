@@ -29,6 +29,40 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
 };
 
 describe('RecipeEditorPage', () => {
+  it('keeps Publish disabled while a photo uploads, and says why', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const { f, el } = await mount({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const publish = el.querySelector('button.publish') as HTMLButtonElement;
+    expect(publish.disabled).toBe(false);
+    const input = el.querySelector('.cover input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new Event('change'));
+    await settle(f);
+    expect(publish.disabled).toBe(true);
+    expect(el.textContent).toContain(en.editor.waitingForUploads);
+  });
+
+  it('Done stays on the page with a message while a photo uploads', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const { f, el, nav } = await mount({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const input = el.querySelector('.cover input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new Event('change'));
+    await settle(f);
+    byText(el.querySelector('.editor-header')!, 'button', en.editor.done)!.click();
+    await settle(f);
+    expect(nav).not.toHaveBeenCalled();
+    expect(el.textContent).toContain(en.editor.uploadsInProgress);
+  });
+
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
 
   it('loads the recipe into labelled fields laid out per the mockups', async () => {
@@ -51,7 +85,7 @@ describe('RecipeEditorPage', () => {
     }
     expect(right.querySelector('.steps')).toBeTruthy();
     const bar = el.querySelector('.bottom-bar')!;
-    expect(byText(bar, 'button', en.editor.photo)).toBeTruthy();
+    expect(bar.querySelector('app-photo-picker button')?.textContent).toContain(en.editor.photo);
     expect(byText(bar, 'button', en.editor.nextStep)).toBeTruthy();
     const header = el.querySelector('.editor-header')!;
     expect(byText(header, 'button', en.editor.done)).toBeTruthy();
@@ -385,6 +419,19 @@ describe('RecipeEditorPage', () => {
       const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: null })) });
       expect(el.querySelector('.steps')).toBeTruthy();
       expect(el.querySelector('#recipe-title-error')).toBeNull();
+    });
+
+    it('the bottom-bar camera button names its target step and hides the emoji from screen readers', async () => {
+      const { f, el } = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ steps: [{ text: 'a', photo: null }, { text: 'b', photo: null }] })),
+      });
+      const btn = () => el.querySelector('.bottom-bar app-photo-picker button') as HTMLButtonElement;
+      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 2');
+      expect(btn().querySelector('[aria-hidden="true"]')?.textContent).toContain('📷');
+      expect(btn().textContent).toContain(en.editor.photo);
+      el.querySelectorAll('.steps li.step')[0].querySelector('textarea')!.dispatchEvent(new Event('focusin', { bubbles: true }));
+      await settle(f);
+      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 1');
     });
 
     it('the bottom-bar "+ Next step" adds a step', async () => {

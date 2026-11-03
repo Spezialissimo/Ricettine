@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "ingredient_group")
@@ -23,6 +24,7 @@ public class IngredientGroup {
 	private int position;
 	private String name;
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@BatchSize(size = 50)
 	@JoinColumn(name = "group_id", nullable = false)
 	@OrderBy("position")
 	private List<Ingredient> ingredients = new ArrayList<>();
