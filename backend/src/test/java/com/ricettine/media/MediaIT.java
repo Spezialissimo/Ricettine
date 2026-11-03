@@ -81,7 +81,7 @@ class MediaIT extends IntegrationTest {
 				m.remove(key);
 			}
 		};
-		MediaService svc = new MediaService(failing, new ImageProcessor());
+		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, java.time.Duration.ofSeconds(30)));
 		assertThatThrownBy(() -> svc.store(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values())))
 				.isInstanceOf(IllegalStateException.class);
 		assertThat(((java.util.Map<?, ?>) readField(failing)).isEmpty()).isTrue();

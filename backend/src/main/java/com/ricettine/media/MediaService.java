@@ -12,10 +12,12 @@ public class MediaService {
 
 	private final BlobStore blobs;
 	private final ImageProcessor processor;
+	private final ProcessingLimiter limiter;
 
-	public MediaService(BlobStore blobs, ImageProcessor processor) {
+	public MediaService(BlobStore blobs, ImageProcessor processor, ProcessingLimiter limiter) {
 		this.blobs = blobs;
 		this.processor = processor;
+		this.limiter = limiter;
 	}
 
 	static String key(String mediaId, ImageVariant v) {
@@ -24,7 +26,7 @@ public class MediaService {
 
 	/** Processes first (nothing is written on invalid input); rolls back written variants on a later failure. */
 	public String store(byte[] input, Set<ImageVariant> variants) {
-		Map<ImageVariant, byte[]> processed = processor.process(input, variants);
+		Map<ImageVariant, byte[]> processed = limiter.run(() -> processor.process(input, variants));
 		String id = Tokens.newToken();
 		List<String> written = new ArrayList<>();
 		try {

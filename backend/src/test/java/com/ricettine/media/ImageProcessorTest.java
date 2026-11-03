@@ -143,4 +143,111 @@ class ImageProcessorTest {
 		assertThatThrownBy(() -> processor.process(b, Set.of(ImageVariant.THUMB)))
 				.isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("unsupported_image"));
 	}
+
+	@Test
+	void subsampleFactorFormula() {
+		assertThat(ImageProcessor.subsampleFactor(8000, 6000, 1600)).isEqualTo(2);
+		assertThat(ImageProcessor.subsampleFactor(4000, 3000, 1600)).isEqualTo(1);
+		assertThat(ImageProcessor.subsampleFactor(16000, 12000, 480)).isEqualTo(16);
+		assertThat(ImageProcessor.subsampleFactor(100, 50, 1600)).isEqualTo(1);
+	}
+
+	@Test
+	void subsamplesLargeImages() throws Exception {
+		byte[] big = TestImages.bigJpegWithExif(8000, 6000, 1);
+		ProcessedImage p = processor.processDetailed(big, Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY));
+		BufferedImage d = decode(p.variants().get(ImageVariant.DISPLAY));
+		assertThat(d.getWidth()).isEqualTo(1600);
+		assertThat(d.getHeight()).isEqualTo(1200);
+		assertThat(p.subsample()).isEqualTo(2);
+		// Decoded intermediate is the source halved: at least 2x the largest variant, never the full 8000 px.
+		assertThat(Math.max(p.decodedWidth(), p.decodedHeight())).isEqualTo(4000).isGreaterThanOrEqualTo(3200);
+		assertThat(p.decodedWidth() * (long) p.decodedHeight()).isLessThan(8000L * 6000L / 3);
+	}
+
+	@Test
+	void orientation6OnSubsampledInput() throws Exception {
+		BufferedImage img = decode(processor.process(TestImages.bigJpegWithExif(8000, 6000, 6), Set.of(ImageVariant.DISPLAY))
+				.get(ImageVariant.DISPLAY));
+		assertThat(img.getWidth()).isEqualTo(1200);
+		assertThat(img.getHeight()).isEqualTo(1600);
+		assertThat(isReddish(rgb(img, 600, 100))).isTrue();
+		assertThat(isBluish(rgb(img, 600, 1500))).isTrue();
+	}
+
+	@Test
+	void orientation5Transposes() throws Exception {
+		BufferedImage img = decode(processor.process(TestImages.jpegWithExif(400, 300, 5), Set.of(ImageVariant.DISPLAY))
+				.get(ImageVariant.DISPLAY));
+		assertThat(img.getWidth()).isEqualTo(300);
+		assertThat(img.getHeight()).isEqualTo(400);
+		// transpose: source left (red) becomes top
+		assertThat(isReddish(rgb(img, 150, 50))).isTrue();
+		assertThat(isBluish(rgb(img, 150, 350))).isTrue();
+	}
+
+	@Test
+	void orientation7Transverses() throws Exception {
+		BufferedImage img = decode(processor.process(TestImages.jpegWithExif(400, 300, 7), Set.of(ImageVariant.DISPLAY))
+				.get(ImageVariant.DISPLAY));
+		assertThat(img.getWidth()).isEqualTo(300);
+		assertThat(img.getHeight()).isEqualTo(400);
+		// transverse: source left (red) becomes bottom
+		assertThat(isBluish(rgb(img, 150, 50))).isTrue();
+		assertThat(isReddish(rgb(img, 150, 350))).isTrue();
+	}
+
+	@Test
+	void flattensTransparentPngOntoWhite() throws Exception {
+		BufferedImage img = decode(processor.process(TestImages.transparentPng(100, 80), Set.of(ImageVariant.THUMB))
+				.get(ImageVariant.THUMB));
+		assertThat(rgb(img, 0, 0)).isGreaterThan(0xF8F8F8 - 1);
+		assertThat((rgb(img, 0, 0) >> 16) & 0xFF).isGreaterThanOrEqualTo(250);
+		assertThat((rgb(img, 99, 79) >> 8) & 0xFF).isGreaterThanOrEqualTo(250);
+	}
+
+	private static double meanLuma(BufferedImage i) {
+		double sum = 0;
+		for (int y = 0; y < i.getHeight(); y++) {
+			for (int x = 0; x < i.getWidth(); x++) {
+				int c = i.getRGB(x, y);
+				sum += 0.299 * ((c >> 16) & 0xFF) + 0.587 * ((c >> 8) & 0xFF) + 0.114 * (c & 0xFF);
+			}
+		}
+		return sum / ((double) i.getWidth() * i.getHeight());
+	}
+
+	@Test
+	void grayscaleDoesNotDarken() throws Exception {
+		byte[] in = TestImages.grayJpeg(300, 200);
+		BufferedImage out = decode(processor.process(in, Set.of(ImageVariant.DISPLAY)).get(ImageVariant.DISPLAY));
+		// Reference mean from raw gray samples (ImageIO.getRGB on gray applies a linear-gray conversion).
+		var raster = decode(in).getRaster();
+		double inMean = 0;
+		for (int y = 0; y < raster.getHeight(); y++) {
+			for (int x = 0; x < raster.getWidth(); x++) {
+				inMean += raster.getSample(x, y, 0);
+			}
+		}
+		inMean /= (double) raster.getWidth() * raster.getHeight();
+		assertThat(meanLuma(out)).isCloseTo(inMean, org.assertj.core.data.Offset.offset(3.0));
+	}
+
+	@Test
+	void cmykJpegIsUnsupported() {
+		assertThatThrownBy(() -> processor.process(TestImages.cmykJpeg(64, 64), Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> {
+					assertThat(e.getCode()).isEqualTo("unsupported_image");
+					assertThat(e.getStatus().value()).isEqualTo(415);
+				});
+	}
+
+	@Test
+	void overPixelCapIs413ImageTooLarge() {
+		assertThatThrownBy(() -> processor.process(TestImages.pngHeaderOnly(20_000, 20_000), Set.of(ImageVariant.THUMB)))
+				.isInstanceOfSatisfying(ApiException.class, e -> {
+					assertThat(e.getCode()).isEqualTo("image_too_large");
+					assertThat(e.getStatus().value()).isEqualTo(413);
+				});
+	}
 }

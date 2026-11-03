@@ -5,6 +5,7 @@ import com.drew.metadata.exif.ExifIFD0Directory;
 import com.ricettine.common.ApiException;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
@@ -27,7 +29,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ImageProcessor {
 
-	private static final long MAX_PIXELS = 60_000_000L;
+	private static final long MAX_PIXELS = 250_000_000L;
 	private static final float QUALITY = 0.85f;
 
 	static {
@@ -35,8 +37,14 @@ public class ImageProcessor {
 	}
 
 	public Map<ImageVariant, byte[]> process(byte[] input, Set<ImageVariant> variants) {
+		return processDetailed(input, variants).variants();
+	}
+
+	ProcessedImage processDetailed(byte[] input, Set<ImageVariant> variants) {
 		boolean jpeg = sniff(input);
-		BufferedImage src = decode(input);
+		int target = variants.stream().mapToInt(ImageVariant::maxEdge).max().orElse(1);
+		Decoded dec = decode(input, target);
+		BufferedImage src = dec.image();
 		int orientation = jpeg ? orientation(input) : 1;
 		Map<ImageVariant, byte[]> out = new EnumMap<>(ImageVariant.class);
 		for (ImageVariant v : variants) {
@@ -47,7 +55,15 @@ public class ImageProcessor {
 				throw new java.io.UncheckedIOException(e);
 			}
 		}
-		return out;
+		return new ProcessedImage(out, src.getWidth(), src.getHeight(), dec.factor());
+	}
+
+	/** Subsampling factor keeping the decoded long edge at least twice the largest requested variant. */
+	static int subsampleFactor(int width, int height, int targetLongEdge) {
+		return Math.max(1, Math.max(width, height) / (2 * targetLongEdge));
+	}
+
+	private record Decoded(BufferedImage image, int factor) {
 	}
 
 	/** @return true when JPEG (the only format we read EXIF from) */
@@ -68,7 +84,7 @@ public class ImageProcessor {
 		return new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_image");
 	}
 
-	private static BufferedImage decode(byte[] input) {
+	private static Decoded decode(byte[] input, int target) {
 		try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(input))) {
 			var readers = ImageIO.getImageReaders(in);
 			if (!readers.hasNext()) {
@@ -77,11 +93,19 @@ public class ImageProcessor {
 			ImageReader reader = readers.next();
 			try {
 				reader.setInput(in, true, true);
-				if ((long) reader.getWidth(0) * reader.getHeight(0) > MAX_PIXELS) {
-					throw unsupported();
+				int w = reader.getWidth(0);
+				int h = reader.getHeight(0);
+				if ((long) w * h > MAX_PIXELS) {
+					throw new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large");
 				}
-				BufferedImage img = reader.read(0);
-				return flatten(img);
+				int f = subsampleFactor(w, h, target);
+				ImageReadParam param = reader.getDefaultReadParam();
+				param.setSourceSubsampling(f, f, 0, 0);
+				BufferedImage decoded = reader.read(0, param);
+				if (decoded.getColorModel().getColorSpace().getType() == ColorSpace.TYPE_CMYK) {
+					throw unsupported(); // CMYK colors cannot be reproduced faithfully: documented as unsupported
+				}
+				return new Decoded(flatten(decoded), f);
 			}
 			finally {
 				reader.dispose();
@@ -97,7 +121,23 @@ public class ImageProcessor {
 
 	/** Draw onto opaque RGB (transparent PNGs get a white background; JPEG has no alpha). */
 	private static BufferedImage flatten(BufferedImage img) {
+		if (img.getType() == BufferedImage.TYPE_INT_RGB) {
+			return img;
+		}
 		BufferedImage rgb = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_RGB);
+		if (img.getColorModel().getNumColorComponents() == 1 && !img.getColorModel().hasAlpha()
+				&& img.getRaster().getNumBands() == 1) {
+			// Java2D treats gray as linear and would darken it on conversion: copy the sample values as sRGB.
+			var r = img.getRaster();
+			int max = (1 << img.getColorModel().getComponentSize(0)) - 1;
+			for (int y = 0; y < rgb.getHeight(); y++) {
+				for (int x = 0; x < rgb.getWidth(); x++) {
+					int v = r.getSample(x, y, 0) * 255 / max;
+					rgb.setRGB(x, y, (v << 16) | (v << 8) | v);
+				}
+			}
+			return rgb;
+		}
 		Graphics2D g = rgb.createGraphics();
 		g.setColor(Color.WHITE);
 		g.fillRect(0, 0, rgb.getWidth(), rgb.getHeight());

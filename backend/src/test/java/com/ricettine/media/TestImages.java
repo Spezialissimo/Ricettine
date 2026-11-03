@@ -78,4 +78,70 @@ public final class TestImages {
 		System.arraycopy("mif1heic".getBytes(StandardCharsets.US_ASCII), 0, b, 16, 8);
 		return b;
 	}
+
+	/** Large JPEG with EXIF orientation (low-entropy content so it stays small compressed). */
+	public static byte[] bigJpegWithExif(int w, int h, int orientation) {
+		return jpegWithExif(w, h, orientation);
+	}
+
+	/** PNG signature + IHDR only: enough for header-dimension checks, no pixel data. */
+	public static byte[] pngHeaderOnly(int w, int h) {
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			java.io.DataOutputStream d = new java.io.DataOutputStream(out);
+			d.write(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A});
+			ByteArrayOutputStream ihdr = new ByteArrayOutputStream();
+			java.io.DataOutputStream i = new java.io.DataOutputStream(ihdr);
+			i.writeBytes("IHDR");
+			i.writeInt(w);
+			i.writeInt(h);
+			i.write(new byte[] {8, 2, 0, 0, 0});
+			byte[] body = ihdr.toByteArray();
+			d.writeInt(13);
+			d.write(body);
+			java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+			crc.update(body);
+			d.writeInt((int) crc.getValue());
+			return out.toByteArray();
+		}
+		catch (Exception e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** PNG with a fully transparent pixel area. */
+	public static byte[] transparentPng(int w, int h) {
+		return write(new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB), "png");
+	}
+
+	/** Grayscale JPEG with a horizontal gradient (value 40..215). */
+	public static byte[] grayJpeg(int w, int h) {
+		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				int v = 40 + 175 * x / (w - 1);
+				img.getRaster().setSample(x, y, 0, v);
+			}
+		}
+		return write(img, "jpg");
+	}
+
+	/** Four-band (CMYK) JPEG written from a raster. */
+	public static byte[] cmykJpeg(int w, int h) {
+		try {
+			java.awt.image.WritableRaster r = java.awt.image.Raster.createInterleavedRaster(
+					java.awt.image.DataBuffer.TYPE_BYTE, w, h, 4, null);
+			javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
+				writer.setOutput(ios);
+				writer.write(null, new javax.imageio.IIOImage(r, null, null), null);
+			}
+			writer.dispose();
+			return out.toByteArray();
+		}
+		catch (Exception e) {
+			throw new IllegalStateException(e);
+		}
+	}
 }
