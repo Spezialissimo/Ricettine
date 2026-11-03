@@ -141,7 +141,8 @@ export class EditorStore {
   /**
    * Publishes: refuses while input cannot be saved ('invalid': an invalid amount or a nameless ingredient row with data); otherwise saves pending
    * changes first and publishes only if that left nothing wrong (no error, conflict or offline:
-   * 'blocked'). On 'published' the store adopts the returned recipe. A 409 moves the store into
+   * 'blocked'). On 'published' the store adopts the returned recipe, or, if something was typed while
+   * the request was in flight, only its metadata (status, version, ...) and then saves those edits. A 409 moves the store into
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
@@ -150,9 +151,14 @@ export class EditorStore {
     await this.autosave.flush();
     const st = this.status();
     if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return 'blocked';
+    // The editor stays editable while publishing: hold autosave so nothing goes out with the
+    // pre-publish version (a false 409), and keep whatever is typed meanwhile.
+    this.autosave.suspend();
+    let published: Recipe;
     try {
-      this.replace(await this.api.publish(this._id, this._recipe().version));
+      published = await this.api.publish(this._id, this._recipe().version);
     } catch (e) {
+      this.autosave.resume();
       const err = toApiError(e);
       if (err.status === 409 || err.code === 'recipe_conflict') {
         this.autosave.markConflict(err);
@@ -160,6 +166,14 @@ export class EditorStore {
       }
       throw e;
     }
+    if (this.autosave.dirty()) {
+      // Edits typed during the request: adopt only the server metadata, then save them at the new version.
+      this._server.set(published);
+      this._recipe.update((cur) => ({ ...cur, version: published.version }));
+    } else {
+      this.replace(published);
+    }
+    this.autosave.resume();
     return 'published';
   }
 

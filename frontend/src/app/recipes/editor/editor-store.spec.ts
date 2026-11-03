@@ -83,6 +83,61 @@ describe('EditorStore', () => {
     expect(store.recipe()).toMatchObject({ title: 'Theirs', version: 5 });
   });
 
+  it('keeps an edit typed while publish is in flight and saves it with the published version', async () => {
+    let resolvePublish!: (r: Recipe) => void;
+    const publish = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolvePublish = r)));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 3 }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    await store.load('r1');
+    const epoch = store.epoch();
+    const done = store.publish();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(publish).toHaveBeenCalledWith('r1', 1);
+    store.update((r) => ({ ...r, title: 'T!' }));
+    await vi.advanceTimersByTimeAsync(2000); // past the debounce: nothing may go out with the pre-publish version
+    expect(save).not.toHaveBeenCalled();
+    resolvePublish(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 }));
+    expect(await done).toBe('published');
+    expect(store.recipe()).toMatchObject({ title: 'T!', version: 2 }); // typing kept, version adopted
+    expect(store.server()?.status).toBe('PUBLISHED');
+    expect(store.epoch()).toBe(epoch); // editors keep their local text
+    expect(store.autosave.dirty()).toBe(true);
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'T!', version: 2 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+  });
+
+  it('a publish with nothing typed meanwhile adopts the server copy', async () => {
+    const publish = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Server', version: 2 }));
+    const save = vi.fn();
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    await store.load('r1');
+    const epoch = store.epoch();
+    expect(await store.publish()).toBe('published');
+    expect(store.recipe()).toMatchObject({ title: 'Server', version: 2 });
+    expect(store.epoch()).toBe(epoch + 1);
+    expect(store.autosave.dirty()).toBe(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('a failed publish resumes autosave for edits typed meanwhile', async () => {
+    let rejectPublish!: (e: unknown) => void;
+    const publish = vi.fn().mockReturnValue(new Promise<Recipe>((_, rej) => (rejectPublish = rej)));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'T!', version: 2 }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    await store.load('r1');
+    const done = store.publish();
+    await vi.advanceTimersByTimeAsync(0);
+    store.update((r) => ({ ...r, title: 'T!' }));
+    rejectPublish(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { steps: 'required' } } }));
+    await expect(done).rejects.toBeTruthy();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'T!', version: 1 }));
+  });
+
   it('remove stops autosave and deletes the recipe', async () => {
     const save = vi.fn();
     const remove = vi.fn().mockResolvedValue(undefined);
