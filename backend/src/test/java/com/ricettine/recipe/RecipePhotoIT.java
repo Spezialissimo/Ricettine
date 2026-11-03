@@ -309,7 +309,7 @@ class RecipePhotoIT extends IntegrationTest {
 		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(me)
 			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}")).andExpect(status().isOk());
 		mvc.perform(get(url).param("s", token)).andExpect(status().isOk())
-			.andExpect(header().string("Cache-Control", "private, max-age=3600"));
+			.andExpect(header().string("Cache-Control", "private, no-cache"));
 		mvc.perform(get(url).param("s", token).cookie(other)).andExpect(status().isOk());
 		mvc.perform(get(url).param("s", "wrong")).andExpect(status().isNotFound());
 		mvc.perform(get(url)).andExpect(status().isNotFound());

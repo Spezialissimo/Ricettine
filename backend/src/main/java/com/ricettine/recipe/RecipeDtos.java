@@ -28,6 +28,17 @@ public final class RecipeDtos {
 			Instant updatedAt, Instant publishedAt) {
 	}
 
+	public record AuthorDto(String username, String displayName, String avatarUrl) {
+	}
+
+	public record PublicStepDto(String text, PhotoDto photo) {
+	}
+
+	public record PublicRecipe(String title, AuthorDto author, int portions, Integer prepMinutes,
+			Integer cookMinutes, String source, String notes, PhotoDto cover, List<GroupDto> groups,
+			List<PublicStepDto> steps, Instant publishedAt, boolean viewerIsAuthor) {
+	}
+
 	public record StepInput(String text, String photoMediaId) {
 	}
 

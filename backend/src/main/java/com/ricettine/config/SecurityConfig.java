@@ -28,6 +28,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/invites/*").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/invites/*/register").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/password-resets/*").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/r/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/media/**").permitAll()
 				// SPA paths: everything except the backend prefixes (case-insensitive so /API/x is not a SPA path)
 				.requestMatchers(RegexRequestMatcher.regexMatcher(HttpMethod.GET,

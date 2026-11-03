@@ -1,6 +1,9 @@
 package com.ricettine.recipe;
 
+import com.ricettine.account.User;
+import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.PublicUrls;
 import com.ricettine.common.Tokens;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
@@ -10,11 +13,16 @@ import com.ricettine.media.ProcessedUpload;
 import com.ricettine.recipe.RecipeDtos.GroupDto;
 import com.ricettine.recipe.RecipeDtos.IngredientDto;
 import com.ricettine.recipe.RecipeDtos.PhotoDto;
+import com.ricettine.recipe.RecipeDtos.AuthorDto;
+import com.ricettine.recipe.RecipeDtos.PublicRecipe;
+import com.ricettine.recipe.RecipeDtos.PublicStepDto;
 import com.ricettine.recipe.RecipeDtos.RecipeDto;
 import com.ricettine.recipe.RecipeDtos.RecipeInput;
 import com.ricettine.recipe.RecipeDtos.RecipeSummary;
 import com.ricettine.recipe.RecipeDtos.StepDto;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -34,7 +42,13 @@ public class RecipeService {
 	private final MediaService media;
 	private final MediaRepository mediaRows;
 
-	public RecipeService(RecipeRepository recipes, MediaService media, MediaRepository mediaRows) {
+	private final UserRepository users;
+	private final PublicUrls urls;
+
+	public RecipeService(RecipeRepository recipes, MediaService media, MediaRepository mediaRows,
+			UserRepository users, PublicUrls urls) {
+		this.users = users;
+		this.urls = urls;
 		this.recipes = recipes;
 		this.media = media;
 		this.mediaRows = mediaRows;
@@ -121,6 +135,31 @@ public class RecipeService {
 		r.publish();
 		r.touch();
 		return toDto(recipes.saveAndFlush(r));
+	}
+
+	/** New share token (old link and old photo URLs stop working); a change to the recipe, so it bumps version. */
+	public RecipeDto resetShareLink(UUID authorId, UUID id) {
+		Recipe r = ownedForUpdate(authorId, id);
+		r.resetShareToken(Tokens.newToken());
+		r.touch();
+		return toDto(recipes.saveAndFlush(r));
+	}
+
+	/** Reader view by share token; unknown token and draft are indistinguishable (404). */
+	@Transactional(readOnly = true)
+	public PublicRecipe publicByToken(String token, UUID viewerId) {
+		Recipe r = recipes.findByShareTokenAndStatus(token, RecipeStatus.PUBLISHED)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		User a = users.findById(r.getAuthorId())
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		String s = "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+		AuthorDto author = new AuthorDto(a.getUsername(), a.getDisplayName(),
+				a.getAvatarKey() == null ? null : media.url(a.getAvatarKey(), ImageVariant.AVATAR));
+		List<PublicStepDto> steps = r.getSteps().stream()
+			.map(st -> new PublicStepDto(st.getText(), photo(st.getPhotoMediaId(), s))).toList();
+		return new PublicRecipe(r.getTitle(), author, r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(),
+				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), s), groups(r), steps, r.getPublishedAt(),
+				viewerId != null && viewerId.equals(r.getAuthorId()));
 	}
 
 	/** Deletes the recipe and all its photos (blobs after commit). A given {@code version} must be current (409). */
@@ -227,20 +266,29 @@ public class RecipeService {
 	}
 
 	private PhotoDto photo(String mediaId) {
-		return mediaId == null ? null
-				: new PhotoDto(mediaId, media.url(mediaId, ImageVariant.THUMB), media.url(mediaId, ImageVariant.DISPLAY));
+		return photo(mediaId, "");
 	}
 
-	private RecipeDto toDto(Recipe r) {
-		List<GroupDto> groups = r.getGroups().stream()
+	private PhotoDto photo(String mediaId, String query) {
+		return mediaId == null ? null
+				: new PhotoDto(mediaId, media.url(mediaId, ImageVariant.THUMB) + query,
+						media.url(mediaId, ImageVariant.DISPLAY) + query);
+	}
+
+	private static List<GroupDto> groups(Recipe r) {
+		return r.getGroups().stream()
 			.map(g -> new GroupDto(g.getName(), g.getIngredients().stream()
 				.map(i -> new IngredientDto(normalize(i.getAmount()), i.getUnit(), i.getName(), i.getNote()))
 				.toList()))
 			.toList();
+	}
+
+	private RecipeDto toDto(Recipe r) {
 		List<StepDto> steps = r.getSteps().stream().map(s -> new StepDto(s.getText(), photo(s.getPhotoMediaId())))
 			.toList();
 		return new RecipeDto(r.getId(), r.getStatus().name(), r.getVisibility().name(), r.getTitle(),
-				r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(), r.getSource(), r.getNotes(), photo(r.getCoverMediaId()), groups,
-				steps, r.getVersion(), null, r.getCreatedAt(), r.getUpdatedAt(), r.getPublishedAt());
+				r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(), r.getSource(), r.getNotes(), photo(r.getCoverMediaId()), groups(r),
+				steps, r.getVersion(),
+				r.getStatus() == RecipeStatus.PUBLISHED ? urls.base() + "/r/" + r.getShareToken() : null, r.getCreatedAt(), r.getUpdatedAt(), r.getPublishedAt());
 	}
 }

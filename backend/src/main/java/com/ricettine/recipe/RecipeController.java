@@ -59,6 +59,11 @@ public class RecipeController {
 		return recipes.publish(currentUser.id(), parse(id), request.version());
 	}
 
+	@PostMapping("/{id}/share-link/reset")
+	RecipeDto resetShareLink(@PathVariable String id) {
+		return recipes.resetShareLink(currentUser.id(), parse(id));
+	}
+
 	/** {@code version} is optional for now: when given and stale, 409 {@code recipe_conflict}. */
 	@DeleteMapping("/{id}")
 	ResponseEntity<Void> delete(@PathVariable String id, @RequestParam(required = false) Long version) {

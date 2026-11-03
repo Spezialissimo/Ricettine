@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 public class RecipeMediaAccessPolicy implements MediaAccessPolicy {
 
 	static final String CACHE = "private, max-age=3600";
+	/** Token holders must revalidate, so a link reset takes effect at once. */
+	static final String TOKEN_CACHE = "private, no-cache";
 
 	private final CurrentUser currentUser;
 	private final RecipeRepository recipes;
@@ -44,6 +46,6 @@ public class RecipeMediaAccessPolicy implements MediaAccessPolicy {
 		return recipes.publishedShareToken(m.getRecipeId())
 			.filter(token -> MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8),
 					s.getBytes(StandardCharsets.UTF_8)))
-			.map(token -> CACHE);
+			.map(token -> TOKEN_CACHE);
 	}
 }
