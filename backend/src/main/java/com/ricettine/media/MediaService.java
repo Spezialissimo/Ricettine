@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MediaService {
 
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MediaService.class);
+
 	private final BlobStore blobs;
 	private final ImageProcessor processor;
 	private final ProcessingLimiter limiter;
@@ -69,6 +71,30 @@ public class MediaService {
 	public void delete(String mediaId) {
 		repo.deleteRow(mediaId);
 		after.afterCommit("delete media blobs " + mediaId, () -> deleteBlobs(mediaId));
+	}
+
+	/**
+	 * Deletes every media row the user owns, of any kind, now (inside the caller's transaction) and all their blobs
+	 * once it has committed. Account deletion calls this centrally, so no feature has to clean up its own media.
+	 */
+	@Transactional
+	public void deleteAllOwnedBy(UUID ownerId) {
+		List<String> ids = repo.idsOwnedBy(ownerId);
+		if (ids.isEmpty()) {
+			return;
+		}
+		repo.deleteOwnedBy(ownerId);
+		after.afterCommit("delete media blobs of " + ownerId, () -> ids.forEach(this::deleteBlobsBestEffort));
+	}
+
+	/** One media's failure must not stop the others from being cleaned up. */
+	private void deleteBlobsBestEffort(String mediaId) {
+		try {
+			deleteBlobs(mediaId);
+		}
+		catch (RuntimeException e) {
+			log.warn("Failed to delete blobs of media {}", mediaId, e);
+		}
 	}
 
 	private void deleteBlobs(String mediaId) {

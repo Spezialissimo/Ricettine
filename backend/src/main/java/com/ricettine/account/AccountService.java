@@ -152,8 +152,8 @@ public class AccountService {
 	}
 
 	/**
-	 * Deletes the account: hooks run first, then the row (FK cascades remove tokens); the avatar blobs and the
-	 * user's sessions go after commit. The last admin cannot leave while other users remain.
+	 * Deletes the account: hooks run first, then all the user's media rows, then the user row (FK cascades remove
+	 * tokens); media blobs and the user's sessions go after commit. The last admin cannot leave while other users remain.
 	 */
 	@Transactional
 	public void delete(UUID userId) {
@@ -165,10 +165,7 @@ public class AccountService {
 			}
 		}
 		deletionHooks.forEach(h -> h.beforeDelete(userId));
-		String avatarKey = user.getAvatarKey();
-		if (avatarKey != null) {
-			media.delete(avatarKey); // row now, blobs after commit; other media rows cascade with the user
-		}
+		media.deleteAllOwnedBy(userId); // every kind: rows now, blobs after commit
 		users.delete(user);
 		users.flush();
 		if (users.count() == 0) {

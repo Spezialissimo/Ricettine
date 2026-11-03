@@ -103,6 +103,36 @@ class AccountDeletionIT extends IntegrationTest {
 	}
 
 	@Test
+	void deletesEveryMediaRowAndBlobTheUserOwns() throws Exception {
+		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
+		User u = accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
+		Cookie c = Sessions.login(mvc, "a@x.com");
+		mvc.perform(multipart("/api/me/avatar")
+				.file(new MockMultipartFile("file", "a.jpg", "image/jpeg", TestImages.orientation6()))
+				.with(r -> {
+					r.setMethod("PUT");
+					return r;
+				}).with(csrf()).cookie(c)).andExpect(status().isOk());
+		String avatarId = jdbc.queryForObject("select avatar_key from app_user where id = ?", String.class, u.getId());
+		String recipeMediaId = "recipe-media-" + UUID.randomUUID();
+		jdbc.update("insert into media (id, owner_id, kind, created_at) values (?, ?, 'RECIPE', now())",
+				recipeMediaId, u.getId());
+		List<String> keys = List.of("img/" + avatarId + "/avatar.jpg", "img/" + recipeMediaId + "/thumb.jpg",
+				"img/" + recipeMediaId + "/display.jpg");
+		blobs.put(keys.get(1), TestImages.plainJpeg(10, 10), "image/jpeg");
+		blobs.put(keys.get(2), TestImages.plainJpeg(10, 10), "image/jpeg");
+		keys.forEach(k -> assertThat(blobs.get(k)).as(k).isPresent());
+
+		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
+				.content(body(Sessions.PASSWORD)))
+			.andExpect(status().isNoContent());
+
+		assertThat(jdbc.queryForObject("select count(*) from media where owner_id = ?", Integer.class, u.getId()))
+			.isZero();
+		keys.forEach(k -> assertThat(blobs.get(k)).as(k).isEmpty());
+	}
+
+	@Test
 	void soleAdminWithOthersIs409() throws Exception {
 		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
 		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
