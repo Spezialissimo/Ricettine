@@ -10,6 +10,7 @@ import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
+import com.ricettine.media.ProcessedUpload;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -18,7 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class AccountService {
@@ -31,10 +34,12 @@ public class AccountService {
 	private final List<AccountDeletionHook> deletionHooks;
 	private final AfterTransaction after;
 	private final OneTimeTokenRepository tokens;
+	private final TransactionTemplate tx;
 
 	public AccountService(UserRepository users, PasswordEncoder encoder, MediaService media, AuthSessions sessions,
 			JdbcTemplate jdbc, List<AccountDeletionHook> deletionHooks, AfterTransaction after,
-			OneTimeTokenRepository tokens) {
+			OneTimeTokenRepository tokens, PlatformTransactionManager txManager) {
+		this.tx = new TransactionTemplate(txManager);
 		this.after = after;
 		this.tokens = tokens;
 		this.users = users;
@@ -125,11 +130,19 @@ public class AccountService {
 		return user;
 	}
 
-	/** Stores the new avatar first, swaps it in, and removes the old blob only once the swap has committed. */
-	@Transactional
+	/**
+	 * Processes the image first, outside any transaction (the limiter wait and the decode must not hold a DB
+	 * connection), then registers it and swaps it in within one short transaction; the old blobs go only once the
+	 * swap has committed, the new ones are removed if it rolls back.
+	 */
 	public User setAvatar(UUID userId, byte[] image) {
+		ProcessedUpload upload = media.process(image, Set.of(ImageVariant.AVATAR));
+		return tx.execute(status -> swapAvatar(userId, upload));
+	}
+
+	private User swapAvatar(UUID userId, ProcessedUpload upload) {
 		User user = users.findById(userId).orElseThrow(AccountService::notAuthenticated);
-		String newKey = media.store(image, Set.of(ImageVariant.AVATAR), userId, MediaKind.AVATAR, null);
+		String newKey = media.register(upload, userId, MediaKind.AVATAR, null);
 		String oldKey = user.getAvatarKey();
 		user.setAvatarKey(newKey);
 		users.saveAndFlush(user);

@@ -49,7 +49,7 @@ class MediaIT extends IntegrationTest {
 
 	@Test
 	void storedImageIsServedWithImmutableCache() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY), owner, MediaKind.AVATAR, null);
+		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY)), owner, MediaKind.AVATAR, null);
 		assertThat(media.url(id, ImageVariant.THUMB)).isEqualTo("/media/" + id + "/thumb.jpg");
 		byte[] body = mvc.perform(get(media.url(id, ImageVariant.THUMB))).andExpect(status().isOk())
 				.andExpect(content().contentType("image/jpeg"))
@@ -61,6 +61,31 @@ class MediaIT extends IntegrationTest {
 		mvc.perform(get(media.url(id, ImageVariant.THUMB))).andExpect(status().isNotFound());
 	}
 
+	@Autowired
+	org.springframework.transaction.PlatformTransactionManager txManager;
+
+	@Test
+	void processRefusesToRunInsideATransaction() {
+		// The limiter wait and the decode must never hold a pooled DB connection.
+		var tx = new org.springframework.transaction.support.TransactionTemplate(txManager);
+		assertThatThrownBy(() -> tx.execute(s -> media.process(TestImages.plainJpeg(50, 50), Set.of(ImageVariant.THUMB))))
+				.isInstanceOf(IllegalStateException.class).hasMessageContaining("transaction");
+	}
+
+	@Test
+	void registeredBlobsAreRemovedWhenTheTransactionRollsBack() throws Exception {
+		ProcessedUpload upload = media.process(TestImages.plainJpeg(50, 50), Set.of(ImageVariant.THUMB));
+		long before = countBlobs();
+		String id = new org.springframework.transaction.support.TransactionTemplate(txManager).execute(s -> {
+			String registered = media.register(upload, owner, MediaKind.RECIPE, null);
+			s.setRollbackOnly();
+			return registered;
+		});
+		assertThat(blobs.get(MediaService.key(id, ImageVariant.THUMB))).isEmpty();
+		assertThat(countBlobs()).isEqualTo(before);
+		assertThat(jdbc.queryForObject("select count(*) from media where id = ?", Integer.class, id)).isZero();
+	}
+
 	@Test
 	void unknownIdIs404() throws Exception {
 		mvc.perform(get("/media/does-not-exist/thumb.jpg")).andExpect(status().isNotFound());
@@ -70,7 +95,7 @@ class MediaIT extends IntegrationTest {
 	@Test
 	void failedStoreLeavesNothingBehind() throws Exception {
 		long before = countBlobs();
-		assertThatThrownBy(() -> media.store(TestImages.fakeJpgPdf(), Set.of(ImageVariant.values()), owner, MediaKind.AVATAR, null))
+		assertThatThrownBy(() -> media.register(media.process(TestImages.fakeJpgPdf(), Set.of(ImageVariant.values())), owner, MediaKind.AVATAR, null))
 				.isInstanceOf(ApiException.class);
 		assertThat(countBlobs()).isEqualTo(before);
 	}
@@ -97,7 +122,8 @@ class MediaIT extends IntegrationTest {
 			}
 		};
 		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, java.time.Duration.ofSeconds(30)), null, null);
-		assertThatThrownBy(() -> svc.store(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values()), owner, MediaKind.AVATAR, null))
+		ProcessedUpload upload = svc.process(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values()));
+		assertThatThrownBy(() -> svc.register(upload, owner, MediaKind.AVATAR, null))
 				.isInstanceOf(IllegalStateException.class);
 		assertThat(((java.util.Map<?, ?>) readField(failing)).isEmpty()).isTrue();
 	}

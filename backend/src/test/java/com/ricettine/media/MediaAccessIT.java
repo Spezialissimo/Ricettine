@@ -42,7 +42,7 @@ class MediaAccessIT extends IntegrationTest {
 
 	@Test
 	void avatarIsServedAnonymouslyWithImmutableHeaderAndHasARow() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.AVATAR), owner.getId(), MediaKind.AVATAR, null);
+		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), owner.getId(), MediaKind.AVATAR, null);
 		assertThat(jdbc.queryForObject("select kind from media where id = ? and owner_id = ?", String.class, id,
 				owner.getId())).isEqualTo("AVATAR");
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isOk())
@@ -51,7 +51,7 @@ class MediaAccessIT extends IntegrationTest {
 
 	@Test
 	void recipeKindWithoutPolicyIs404ForEveryone() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.THUMB), owner.getId(), MediaKind.RECIPE, null);
+		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.THUMB)), owner.getId(), MediaKind.RECIPE, null);
 		mvc.perform(get(media.url(id, ImageVariant.THUMB))).andExpect(status().isNotFound());
 		var cookie = Sessions.login(mvc, "o@x.com");
 		mvc.perform(get(media.url(id, ImageVariant.THUMB)).cookie(cookie)).andExpect(status().isNotFound());
@@ -59,14 +59,14 @@ class MediaAccessIT extends IntegrationTest {
 
 	@Test
 	void blobWithoutRowIs404() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.AVATAR), owner.getId(), MediaKind.AVATAR, null);
+		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), owner.getId(), MediaKind.AVATAR, null);
 		jdbc.update("delete from media where id = ?", id);
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isNotFound());
 	}
 
 	@Test
 	void deleteRemovesRowAndBlobs() throws Exception {
-		String id = media.store(TestImages.orientation6(), Set.of(ImageVariant.AVATAR), owner.getId(), MediaKind.AVATAR, null);
+		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), owner.getId(), MediaKind.AVATAR, null);
 		media.delete(id);
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isZero();
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isNotFound());
