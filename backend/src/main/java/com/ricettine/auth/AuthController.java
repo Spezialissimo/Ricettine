@@ -1,6 +1,7 @@
 package com.ricettine.auth;
 
 import com.ricettine.account.AccountDtos.MeDto;
+import com.ricettine.account.MeMapper;
 import com.ricettine.account.Identity;
 import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
@@ -26,10 +27,12 @@ public class AuthController {
 	private final PasswordEncoder encoder;
 	private final AuthSessions sessions;
 	private final CurrentUser currentUser;
+	private final MeMapper me;
 	private String dummyHash;
 
 	public AuthController(UserRepository users, PasswordEncoder encoder, AuthSessions sessions,
-			CurrentUser currentUser) {
+			CurrentUser currentUser, MeMapper me) {
+		this.me = me;
 		this.users = users;
 		this.encoder = encoder;
 		this.sessions = sessions;
@@ -50,11 +53,11 @@ public class AuthController {
 			throw new ApiException(HttpStatus.UNAUTHORIZED, "bad_credentials");
 		}
 		sessions.login(user, req, res);
-		return MeDto.of(user);
+		return me.toDto(user);
 	}
 
 	@GetMapping("/api/me")
 	public MeDto me() {
-		return MeDto.of(currentUser.require());
+		return me.toDto(currentUser.require());
 	}
 }

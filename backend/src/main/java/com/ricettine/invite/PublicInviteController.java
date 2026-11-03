@@ -1,6 +1,7 @@
 package com.ricettine.invite;
 
 import com.ricettine.account.AccountDtos.MeDto;
+import com.ricettine.account.MeMapper;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.auth.AuthSessions;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,8 +24,10 @@ public class PublicInviteController {
 
 	private final InviteService invites;
 	private final AuthSessions sessions;
+	private final MeMapper me;
 
-	public PublicInviteController(InviteService invites, AuthSessions sessions) {
+	public PublicInviteController(InviteService invites, AuthSessions sessions, MeMapper me) {
+		this.me = me;
 		this.invites = invites;
 		this.sessions = sessions;
 	}
@@ -40,6 +43,6 @@ public class PublicInviteController {
 			HttpServletRequest req, HttpServletResponse res) {
 		var user = invites.register(token, body);
 		sessions.login(user, req, res);
-		return MeDto.of(user);
+		return me.toDto(user);
 	}
 }

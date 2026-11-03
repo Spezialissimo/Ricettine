@@ -1,6 +1,7 @@
 package com.ricettine.setup;
 
 import com.ricettine.account.AccountDtos.MeDto;
+import com.ricettine.account.MeMapper;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.auth.AuthSessions;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,8 +20,10 @@ public class SetupController {
 
 	private final SetupService setup;
 	private final AuthSessions authSessions;
+	private final MeMapper me;
 
-	public SetupController(SetupService setup, AuthSessions authSessions) {
+	public SetupController(SetupService setup, AuthSessions authSessions, MeMapper me) {
+		this.me = me;
 		this.setup = setup;
 		this.authSessions = authSessions;
 	}
@@ -36,6 +39,6 @@ public class SetupController {
 			HttpServletResponse response) {
 		var admin = setup.createAdmin(req);
 		authSessions.login(admin, request, response);
-		return MeDto.of(admin);
+		return me.toDto(admin);
 	}
 }

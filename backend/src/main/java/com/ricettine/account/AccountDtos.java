@@ -12,13 +12,21 @@ public final class AccountDtos {
 
 	public record MeDto(UUID id, String email, String username, String displayName, String avatarUrl,
 			boolean admin) {
-
-		public static MeDto of(User u) {
-			return new MeDto(u.getId(), u.getEmail(), u.getUsername(), u.getDisplayName(), null, u.isAdmin());
-		}
 	}
 
 	public record NewAccountRequest(@NotNull String email, @NotNull String password, @NotNull String username,
 			@NotBlank @Size(max = 80) String displayName) {
+	}
+
+	public record ProfilePatch(String displayName, String username) {
+	}
+
+	public record ChangePasswordRequest(@NotNull String currentPassword, @NotNull String newPassword) {
+	}
+
+	public record PasswordRequest(@NotNull String password) {
+	}
+
+	public record NewPasswordRequest(@NotNull String newPassword) {
 	}
 }

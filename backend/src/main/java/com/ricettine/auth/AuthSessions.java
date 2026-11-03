@@ -46,4 +46,10 @@ public class AuthSessions {
 	public void invalidateAllSessions(UUID userId) {
 		sessions.findByPrincipalName(userId.toString()).keySet().forEach(sessions::deleteById);
 	}
+
+	/** Ends every session of the user except {@code keepSessionId}. */
+	public void invalidateOtherSessions(UUID userId, String keepSessionId) {
+		sessions.findByPrincipalName(userId.toString()).keySet().stream()
+			.filter(id -> !id.equals(keepSessionId)).forEach(sessions::deleteById);
+	}
 }

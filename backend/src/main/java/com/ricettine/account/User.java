@@ -39,6 +39,11 @@ public class User {
 		this.createdAt = Instant.now();
 	}
 
+	public void setDisplayName(String displayName) { this.displayName = displayName; }
+	public void setUsername(String username) { this.username = username; }
+	public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+	public void setAvatarKey(String avatarKey) { this.avatarKey = avatarKey; }
+
 	public UUID getId() { return id; }
 	public String getEmail() { return email; }
 	public String getUsername() { return username; }

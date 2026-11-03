@@ -4,6 +4,7 @@ import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.OneTimeTokens;
 import com.ricettine.common.TokenPurpose;
 import com.ricettine.common.Tokens;
 import java.time.Duration;
@@ -11,7 +12,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,12 +26,13 @@ public class InviteService {
 
 	private final OneTimeTokenRepository tokens;
 	private final AccountService accounts;
-	private final JdbcTemplate jdbc;
+	private final OneTimeTokens oneTimeTokens;
 
-	public InviteService(OneTimeTokenRepository tokens, AccountService accounts, JdbcTemplate jdbc) {
+	public InviteService(OneTimeTokenRepository tokens, AccountService accounts,
+			OneTimeTokens oneTimeTokens) {
 		this.tokens = tokens;
 		this.accounts = accounts;
-		this.jdbc = jdbc;
+		this.oneTimeTokens = oneTimeTokens;
 	}
 
 	@Transactional
@@ -67,11 +68,7 @@ public class InviteService {
 	 */
 	@Transactional
 	public User register(String token, NewAccountRequest req) {
-		List<UUID> claimed = jdbc.queryForList(
-				"update one_time_token set used_at = now() where token_hash = ? and purpose = ? "
-						+ "and used_at is null and revoked_at is null and expires_at > now() returning id",
-				UUID.class, Tokens.hash(token), PURPOSE);
-		if (claimed.isEmpty()) {
+		if (oneTimeTokens.claim(token, TokenPurpose.INSTANCE_INVITE).isEmpty()) {
 			throw invalid();
 		}
 		return accounts.create(req, false);
