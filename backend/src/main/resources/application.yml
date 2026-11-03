@@ -31,6 +31,9 @@ management:
       exposure:
         include: health
 ricettine:
+  security:
+    # argon2 needs ~16 MB per hash; more concurrent hashes wait (up to 10 s, then 503 busy).
+    max-concurrent-hashes: 4
   storage:
     type: local
     local:

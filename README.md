@@ -28,6 +28,8 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | `RICETTINE_STORAGE_S3_REGION` | SDK default | S3 region. |
 | `RICETTINE_STORAGE_S3_ENDPOINT` | AWS | Custom endpoint for S3-compatible stores (MinIO, R2, ...). |
 | `RICETTINE_STORAGE_S3_PATH_STYLE` | `false` | Use path-style addressing (needed by most S3-compatible stores). |
+| `RICETTINE_SECURITY_MAX_CONCURRENT_HASHES` | `4` | Password hashes (login, sign-up, password change) computed at once; each needs ~16 MB. Extra requests wait up to 10 s, then get "busy, try again". |
+| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=75` | JVM options. The default sizes the heap to 75% of the container memory limit. |
 
 ## Upgrading
 

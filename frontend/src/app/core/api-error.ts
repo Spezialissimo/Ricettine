@@ -6,6 +6,7 @@ export type ApiError = { status: number; code: string; fields?: Record<string, s
 export const KNOWN_ERROR_CODES: readonly string[] = [
   'bad_credentials',
   'bad_request',
+  'busy',
   'email_taken',
   'file_too_large',
   'forbidden',

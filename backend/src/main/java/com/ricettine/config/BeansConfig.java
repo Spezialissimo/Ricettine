@@ -1,5 +1,7 @@
 package com.ricettine.config;
 
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.util.HashMap;
@@ -30,14 +32,19 @@ public class BeansConfig {
 		return serializer;
 	}
 
+	/** How long a request waits for a hashing slot before it gets 503 {@code busy}. */
+	static final Duration HASH_WAIT = Duration.ofSeconds(10);
+
 	@Bean
-	PasswordEncoder passwordEncoder() {
+	PasswordEncoder passwordEncoder(@Value("${ricettine.security.max-concurrent-hashes:4}") int maxConcurrentHashes) {
 		// Argon2 for new hashes (bcrypt silently caps at 72 bytes and throws beyond); {bcrypt} hashes still verify.
 		Map<String, PasswordEncoder> encoders = new HashMap<>();
 		encoders.put("argon2", Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8());
 		encoders.put("bcrypt", new BCryptPasswordEncoder());
 		encoders.put("pbkdf2@SpringSecurity_v5_8", Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
 		encoders.put("scrypt@SpringSecurity_v5_8", SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8());
-		return new DelegatingPasswordEncoder("argon2", encoders);
+		// Bounded: argon2 needs ~16 MB per hash and /api/auth/login is unauthenticated.
+		return new BoundedPasswordEncoder(new DelegatingPasswordEncoder("argon2", encoders), maxConcurrentHashes,
+				HASH_WAIT);
 	}
 }

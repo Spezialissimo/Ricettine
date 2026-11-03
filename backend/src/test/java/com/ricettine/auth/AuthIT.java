@@ -25,6 +25,7 @@ class AuthIT extends IntegrationTest {
 	@Autowired JdbcTemplate jdbc;
 	@Autowired AccountService accounts;
 	@Autowired AuthSessions authSessions;
+	@Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
 
 	@BeforeEach
 	void clean() {
@@ -68,6 +69,11 @@ class AuthIT extends IntegrationTest {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("bad_credentials"));
 		}
+	}
+
+	@Test
+	void passwordHashingIsBounded() {
+		assertThat(encoder).isInstanceOf(com.ricettine.config.BoundedPasswordEncoder.class);
 	}
 
 	@Test

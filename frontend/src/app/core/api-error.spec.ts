@@ -28,6 +28,11 @@ describe('api-error', () => {
     expect(toApiError(new HttpErrorResponse({ status: 500, error: 'oops' })).code).toBe('unknown');
   });
 
+  it('maps the busy code (503 when password hashing is saturated)', () => {
+    const e = new HttpErrorResponse({ status: 503, error: { code: 'busy', status: 503 } });
+    expect(errorKey(toApiError(e))).toBe('errors.busy');
+  });
+
   it('errorKey falls back to errors.unknown', () => {
     expect(errorKey({ status: 409, code: 'email_taken' })).toBe('errors.email_taken');
     expect(errorKey({ status: 418, code: 'teapot' })).toBe('errors.unknown');

@@ -27,6 +27,8 @@ COPY --from=backend /app.jar /app/app.jar
 USER ricettine
 WORKDIR /app
 ENV RICETTINE_STORAGE_LOCAL_PATH=/data/media
+# Size the heap from the container memory limit (default is only 25%) so it fits small hosts without OOM kills.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
 VOLUME /data
 EXPOSE 8080
 # The JRE image has no curl/wget; probe with bash's /dev/tcp instead.

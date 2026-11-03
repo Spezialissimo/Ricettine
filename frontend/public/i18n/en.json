@@ -74,6 +74,7 @@
   "errors": {
     "bad_credentials": "Wrong email or password.",
     "bad_request": "The request could not be understood.",
+    "busy": "The server is busy right now. Please try again in a moment.",
     "email_taken": "This email is already registered.",
     "file_too_large": "The file is too large (15 MB maximum).",
     "forbidden": "You are not allowed to do that.",
