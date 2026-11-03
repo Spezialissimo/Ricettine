@@ -1,0 +1,46 @@
+@use '../../../styles/tokens' as t;
+
+:host { display: block; }
+.ing-group { display: grid; gap: t.$space-2; margin-bottom: t.$space-4; }
+.group-head { display: flex; gap: t.$space-2; align-items: end; }
+.grow { flex: 1; }
+.field { display: grid; gap: 2px; min-width: 0; }
+label { font-size: 0.75rem; color: t.$muted; }
+input, select {
+  min-height: t.$touch-target; width: 100%; font: inherit; padding: 0 t.$space-2;
+  border: 1px solid t.$border; border-radius: 8px; background: t.$bg; color: t.$ink;
+}
+input[aria-invalid='true'] { border-color: #b3261e; }
+// The row layout follows the width the ingredients get (half a desktop page, or a phone), not the viewport.
+:host { container-type: inline-size; }
+.ing-row {
+  display: grid; gap: t.$space-2; padding: t.$space-2; border: 1px solid t.$border; border-radius: 10px; background: t.$surface;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) t.$touch-target;
+  grid-template-areas: 'amount unit del' 'name name name' 'note note note' 'err err err';
+}
+.amount-field { grid-area: amount; }
+.unit-field { grid-area: unit; }
+.name-field { grid-area: name; }
+.note-field { grid-area: note; }
+.delete-ingredient { grid-area: del; }
+.amount-error { grid-area: err; margin: 0; }
+.field-error { color: #b3261e; font-size: 0.85rem; }
+.hint { margin: 0; color: t.$muted; font-size: 0.85rem; }
+.btn {
+  @include t.touch-target;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0 t.$space-4;
+  border: 1px solid t.$border; border-radius: 10px; background: t.$bg; color: t.$ink; font-weight: 600; cursor: pointer;
+}
+.btn.icon { width: t.$touch-target; padding: 0; font-size: 1.1rem; color: t.$muted; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.add-ingredient { justify-self: start; border-style: dashed; }
+.add-group { border-style: dashed; }
+
+// Wide enough for the mockup row (amount, unit, name, ✕ on one line; the note below): 5rem + 7rem + 10rem + 44px + gaps.
+@container (min-width: 28rem) {
+  .ing-row {
+    grid-template-columns: 5rem 7rem minmax(10rem, 1fr) t.$touch-target;
+    grid-template-areas: 'amount unit name del' 'note note note .' 'err err err err';
+  }
+}

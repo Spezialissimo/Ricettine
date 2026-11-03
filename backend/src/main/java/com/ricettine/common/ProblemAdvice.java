@@ -1,5 +1,6 @@
 package com.ricettine.common;
 
+import jakarta.persistence.OptimisticLockException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -27,7 +29,18 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 	ResponseEntity<Object> handleApi(ApiException ex) {
 		ProblemDetail pd = ProblemDetail.forStatus(ex.getStatus());
 		pd.setProperty("code", ex.getCode());
+		if (ex.getFields() != null) {
+			pd.setProperty("fields", ex.getFields());
+		}
 		return ResponseEntity.status(ex.getStatus()).body(pd);
+	}
+
+	/** A concurrent write lost the optimistic-lock race: the client must reload and retry. */
+	@ExceptionHandler({ ObjectOptimisticLockingFailureException.class, OptimisticLockException.class })
+	ResponseEntity<Object> handleOptimisticLock(Exception ex) {
+		ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+		pd.setProperty("code", "recipe_conflict");
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
 	}
 
 	/** Catch-all: never leak exception details. Security exceptions go back to the security filter chain. */

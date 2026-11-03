@@ -17,6 +17,8 @@ $radius: 12px;
 $touch-target: 44px;
 $topbar-height: 52px;
 $bottomnav-height: 56px;
+$bp-desktop: 768px;
+$content-max-width: 1100px;
 
 @mixin touch-target {
   min-width: $touch-target;

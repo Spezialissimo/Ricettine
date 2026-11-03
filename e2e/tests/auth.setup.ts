@@ -1,5 +1,5 @@
 import { expect, test as setup } from '@playwright/test';
-import { ADMIN } from './helpers';
+import { ADMIN, expectHome } from './helpers';
 
 // The first-run flow can only happen once per instance, so it lives in this setup project.
 setup('fresh instance: / lands on /setup and the admin can be created', async ({ page }) => {
@@ -13,6 +13,5 @@ setup('fresh instance: / lands on /setup and the admin can be created', async ({
   await page.getByLabel('Password').fill(ADMIN.password);
   await page.getByRole('button', { name: 'Create administrator' }).click();
 
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: `Hi ${ADMIN.displayName}` })).toBeVisible();
+  await expectHome(page, ADMIN.displayName);
 });

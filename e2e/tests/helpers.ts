@@ -29,11 +29,18 @@ export function newContext(browser: Browser, testInfo: TestInfo): Promise<Browse
   return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
 }
 
+/** "Landed on home": the My recipes heading and the user's display name in the shell. */
+export async function expectHome(page: Page, displayName: string) {
+  await expect(page).toHaveURL(/\/recipes$/);
+  await expect(page.getByRole('heading', { name: 'My recipes' })).toBeVisible();
+  await expect(page.getByRole('banner').getByText(displayName, { exact: true })).toBeVisible();
+}
+
 export async function logIn(page: Page, who: Pick<Person, 'email' | 'password' | 'displayName'>) {
   await page.getByLabel('Email', { exact: true }).fill(who.email);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
+  await expectHome(page, who.displayName);
 }
 
 export async function logOut(page: Page) {
@@ -58,7 +65,7 @@ export async function register(page: Page, invitePath: string, who: Person) {
   await page.getByLabel('Display name').fill(who.displayName);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { name: `Hi ${who.displayName}` })).toBeVisible();
+  await expectHome(page, who.displayName);
 }
 
 /** Registers a new regular user (via an invite from the shared admin) and returns their logged-in page. */
@@ -75,4 +82,33 @@ export async function newUserPage(browser: Browser, testInfo: TestInfo, tag: str
   const page = await context.newPage();
   await register(page, invitePath, who);
   return { who, context, page };
+}
+
+export type NewRecipeData = {
+  title: string;
+  /** Ingredient names (one group, no amounts). */
+  ingredients?: string[];
+  /** Step texts. */
+  steps?: string[];
+};
+
+/**
+ * Drives the UI: New recipe, fill the editor, wait for "Saved ✓". Returns the editor URL
+ * (the page stays on the editor).
+ */
+export async function createRecipe(page: Page, data: NewRecipeData): Promise<string> {
+  await page.goto('/recipes/new');
+  await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
+  await page.getByLabel('Title').fill(data.title);
+  for (const [i, name] of (data.ingredients ?? []).entries()) {
+    if (i === 0) await page.getByRole('button', { name: '+ Ingredient' }).click();
+    else await page.getByRole('button', { name: '+ Ingredient' }).last().click();
+    await page.getByLabel('Ingredient', { exact: true }).nth(i).fill(name);
+  }
+  for (const [i, text] of (data.steps ?? []).entries()) {
+    await page.getByRole('button', { name: '+ Add step' }).or(page.getByRole('button', { name: '+ Next step' })).filter({ visible: true }).click();
+    await page.getByRole('textbox', { name: /^Step \d+$/ }).nth(i).fill(text);
+  }
+  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  return page.url();
 }
