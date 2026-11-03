@@ -91,4 +91,20 @@ describe('authInterceptor', () => {
     await Promise.all([fail('PATCH', '/api/me', 401), fail('POST', '/api/x', 401), fail('GET', '/api/y', 401)]);
     expect(navigate).toHaveBeenCalledTimes(1);
   });
+  it('401 while never logged in does not navigate', async () => {
+    store.setMe(null);
+    await fail('POST', '/api/something', 401);
+    expect(store.me()).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('a rejected navigation is swallowed and the next lost session redirects again', async () => {
+    // An unhandled rejection would fail the Vitest run.
+    navigate.mockRejectedValueOnce(new Error('navigation failed'));
+    await fail('PATCH', '/api/me', 401);
+    await new Promise((r) => setTimeout(r, 0));
+    store.setMe(me);
+    await fail('PATCH', '/api/me', 401);
+    expect(navigate).toHaveBeenCalledTimes(2);
+  });
 });

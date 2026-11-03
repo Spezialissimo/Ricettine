@@ -23,7 +23,10 @@ class SessionRedirect {
   pending = false;
 }
 
-/** Any 401 from the API (other than the "who am I" and login calls) means the session is gone: sign out locally and go to login. */
+/**
+ * A 401 from the API (other than the "who am I" and login calls) while signed in means the session is gone: sign out
+ * locally and go to login. While already signed out, 401s are left to the caller.
+ */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const auth = inject(AuthStore);
@@ -32,12 +35,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     tap({
       error: (e: unknown) => {
         if (!(e instanceof HttpErrorResponse) || e.status !== 401 || isExempt(req.method, req.url)) return;
+        // Only a session we had can expire: a 401 while signed out is the caller's to handle.
+        if (auth.me() === null) return;
         auth.setMe(null);
         if (redirect.pending || isGuestPage(router.url)) return;
         redirect.pending = true;
         const next = router.url;
         void router
           .navigateByUrl(router.createUrlTree(['/login'], { queryParams: { next } }))
+          .catch(() => false)
           .finally(() => (redirect.pending = false));
       },
     }),
