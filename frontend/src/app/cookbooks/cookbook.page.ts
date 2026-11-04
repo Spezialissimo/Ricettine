@@ -9,6 +9,7 @@ import { ConfirmDeleteCookbookDialog } from './confirm-delete-cookbook.dialog';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookInput, tokenFromShareUrl } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
+import { MembersPanelComponent } from './members-panel.component';
 import { mediaUrl } from '../core/media';
 import { CookbookFormDialog } from './cookbook-form.dialog';
 import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
@@ -16,7 +17,7 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
 /** One cookbook: its recipes, and (owner only) Edit and Delete. Every member can remove entries. */
 @Component({
   selector: 'app-cookbook-page',
-  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent, PhotoPickerComponent],
+  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent, MembersPanelComponent, PhotoPickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbooks.scss',
   template: `
@@ -51,6 +52,7 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
         }
         @if (b.description) { <p class="desc">{{ b.description }}</p> }
         <app-cookbook-share-panel [book]="b" (updated)="book.set($event)" />
+        <app-members-panel [book]="b" (changed)="load()" />
         @if (actionError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
         @if (b.recipes.length === 0) {
           <p class="empty">{{ t('cookbooks.noRecipes') }}</p>

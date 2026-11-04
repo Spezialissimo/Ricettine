@@ -2,7 +2,7 @@ export type CookbookVisibility = 'PRIVATE' | 'PUBLIC';
 export type CookbookRole = 'OWNER' | 'AUTHOR';
 
 /** A user as shown in a cookbook; the whole person is null when they deleted their account. */
-export type Person = { username: string; displayName: string; avatarUrl: string | null };
+export type Person = { id?: string; username: string; displayName: string; avatarUrl: string | null };
 
 export type CookbookSummary = {
   id: string;
@@ -69,3 +69,7 @@ export const tokenFromShareUrl = (url: string | null): string | null => {
   const seg = url?.split(/[?#]/)[0].split('/').filter(Boolean).pop();
   return seg || null;
 };
+
+export type CookbookInvite = { id: string; createdAt: string; expiresAt: string };
+export type CookbookInviteCreated = { id: string; url: string; expiresAt: string };
+export type CookbookInvitePreview = { cookbookName: string; owner: Person | null; expiresAt: string };

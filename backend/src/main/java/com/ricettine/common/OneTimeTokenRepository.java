@@ -23,6 +23,21 @@ public interface OneTimeTokenRepository extends JpaRepository<OneTimeToken, UUID
 			+ "and revoked_at is null", nativeQuery = true)
 	int revoke(UUID id, String purpose);
 
+	@Query(value = "select * from one_time_token where cookbook_id = :cookbookId and purpose = :purpose "
+			+ "and used_at is null and revoked_at is null and expires_at > now() order by created_at desc, id",
+			nativeQuery = true)
+	List<OneTimeToken> listActiveForCookbook(UUID cookbookId, String purpose);
+
+	@Query(value = "select count(*) from one_time_token where cookbook_id = :cookbookId and purpose = :purpose "
+			+ "and used_at is null and revoked_at is null and expires_at > now()", nativeQuery = true)
+	long countActiveForCookbook(UUID cookbookId, String purpose);
+
+	@Modifying
+	@Query(value = "update one_time_token set revoked_at = now() where id = :id and cookbook_id = :cookbookId "
+			+ "and purpose = :purpose and used_at is null and revoked_at is null and expires_at > now()",
+			nativeQuery = true)
+	int revokeForCookbook(UUID id, UUID cookbookId, String purpose);
+
 	/** Revokes every outstanding (unused, unrevoked) token of the purpose that belongs to {@code userId}. */
 	@Modifying
 	@Query(value = "update one_time_token set revoked_at = now() where user_id = :userId and purpose = :purpose "

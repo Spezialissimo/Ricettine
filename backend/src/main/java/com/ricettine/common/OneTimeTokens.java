@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OneTimeTokens {
 
-	public record ClaimedToken(UUID id, UUID userId) {
+	public record ClaimedToken(UUID id, UUID userId, UUID cookbookId) {
 	}
 
 	private final JdbcTemplate jdbc;
@@ -26,8 +26,9 @@ public class OneTimeTokens {
 	public Optional<ClaimedToken> claim(String token, TokenPurpose purpose) {
 		List<ClaimedToken> rows = jdbc.query(
 				"update one_time_token set used_at = now() where token_hash = ? and purpose = ? "
-						+ "and used_at is null and revoked_at is null and expires_at > now() returning id, user_id",
-				(rs, i) -> new ClaimedToken(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class)),
+						+ "and used_at is null and revoked_at is null and expires_at > now() returning id, user_id, cookbook_id",
+				(rs, i) -> new ClaimedToken(rs.getObject("id", UUID.class), rs.getObject("user_id", UUID.class),
+						rs.getObject("cookbook_id", UUID.class)),
 				Tokens.hash(token), purpose.name());
 		return rows.stream().findFirst();
 	}

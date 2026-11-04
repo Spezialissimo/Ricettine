@@ -11,6 +11,8 @@ public final class CookbookValidator {
 	static final int MAX_NAME = 100;
 	static final int MAX_DESCRIPTION = 1000;
 	static final int MAX_ENTRIES = 500;
+	static final int MAX_AUTHORS = 20;
+	static final int MAX_INVITES = 20;
 
 	static final String REQUIRED = "required";
 	static final String TOO_LONG = "too_long";
