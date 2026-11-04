@@ -70,7 +70,11 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             } @else {
               <span class="avatar" aria-hidden="true"></span>
             }
-            <span>{{ t('recipes.by', { name: r.author.displayName }) }}</span>
+            @if (auth.me()) {
+              <a class="by" [routerLink]="['/u', r.author.username]">{{ t('recipes.by', { name: r.author.displayName }) }}</a>
+            } @else {
+              <span>{{ t('recipes.by', { name: r.author.displayName }) }}</span>
+            }
             @if (r.viewerIsAuthor && r.recipeId) {
               <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']">{{ t('recipes.edit') }}</a>
             }

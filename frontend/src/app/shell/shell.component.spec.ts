@@ -49,6 +49,14 @@ describe('ShellComponent', () => {
     expect(el.querySelector('header')?.textContent).toContain('Ann');
   });
 
+  it('links the display name to the own profile', async () => {
+    const el = await navFor(false);
+    const who = el.querySelector('header a.who');
+    expect(who?.getAttribute('href')).toBe('/u/ann');
+    expect(who?.getAttribute('aria-label')).toBe('Your profile');
+    expect(who?.textContent).toContain('Ann');
+  });
+
   it('has a main nav, a bottom nav, a new-recipe action and a logout control', async () => {
     const el = await navFor(false);
     expect(el.querySelector('nav[aria-label="Main"] a[href="/recipes"]')).toBeTruthy();

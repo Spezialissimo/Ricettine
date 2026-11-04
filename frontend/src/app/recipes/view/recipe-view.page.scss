@@ -54,3 +54,4 @@ h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; lett
 }
 
 .back { @include t.touch-target; display: inline-flex; align-items: center; color: t.$accent; font-weight: 600; margin-bottom: t.$space-2; }
+.author a.by { color: inherit; display: inline-flex; align-items: center; min-height: 44px; }

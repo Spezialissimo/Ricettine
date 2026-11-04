@@ -35,6 +35,7 @@
     "recipes": "My recipes",
     "cookbooks": "Cookbooks",
     "settings": "Settings",
+    "profile": "Your profile",
     "admin": "Admin",
     "newRecipe": "+ New recipe",
     "newRecipeShort": "New recipe",
@@ -164,6 +165,14 @@
     "loading": "Loading recipes...",
     "empty": "Nothing here yet. Published public recipes show up here.",
     "more": "Load more"
+  },
+  "profile": {
+    "recipes": "Recipes",
+    "cookbooks": "Cookbooks",
+    "noRecipes": "No public recipes yet.",
+    "loading": "Loading profile...",
+    "notFound": "This person is not here",
+    "notFoundBody": "The profile does not exist."
   },
   "recipes": {
     "title": "My recipes",

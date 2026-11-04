@@ -31,7 +31,9 @@ describe('FeedPage', () => {
     const links = Array.from(el.querySelectorAll('a.recipe')) as HTMLAnchorElement[];
     expect(links.map((l) => l.getAttribute('href'))).toEqual(['/r/tok-a', '/r/tok-b']);
     expect(links[0].textContent).toContain('Recipe a');
-    expect(links[0].textContent).toContain('by Ann');
+    const authors = Array.from(el.querySelectorAll('a.author')) as HTMLAnchorElement[];
+    expect(authors[0].textContent).toContain('by Ann');
+    expect(authors[0].getAttribute('href')).toBe('/u/ann');
     expect(links[0].textContent).toContain('2026');
     expect(links[0].querySelector('img')?.getAttribute('src')).toBe('/media/m/T.jpg?s=tok-a');
     expect(links[1].querySelector('img')).toBeNull();
