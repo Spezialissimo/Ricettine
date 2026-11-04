@@ -141,4 +141,14 @@ describe('RecipeViewPage', () => {
     const edit = r.el.querySelector('a[href="/recipes/abc/edit"]');
     expect(edit?.textContent?.trim()).toBe(en.recipes.edit);
   });
+
+  it('offers Add to cookbook to a logged-in visitor only', async () => {
+    const text = en.cookbooks.addToCookbook;
+    const has = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === text);
+    const anon = await mount(vi.fn().mockResolvedValue(pub()), null);
+    expect(has(anon.el)).toBe(false);
+    TestBed.resetTestingModule();
+    const user = await mount(vi.fn().mockResolvedValue(pub()), { username: 'x' });
+    expect(has(user.el)).toBe(true);
+  });
 });

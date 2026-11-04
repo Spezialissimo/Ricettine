@@ -23,6 +23,7 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
             <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
               t('nav.recipes')
             }}</a>
+            <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.cookbooks') }}</a>
             <a class="new" routerLink="/recipes/new">{{ t('nav.newRecipe') }}</a>
             <a routerLink="/settings/profile" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.settings') }}</a>
             @if (auth.me()?.admin) {
@@ -41,6 +42,7 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
         <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
           t('nav.recipes')
         }}</a>
+        <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.cookbooks') }}</a>
         <a routerLink="/settings/profile" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.settings') }}</a>
         @if (auth.me()?.admin) {
           <a routerLink="/admin/invites" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.admin') }}</a>

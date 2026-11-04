@@ -14,6 +14,7 @@
   },
   "nav": {
     "recipes": "My recipes",
+    "cookbooks": "Cookbooks",
     "settings": "Settings",
     "admin": "Admin",
     "newRecipe": "+ New recipe",
@@ -155,6 +156,46 @@
     "edit": "Edit",
     "by": "by {{name}}",
     "stepAlt": "Step {{n}}"
+  },
+  "cookbooks": {
+    "title": "Cookbooks",
+    "new": "+ New cookbook",
+    "newTitle": "New cookbook",
+    "editTitle": "Edit cookbook",
+    "create": "Create",
+    "name": "Name",
+    "description": "Description",
+    "visibilityLabel": "Visibility",
+    "visibility": {
+      "PRIVATE": "Private",
+      "PUBLIC": "Public"
+    },
+    "roleOwner": "Owner",
+    "roleAuthor": "Co-author",
+    "recipeCountOne": "{{count}} recipe",
+    "recipeCountOther": "{{count}} recipes",
+    "empty": "You have no cookbooks yet. Create one to collect recipes.",
+    "noRecipes": "No recipes in this cookbook yet.",
+    "loading": "Loading cookbooks...",
+    "edit": "Edit",
+    "delete": "Delete cookbook",
+    "deleteConfirm": {
+      "title": "Delete this cookbook?",
+      "body": "\"{{name}}\" will be deleted for everyone. The recipes in it are not deleted.",
+      "confirm": "Delete"
+    },
+    "remove": "Remove",
+    "removeAria": "Remove {{title}}",
+    "addedBy": "Added by {{name}}",
+    "deletedUser": "a deleted account",
+    "addToCookbook": "Add to cookbook",
+    "addTo": "Add to {{name}}",
+    "add": "Add",
+    "added": "Added",
+    "alreadyIn": "Already in this cookbook",
+    "publishFirst": "Publish the recipe to add it to a cookbook.",
+    "noneYet": "You have no cookbooks yet.",
+    "close": "Close"
   },
   "units": {
     "g": "g",
