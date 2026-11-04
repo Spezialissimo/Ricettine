@@ -87,3 +87,4 @@ Collected from the per-task and per-PR reviews of Plan 2 (SDD ledger). Nothing h
 - Scope `logging.level.org.hibernate.orm.jdbc.error=OFF` to the conflict tests only (still class-wide in `InviteIT`, `MeIT`, `AccountServiceIT`).
 - Auth-form accessibility: `aria-invalid` / `aria-describedby`, `autocomplete="email"` on registration, invalid-login feedback, per-field `validation_failed` messages.
 - Image tests for EXIF orientations 5 and 7. ICC profiles are still dropped (slight P3 colour shift).
+- Backup sweep (`unsaved-backup.ts` `sweep()`): values starting with `{` that are not valid JSON, and `{}`, are not removed — remove the key whenever `JSON.parse` fails, the value isn't a plain object, or nothing is kept; add specs for `'{broken'` and `'{}'`. An idle tab older than 7 days loses its backup to another tab's startup sweep (matches the TTL). A `savedAt` in the future is kept forever. `app.config.ts` now pulls `UnsavedBackup` out of the lazy editor chunk (small).
