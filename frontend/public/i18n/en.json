@@ -137,6 +137,7 @@
     "recipe_conflict": "This recipe was changed somewhere else. Reload it to see the latest version.",
     "recipe_incomplete": "A published recipe needs a title, at least one ingredient and at least one step.",
     "recipe_not_found": "This recipe could not be found.",
+    "user_not_found": "This person could not be found.",
     "reset_invalid": "This password reset link is invalid, used or expired.",
     "setup_already_done": "Setup has already been completed.",
     "unsupported_image": "Unsupported image. Use a JPEG, PNG or WebP file.",

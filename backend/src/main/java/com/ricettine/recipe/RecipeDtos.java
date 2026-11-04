@@ -54,6 +54,11 @@ public final class RecipeDtos {
 			Instant updatedAt) {
 	}
 
+	/** One row of a profile listing. {@code shareToken} is null for drafts. */
+	public record ProfileRecipe(UUID id, String title, String status, String visibility, String shareToken,
+			String coverThumbUrl, Instant publishedAt, Instant updatedAt) {
+	}
+
 	public record PublishRequest(Long version) {
 	}
 }

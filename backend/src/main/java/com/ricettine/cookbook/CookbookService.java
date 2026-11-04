@@ -17,6 +17,7 @@ import com.ricettine.cookbook.CookbookDtos.CookbookInviteDto;
 import com.ricettine.cookbook.CookbookDtos.CookbookInvitePreview;
 import com.ricettine.cookbook.CookbookDtos.CookbookSummary;
 import com.ricettine.cookbook.CookbookDtos.PersonDto;
+import com.ricettine.cookbook.CookbookDtos.ProfileCookbook;
 import com.ricettine.cookbook.CookbookDtos.PublicCookbook;
 import com.ricettine.cookbook.CookbookDtos.PublicCookbookEntry;
 import com.ricettine.cookbook.CookbookDtos.RecipeRef;
@@ -88,6 +89,19 @@ public class CookbookService {
 		Cookbook c = cookbooks.saveAndFlush(Cookbook.create(ownerId, CookbookValidator.clean(in.name()),
 				CookbookValidator.clean(in.description()), visibility, Tokens.newToken()));
 		return toDto(c, CookbookRole.OWNER, ownerId);
+	}
+
+	/** A person's owned cookbooks for their profile: PUBLIC only unless {@code includeUnlisted}. */
+	@Transactional(readOnly = true)
+	public List<ProfileCookbook> listedByOwner(UUID ownerId, boolean includeUnlisted) {
+		List<CookbookRepository.SummaryRow> rows = cookbooks.ownedSummaries(ownerId, includeUnlisted);
+		Map<UUID, String> byId = cookbooks.findAllById(rows.stream().map(CookbookRepository.SummaryRow::id).toList())
+			.stream().collect(Collectors.toMap(Cookbook::getId, Cookbook::getShareToken));
+		return rows.stream().map(r -> {
+			String token = byId.get(r.id());
+			return new ProfileCookbook(r.id(), r.name(), r.visibility(), (int) r.recipeCount(), token,
+					r.coverMediaId() == null ? null : media.url(r.coverMediaId(), ImageVariant.THUMB) + query(token));
+		}).toList();
 	}
 
 	@Transactional(readOnly = true)

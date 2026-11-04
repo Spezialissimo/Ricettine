@@ -29,6 +29,10 @@ public final class CookbookDtos {
 			String coverThumbUrl, Instant updatedAt) {
 	}
 
+	public record ProfileCookbook(UUID id, String name, String visibility, int recipeCount, String shareToken,
+			String coverThumbUrl) {
+	}
+
 	public record CookbookEntryDto(UUID recipeId, String title, PersonDto author, PersonDto addedBy,
 			Instant addedAt, boolean mine, String coverThumbUrl) {
 	}
