@@ -1,7 +1,14 @@
-import { Page, expect, test } from '@playwright/test';
+import { Page, TestInfo, expect, test } from '@playwright/test';
 import { apiPublishRecipe, createRecipe, logOut, newUserPage } from './helpers';
 
-const stamp = () => Date.now().toString(36);
+const stamp = (testInfo: TestInfo) => `${testInfo.project.name}-${Date.now().toString(36)}`;
+
+/** The feed has answered: the loading status is gone, so a negative assertion is meaningful. */
+async function feedLoaded(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Latest recipes' })).toBeVisible();
+  await expect(page.locator('p.loading')).toHaveCount(0);
+  await expect(page.locator('a.recipe').first().or(page.locator('p.empty'))).toBeVisible();
+}
 
 /** Creates a recipe through the editor, sets its visibility and optionally publishes it. Stays on the editor. */
 async function editorRecipe(page: Page, title: string, visibility: 'Private' | 'Public', publish: boolean) {
@@ -16,7 +23,7 @@ async function editorRecipe(page: Page, title: string, visibility: 'Private' | '
 }
 
 test('login lands on the feed, which lists only published public recipes and follows visibility', async ({ browser }, testInfo) => {
-  const s = stamp();
+  const s = stamp(testInfo);
   const { page: a, context: ctxA } = await newUserPage(browser, testInfo, 'feeda');
   const { page: b, context: ctxB } = await newUserPage(browser, testInfo, 'feedb');
 
@@ -30,6 +37,7 @@ test('login lands on the feed, which lists only published public recipes and fol
 
   await b.goto('/');
   await expect(b.getByRole('link', { name: new RegExp(`Feed-pub-${s}`) })).toBeVisible();
+  await feedLoaded(b);
   await expect(b.getByText(`Feed-priv-${s}`)).toHaveCount(0);
   await expect(b.getByText(`Feed-draft-${s}`)).toHaveCount(0);
   await b.getByRole('link', { name: new RegExp(`Feed-pub-${s}`) }).click();
@@ -45,14 +53,14 @@ test('login lands on the feed, which lists only published public recipes and fol
   await expect(a.getByText(/^Hidden from the home feed and your profile\./)).toBeVisible();
 
   await b.goto('/');
-  await expect(b.getByRole('heading', { name: 'Latest recipes' })).toBeVisible();
+  await feedLoaded(b);
   await expect(b.getByText(`Feed-pub-${s}`)).toHaveCount(0);
   await ctxA.close();
   await ctxB.close();
 });
 
 test('the feed paginates: 20 first, then Load more shows the oldest', async ({ browser }, testInfo) => {
-  const s = stamp();
+  const s = stamp(testInfo);
   const { page: b, context } = await newUserPage(browser, testInfo, 'feedpg');
   for (let i = 1; i <= 21; i++) {
     await apiPublishRecipe(b, { title: `Page-${s}-${String(i).padStart(2, '0')}`, visibility: 'PUBLIC' });
@@ -67,13 +75,13 @@ test('the feed paginates: 20 first, then Load more shows the oldest', async ({ b
   const mine = cards.filter({ hasText: `Page-${s}-` });
   await expect(mine).toHaveCount(21);
   await expect(b.getByText(`Page-${s}-01`)).toBeVisible();
-  const names = await cards.locator('.name').allInnerTexts();
+  const names = await mine.locator('.name').allInnerTexts();
   expect(new Set(names).size).toBe(names.length);
   await context.close();
 });
 
 test('feed cards sit side by side on desktop and stack on mobile; logout works from the feed', async ({ browser }, testInfo) => {
-  const s = stamp();
+  const s = stamp(testInfo);
   const { page, context } = await newUserPage(browser, testInfo, 'feedlay');
   await apiPublishRecipe(page, { title: `Lay-${s}-1`, visibility: 'PUBLIC' });
   await apiPublishRecipe(page, { title: `Lay-${s}-2`, visibility: 'PUBLIC' });
