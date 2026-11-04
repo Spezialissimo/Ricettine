@@ -39,7 +39,10 @@ test('scales ingredient amounts with kitchen fractions and resets', async ({ bro
     expect(box!.height).toBeGreaterThanOrEqual(44);
   }
 
-  while ((await status.innerText()) !== 'Serves 9') await more.click();
+  for (let n = 2; n <= 9; n++) {
+    await more.click();
+    await expect(status).toHaveText(`Serves ${n}`);
+  }
   await expect(row('milk')).toContainText(/3\s*cup/);
   await expect(row('sugar')).toContainText(/3,000\s*g/);
   await expect(row('salt')).toHaveText('salt');
