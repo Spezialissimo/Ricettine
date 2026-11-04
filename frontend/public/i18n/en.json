@@ -59,6 +59,8 @@
     "deleteTitle": "Delete account",
     "deleteWarning": "This permanently deletes your account. Enter your password to confirm.",
     "deleteSubmit": "Delete my account",
+    "deleteCookbooks": "These cookbooks you own will be deleted too, with their covers and invites:",
+    "deleteCookbooksUnknown": "We could not check which cookbooks you own. Any cookbook you own will be deleted too.",
     "linkPassword": "Change password",
     "linkDelete": "Delete account"
   },
