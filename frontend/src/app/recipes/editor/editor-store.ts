@@ -1,11 +1,13 @@
 import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
-import { errorKey, toApiError } from '../../core/api-error';
+import { ApiError, errorKey, toApiError } from '../../core/api-error';
+import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Photo, Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
 import { unnamedRows } from './completeness';
 import { remapIndex } from './remap-index';
+import { Backup, UnsavedBackup } from './unsaved-backup';
 
 const EMPTY: RecipeInput = {
   version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
@@ -40,16 +42,35 @@ export function conflictText(r: RecipeInput): string {
     .join('\n\n');
 }
 
+/** Same recipe content, whatever the version and key order (a backup the server already has). */
+function sameContent(a: RecipeInput, b: RecipeInput): boolean {
+  const canon = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(canon)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon((v as Record<string, unknown>)[k])]))
+        : v;
+  const strip = (r: RecipeInput) => JSON.stringify(canon({ ...withoutBlankIngredients(r), version: 0 }));
+  return strip(a) === strip(b);
+}
+
+/** An upload failure worth retrying with the same file (no connection, server error, 503 busy). */
+const retryableUpload = (e: ApiError) => e.status === 0 || e.status >= 500;
+
 /** Where a photo goes: the cover, or the step at this index. */
 export type PhotoSlot = 'cover' | number;
 
-/** An upload (or a refused pick) shown in its slot. `preview` is an object URL, revoked once the server thumb loaded. */
+/**
+ * An upload (or a refused pick) shown in its slot. `preview` is an object URL, revoked once the server
+ * thumb loaded. A failed upload that can be retried keeps its `file` and preview ("Upload failed — Retry").
+ */
 export type PhotoUpload = {
   id: number;
   slot: PhotoSlot;
   status: 'uploading' | 'done' | 'failed';
   preview: string | null;
   error: string | null;
+  file?: File | null;
 };
 
 /**
@@ -59,6 +80,11 @@ export type PhotoUpload = {
 @Injectable()
 export class EditorStore {
   private readonly api = inject(RecipeApi);
+  private readonly backup = inject(UnsavedBackup);
+  private readonly auth = inject(AuthStore);
+  /** Whose editor this is (captured at load): the backup is written and read for this user only. */
+  private userId: string | null = null;
+  private readonly _restored = signal(false);
   private readonly _recipe = signal<RecipeInput>(EMPTY);
   private readonly _server = signal<Recipe | null>(null);
   private readonly _loadError = signal<string | null>(null);
@@ -77,6 +103,7 @@ export class EditorStore {
       this._server.set(r);
       this._recipe.update((cur) => ({ ...cur, version: r.version }));
     },
+    backup: { write: () => this.writeBackup(), clear: () => this.clearBackup() },
   });
 
   readonly recipe: Signal<RecipeInput> = this._recipe.asReadonly();
@@ -84,6 +111,10 @@ export class EditorStore {
   readonly uploads: Signal<PhotoUpload[]> = this._uploads.asReadonly();
   /** True while any photo is still being uploaded (Publish waits). */
   readonly uploading = computed(() => this._uploads().some((u) => u.status === 'uploading'));
+  /** True while a photo is uploading or failed and can be retried: Publish waits, leaving asks first. */
+  readonly uploadsUnfinished = computed(() => this._uploads().some((u) => u.status === 'uploading' || (u.status === 'failed' && !!u.file)));
+  /** True when this visit started from text saved locally on an earlier visit (applied and being saved). */
+  readonly restored: Signal<boolean> = this._restored.asReadonly();
   /** True after a save found that an uploaded photo had been cleaned up and dropped its reference. */
   readonly photoGone: Signal<boolean> = this._photoGone.asReadonly();
   readonly status: Signal<SaveStatus> = this.autosave.status;
@@ -130,12 +161,50 @@ export class EditorStore {
 
   async load(id: string): Promise<void> {
     this._id = id;
+    this.userId = this.auth.me()?.id ?? null;
     this._loadError.set(null);
+    let server: Recipe;
     try {
-      this.replace(await this.api.get(id));
+      server = await this.api.get(id);
     } catch (e) {
       this._loadError.set(errorKey(toApiError(e)));
+      return;
     }
+    this.replace(server);
+    const b = this.userId ? this.backup.read(id, this.userId) : null;
+    if (b) this.restore(server, b);
+  }
+
+  /**
+   * Text kept locally from an earlier visit that the server never confirmed. Based on the server's
+   * current version: apply it and save. Based on an older one (changed elsewhere meanwhile): the
+   * conflict banner, with the backup's text in the editor and its copyable block. Already on the
+   * server: just drop it.
+   */
+  private restore(server: Recipe, b: Backup): void {
+    if (sameContent(b.input, toInput(server))) {
+      this.clearBackup();
+      return;
+    }
+    this._epoch.update((n) => n + 1);
+    if (b.baseVersion === server.version) {
+      this._recipe.set({ ...b.input, version: server.version });
+      this._restored.set(true);
+      this.autosave.changed();
+      void this.autosave.flush();
+    } else {
+      this._recipe.set(b.input);
+      this.autosave.markConflict({ status: 409, code: 'recipe_conflict' });
+      this.autosave.changed(); // unsaved: Done stays, the backup stays
+    }
+  }
+
+  private writeBackup(): void {
+    if (this._id && this.userId) this.backup.write(this._id, this.userId, this._recipe());
+  }
+
+  private clearBackup(): void {
+    if (this._id && this.userId) this.backup.clear(this._id, this.userId);
   }
 
   /** Applies a change to the working copy and schedules an autosave. Ignored before load. */
@@ -174,13 +243,25 @@ export class EditorStore {
       if (!mine) return; // replaced, removed or its step deleted meanwhile; setUpload/dropUpload revoked the preview
       this._photos.update((m) => ({ ...m, [photo.mediaId]: photo }));
       this.setReference(mine.slot, photo.mediaId);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done' } : u)));
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done', file: null } : u)));
     } catch (e) {
       const mine = this._uploads().find((u) => u.id === id);
       if (!mine) return;
+      const err = toApiError(e);
+      if (retryableUpload(err)) {
+        // never dropped silently: the preview stays with "Upload failed — Retry"
+        this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', file, error: 'editor.uploadFailed' } : u)));
+        return;
+      }
       this.revoke(preview);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(toApiError(e)) } : u)));
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(err) } : u)));
     }
+  }
+
+  /** Sends the file of a failed upload again (same slot, same file). */
+  retryUpload(slot: PhotoSlot): Promise<void> {
+    const u = this.uploadFor(slot);
+    return u?.status === 'failed' && u.file ? this.uploadPhoto(u.slot, u.file) : Promise.resolve();
   }
 
   /** A file the client refused (too large, not an image): the slot shows the message. */
@@ -279,6 +360,7 @@ export class EditorStore {
     if (!this._id) return;
     await this.autosave.settled();
     this.replace(await this.api.get(this._id));
+    this.clearBackup(); // the person chose the server copy (the banner showed their text to copy)
   }
 
   /** Replaces the working copy with a server copy (load, load latest, publish). */
@@ -297,7 +379,7 @@ export class EditorStore {
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
-    if (!this._id || this.uploading()) return 'blocked';
+    if (!this._id || this.uploadsUnfinished()) return 'blocked';
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
@@ -331,6 +413,8 @@ export class EditorStore {
   private adoptMetadata(r: Recipe): void {
     this._server.set(r);
     this._recipe.update((cur) => ({ ...cur, version: r.version }));
+    // text typed meanwhile is now based on this version (also if the page was left during the request)
+    if (this.autosave.dirty()) this.writeBackup();
   }
 
   /**
@@ -377,6 +461,7 @@ export class EditorStore {
       throw e;
     }
     this.autosave.dispose();
+    this.clearBackup();
     return true;
   }
 
@@ -391,5 +476,6 @@ export class EditorStore {
       throw e;
     }
     this.autosave.dispose();
+    this.clearBackup();
   }
 }

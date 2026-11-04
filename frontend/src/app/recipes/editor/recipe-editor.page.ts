@@ -1,12 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
-import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../../core/api-error';
+import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
 import { ConfirmDeleteDialog } from './confirm-delete.dialog';
+import { ConfirmLeaveDialog } from './confirm-leave.dialog';
 import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore, conflictText } from './editor-store';
 import { openEditorSheet } from './editor-sheet';
@@ -56,8 +58,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
           }}</span>
           <span class="spacer"></span>
           @if (store.server()?.status === 'DRAFT') {
-            <button type="button" class="btn primary publish" [disabled]="busy() || store.uploading()"
-              [attr.aria-describedby]="store.uploading() ? 'uploads-hint' : null" (click)="publish()">{{ t('editor.publish') }}</button>
+            <button type="button" class="btn primary publish" [disabled]="busy() || store.uploadsUnfinished()"
+              [attr.aria-describedby]="store.uploadsUnfinished() ? 'uploads-hint' : null" (click)="publish()">{{ t('editor.publish') }}</button>
           }
           <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [disabled]="busy()"
             [cdkMenuTriggerFor]="menu">⋯</button>
@@ -83,6 +85,11 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         }
         @if (store.uploading()) {
           <p id="uploads-hint" class="hint" role="status">{{ t('editor.waitingForUploads') }}</p>
+        } @else if (store.uploadsUnfinished()) {
+          <p id="uploads-hint" class="hint" role="status">{{ t('editor.uploadFailedHint') }}</p>
+        }
+        @if (store.restored()) {
+          <p class="hint restored" role="status">{{ t('editor.restored') }}</p>
         }
         @if (store.photoGone()) {
           <p class="alert" role="alert">{{ t('editor.photoGone') }}</p>
@@ -165,6 +172,7 @@ export class RecipeEditorPage {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
+  private readonly auth = inject(AuthStore);
   protected readonly maxTitle = MAX_TITLE;
   protected readonly maxNotes = MAX_NOTES;
   protected readonly visibilities: readonly Visibility[] = ['PRIVATE', 'PUBLIC'];
@@ -212,7 +220,27 @@ export class RecipeEditorPage {
     effect(() => {
       if (this.store.status() === 'saved') untracked(() => this.actionError.set(null));
     });
+    // closing the tab with a photo still uploading or failed: the browser asks first
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      if (!this.store.uploadsUnfinished()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', beforeUnload));
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
+  }
+
+  /**
+   * For the leave guard: true at once unless a photo is uploading or failed; then a confirm dialog.
+   * Signed out (session expired, logout) it never holds the redirect up: that upload cannot succeed.
+   */
+  async canLeave(): Promise<boolean> {
+    if (!this.store.uploadsUnfinished() || this.auth.me() === null) return true;
+    const ref = openEditorSheet(this.dialog, this.injector, ConfirmLeaveDialog, {
+      label: this.i18n.translate('editor.leaveConfirm.title'),
+    });
+    return (await firstValueFrom(ref.closed, { defaultValue: undefined })) === true;
   }
 
   /** The bottom bar has no step of its own: a refused file is reported on the step it was meant for. */

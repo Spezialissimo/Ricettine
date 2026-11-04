@@ -12,6 +12,7 @@ import { ProfilePage } from './settings/profile.page';
 import { MyRecipesPage } from './recipes/my-recipes.page';
 import { NewRecipePage } from './recipes/new-recipe.page';
 import { ShellComponent } from './shell/shell.component';
+import { leaveEditorGuard } from './recipes/editor/leave-editor.guard';
 
 // Every route lives under the pathless parent so setupGuard (canActivateChild) runs for all of them.
 export const routes: Routes = [
@@ -39,6 +40,7 @@ export const routes: Routes = [
           {
             path: 'recipes/:id/edit',
             loadComponent: () => import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
+            canDeactivate: [leaveEditorGuard],
           },
           { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
           { path: 'settings/profile', component: ProfilePage },

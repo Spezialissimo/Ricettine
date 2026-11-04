@@ -1,6 +1,7 @@
 import { toInput } from '../recipe.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
@@ -212,6 +213,175 @@ describe('EditorStore', () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(remove).toHaveBeenCalledWith('r1');
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('EditorStore unsaved backup', () => {
+  const KEY = 'ricettine.unsaved.r1';
+  const me = (id: string) => ({ id, email: `${id}@x.test`, username: id, displayName: id, avatarUrl: null, admin: false });
+  const stored = () => {
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
+  };
+  const putBackup = (input: Partial<ReturnType<typeof emptyInput>>, baseVersion: number, userId = 'u1') =>
+    localStorage.setItem(KEY, JSON.stringify({ input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: 1, userId }));
+  function setupAs(api: Partial<RecipeApi>, userId: string | null = 'u1') {
+    const store = setup(api);
+    TestBed.inject(AuthStore).setMe(userId ? me(userId) : null);
+    return store;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    localStorage.clear();
+  });
+
+  it('an edit while the network fails: backup written, offline; an online event saves it and deletes the backup', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ version: 3 })), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Offline pie' }));
+    expect(stored()).toMatchObject({ input: { title: 'Offline pie' }, baseVersion: 3, userId: 'u1' }); // before any request
+    await vi.advanceTimersByTimeAsync(800);
+    expect(store.status()).toBe('offline');
+    expect(stored()?.input.title).toBe('Offline pie');
+
+    save.mockResolvedValue(serverRecipe({ title: 'Offline pie', version: 4 }));
+    window.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+    expect(stored()).toBeNull();
+  });
+
+  it('a backup with the same base version is applied at load and saved', async () => {
+    putBackup({ title: 'Typed before the tab closed', notes: 'n' }, 3);
+    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'Typed before the tab closed', notes: 'n', version: 4 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old', version: 3 })), save });
+    await store.load('r1');
+    expect(store.recipe()).toMatchObject({ title: 'Typed before the tab closed', notes: 'n', version: 3 });
+    expect(store.restored()).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed before the tab closed', version: 3 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+    expect(stored()).toBeNull();
+  });
+
+  it('a backup with an older base version shows the conflict with the backup text; Load latest drops it', async () => {
+    putBackup({ title: 'My offline text', steps: [{ text: 'Stir', photoMediaId: null }] }, 2);
+    const save = vi.fn();
+    const get = vi.fn().mockResolvedValue(serverRecipe({ title: 'Theirs', version: 5 }));
+    const store = setupAs({ get, save });
+    await store.load('r1');
+    expect(store.status()).toBe('conflict');
+    expect(conflictText(store.recipe())).toBe('My offline text\n\nStir');
+    store.update((r) => ({ ...r, notes: 'more' })); // still kept locally during the conflict
+    expect(stored()).toMatchObject({ input: { notes: 'more' }, baseVersion: 2 });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled();
+
+    await store.loadLatest();
+    expect(store.recipe().title).toBe('Theirs');
+    expect(stored()).toBeNull();
+  });
+
+  it('a backup that matches the server copy is dropped without a save or a notice', async () => {
+    putBackup({ title: 'Same' }, 2);
+    const save = vi.fn();
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Same', version: 3 })), save });
+    await store.load('r1');
+    expect(store.status()).toBe('idle');
+    expect(store.restored()).toBe(false);
+    expect(stored()).toBeNull();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("never applies another user's backup", async () => {
+    putBackup({ title: 'Not yours' }, 3, 'u2');
+    const save = vi.fn();
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })), save });
+    await store.load('r1');
+    expect(store.recipe().title).toBe('Server');
+    expect(store.restored()).toBe(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled();
+    expect(stored()?.userId).toBe('u2'); // left for its owner
+  });
+
+  it('with localStorage throwing, the editor still loads and saves', async () => {
+    for (const m of ['getItem', 'setItem', 'removeItem'] as const) {
+      vi.spyOn(Storage.prototype, m).mockImplementation(() => {
+        throw new DOMException('denied', 'SecurityError');
+      });
+    }
+    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'Works', version: 2 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Works' }));
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Works' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+  });
+
+  it('an edit during an in-flight save keeps the backup until that edit is saved too', async () => {
+    let resolve!: (r: Recipe) => void;
+    const save = vi.fn().mockReturnValueOnce(new Promise<Recipe>((r) => (resolve = r)));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'A' }));
+    await vi.advanceTimersByTimeAsync(800);
+    store.update((r) => ({ ...r, title: 'AB' }));
+    save.mockResolvedValue(serverRecipe({ title: 'AB', version: 3 }));
+    resolve(serverRecipe({ title: 'A', version: 2 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.recipe().title).toBe('AB');
+    expect(stored()).toMatchObject({ input: { title: 'AB' }, baseVersion: 2 });
+    await vi.advanceTimersByTimeAsync(800);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+    expect(stored()).toBeNull();
+  });
+
+  it('leaving during an in-flight publish keeps what was typed, re-based on the published version', async () => {
+    let resolvePublish!: (r: Recipe) => void;
+    const publish = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolvePublish = r)));
+    const save = vi.fn();
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    await store.load('r1');
+    const done = store.publish();
+    await vi.advanceTimersByTimeAsync(0);
+    store.update((r) => ({ ...r, title: 'T!' }));
+    TestBed.resetTestingModule(); // leave: the leaving flush returns at once (autosave is held)
+    resolvePublish(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 }));
+    await done;
+    expect(stored()).toMatchObject({ input: { title: 'T!' }, baseVersion: 2 }); // next open: applied and saved, not a conflict
+  });
+
+  it('leaving with a save failing (e.g. offline at logout) keeps the backup', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Keep me' }));
+    await TestBed.inject(PendingSaves).flushAll();
+    TestBed.resetTestingModule();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(stored()?.input.title).toBe('Keep me');
+  });
+
+  it('deleting the recipe deletes its backup', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save, remove: vi.fn().mockResolvedValue(undefined) });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'x' }));
+    await store.remove();
+    expect(stored()).toBeNull();
   });
 });
 

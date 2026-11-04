@@ -191,9 +191,20 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await page.getByLabel('Title').fill('');
   await expect(page.locator('.title-field .field-error')).toContainText('A published recipe needs a title');
   await expect(page.getByRole('status').getByText('Not saved')).toBeVisible();
+  // the server copy is untouched: still published, still titled
+  const id = new URL(page.url()).pathname.split('/')[2];
+  const saved = await (await page.request.get(`/api/recipes/${id}`)).json();
+  expect(saved).toMatchObject({ title: 'Soup', status: 'PUBLISHED' });
+  // a reload keeps what was typed (the local backup) and the same refusal, never a silent loss either way
+  await page.reload();
+  await expect(page.locator('.editor-header .state')).toContainText('Published');
+  await expect(page.getByLabel('Title')).toHaveValue('');
+  await expect(page.getByLabel('Title')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('.title-field .field-error')).toBeVisible();
+  await page.getByLabel('Title').fill('Soup');
+  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Title')).toHaveValue('Soup');
-  await expect(page.locator('.editor-header .state')).toContainText('Published');
   await context.close();
 });
 

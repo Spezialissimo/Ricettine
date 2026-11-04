@@ -1,5 +1,8 @@
 import { Injectable } from '@angular/core';
 
+/** Logout waits at most this long for open editors to save; the local backup keeps anything unsent. */
+export const FLUSH_TIMEOUT_MS = 5000;
+
 /**
  * Unsent work of open pages (the recipe editor's autosave), so that logging out can send it first,
  * while the session is still valid. Pages register a flush; work still running after a page went
@@ -22,8 +25,16 @@ export class PendingSaves {
     void work.finally(() => this.running.delete(work)).catch(() => {});
   }
 
-  /** Runs every registered flush and waits for those and all tracked work; never rejects. */
-  async flushAll(): Promise<void> {
-    await Promise.allSettled([...[...this.flushers].map((f) => f()), ...this.running]);
+  /**
+   * Runs every registered flush and waits for those and all tracked work, at most `timeoutMs`;
+   * never rejects. A failed or hung save does not hold logout up: the editor's local backup keeps
+   * the text, and the editor restores it on the next visit.
+   */
+  async flushAll(timeoutMs = FLUSH_TIMEOUT_MS): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, timeoutMs)));
+    const all = Promise.allSettled([...[...this.flushers].map((f) => f()), ...this.running]);
+    await Promise.race([all, timeout]);
+    clearTimeout(timer);
   }
 }

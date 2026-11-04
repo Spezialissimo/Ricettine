@@ -21,16 +21,26 @@ function deferred<T>() {
 function harness(save: (i: RecipeInput) => Promise<Recipe>) {
   const state = { current: input() };
   const saveFn = vi.fn(save);
-  const autosave = new Autosave({
-    save: saveFn,
-    read: () => state.current,
-    saved: (r) => (state.current = { ...state.current, version: r.version }),
-  });
+  /** What the local backup holds (null = none): written on every change, cleared once saved. */
+  const backup = { value: null as RecipeInput | null };
+  let visible: () => void = () => {};
+  const autosave = new Autosave(
+    {
+      save: saveFn,
+      read: () => state.current,
+      saved: (r) => (state.current = { ...state.current, version: r.version }),
+      backup: {
+        write: () => (backup.value = state.current),
+        clear: () => (backup.value = null),
+      },
+    },
+    { onVisible: (cb) => ((visible = cb), () => (visible = () => {})) },
+  );
   const edit = (over: Partial<RecipeInput>) => {
     state.current = { ...state.current, ...over };
     autosave.changed();
   };
-  return { state, saveFn, autosave, edit };
+  return { state, saveFn, autosave, edit, backup, becameVisible: () => visible() };
 }
 
 const ok = (version: number) => ({ version }) as Recipe;
@@ -185,5 +195,130 @@ describe('Autosave', () => {
     window.dispatchEvent(new Event('online'));
     await h.autosave.flush();
     expect(h.saveFn).not.toHaveBeenCalled();
+  });
+
+  describe('local backup and retries', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('writes the backup synchronously on every change, before anything is sent', () => {
+      const h = harness(okSave);
+      h.edit({ title: 'a' });
+      expect(h.backup.value?.title).toBe('a');
+      expect(h.saveFn).not.toHaveBeenCalled();
+      h.edit({ title: 'ab' });
+      expect(h.backup.value?.title).toBe('ab');
+    });
+
+    it('an edit while the network fails: backup kept, offline; online -> saved and backup deleted', async () => {
+      const h = harness(async () => {
+        throw httpError(0);
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      expect(h.autosave.status()).toBe('offline');
+      expect(h.backup.value?.title).toBe('x');
+
+      h.saveFn.mockImplementation(okSave);
+      window.dispatchEvent(new Event('online'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.autosave.status()).toBe('saved');
+      expect(h.backup.value).toBeNull();
+    });
+
+    it('retries after 2 s, 5 s, 15 s, then every 30 s', async () => {
+      const h = harness(async () => {
+        throw httpError(0);
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      expect(h.saveFn).toHaveBeenCalledTimes(1);
+      const expectNextAfter = async (ms: number) => {
+        const n = h.saveFn.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(ms - 1);
+        expect(h.saveFn).toHaveBeenCalledTimes(n);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(h.saveFn).toHaveBeenCalledTimes(n + 1);
+      };
+      await expectNextAfter(2000);
+      await expectNextAfter(5000);
+      await expectNextAfter(15_000);
+      await expectNextAfter(30_000);
+      await expectNextAfter(30_000);
+      expect(h.autosave.status()).toBe('offline');
+
+      h.saveFn.mockImplementation(okSave);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(h.autosave.status()).toBe('saved');
+      const n = h.saveFn.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(h.saveFn).toHaveBeenCalledTimes(n); // nothing left to retry
+    });
+
+    it('retries 5xx and 503 busy with the same backoff, even while the browser reports online', async () => {
+      const h = harness(async () => {
+        throw httpError(503, { code: 'busy' });
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      expect(h.autosave.status()).toBe('error');
+      expect(h.autosave.error()?.code).toBe('busy');
+      h.saveFn.mockImplementation(async () => {
+        throw httpError(500, { code: 'internal_error' });
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(h.saveFn).toHaveBeenCalledTimes(2);
+      h.saveFn.mockImplementation(okSave);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(h.saveFn).toHaveBeenCalledTimes(3);
+      expect(h.autosave.status()).toBe('saved');
+      expect(h.backup.value).toBeNull();
+    });
+
+    it('does not retry a refusal (400) on its own', async () => {
+      const h = harness(async () => {
+        throw httpError(400, { code: 'validation_failed', fields: { title: 'too_long' } });
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(h.saveFn).toHaveBeenCalledTimes(1);
+      expect(h.backup.value?.title).toBe('x');
+    });
+
+    it('retries at once when the page becomes visible again', async () => {
+      const h = harness(async () => {
+        throw httpError(0);
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      h.saveFn.mockImplementation(okSave);
+      h.becameVisible();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.saveFn).toHaveBeenCalledTimes(2);
+      expect(h.autosave.status()).toBe('saved');
+    });
+
+    it('an edit during an in-flight save is not erased by the older response (backup stays, newer base)', async () => {
+      const first = deferred<Recipe>();
+      const h = harness(() => first.promise);
+      h.edit({ title: 'one' });
+      await vi.advanceTimersByTimeAsync(800);
+      h.edit({ title: 'two' });
+      first.resolve(ok(7));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.backup.value).toMatchObject({ title: 'two', version: 7 }); // re-based on the version just saved
+    });
+
+    it('dispose stops retrying', async () => {
+      const h = harness(async () => {
+        throw httpError(0);
+      });
+      h.edit({ title: 'x' });
+      await vi.advanceTimersByTimeAsync(800);
+      h.autosave.dispose();
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(h.saveFn).toHaveBeenCalledTimes(1);
+      expect(h.backup.value?.title).toBe('x'); // the backup outlives the page
+    });
   });
 });
