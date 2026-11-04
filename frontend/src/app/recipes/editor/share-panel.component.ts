@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal 
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../../core/api-error';
+import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { CopyLinkComponent } from '../../shared/copy-link.component';
 import { ConfirmResetLinkDialog } from './confirm-reset-link.dialog';
 import { EditorStore } from './editor-store';
@@ -39,6 +40,11 @@ import { openEditorSheet } from './editor-sheet';
         } @else {
           <p class="hint">{{ t('editor.publishToShare') }}</p>
         }
+        @if (s.status === 'PUBLISHED') {
+          <button type="button" class="reset" (click)="addToCookbook(s.id)">{{ t('cookbooks.addToCookbook') }}</button>
+        } @else {
+          <p class="hint">{{ t('cookbooks.publishFirst') }}</p>
+        }
       }
     </section>
   `,
@@ -54,6 +60,13 @@ export class SharePanelComponent {
   protected readonly done = signal(false);
   /** A conflict blocks the reset: its version would be stale; Load latest first. */
   protected readonly conflict = computed(() => this.store.status() === 'conflict');
+
+  protected addToCookbook(recipeId: string): void {
+    openEditorSheet(this.dialog, this.injector, AddToCookbookDialog, {
+      label: this.i18n.translate('cookbooks.addToCookbook'),
+      data: { ref: { recipeId } },
+    });
+  }
 
   async reset(): Promise<void> {
     if (this.busy() || this.conflict()) return;

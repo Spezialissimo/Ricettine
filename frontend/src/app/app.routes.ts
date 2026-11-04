@@ -42,6 +42,12 @@ export const routes: Routes = [
             loadComponent: () => import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
             canDeactivate: [leaveEditorGuard],
           },
+          {
+            path: 'cookbooks',
+            pathMatch: 'full',
+            loadComponent: () => import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
+          },
+          { path: 'cookbooks/:id', loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage) },
           { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
           { path: 'settings/profile', component: ProfilePage },
           { path: 'settings/password', component: PasswordPage },

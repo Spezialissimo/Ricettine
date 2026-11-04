@@ -4,10 +4,17 @@ export type ApiError = { status: number; code: string; fields?: Record<string, s
 
 /** Every `code` the backend can emit (plus frontend-only network_error / unknown). */
 export const KNOWN_ERROR_CODES: readonly string[] = [
+  'already_member',
   'bad_credentials',
   'bad_request',
   'busy',
   'conflict',
+  'cookbook_authors_full',
+  'cookbook_full',
+  'cookbook_invite_invalid',
+  'cookbook_invites_full',
+  'cookbook_not_found',
+  'cookbook_owner_only',
   'email_taken',
   'file_too_large',
   'forbidden',
@@ -21,6 +28,7 @@ export const KNOWN_ERROR_CODES: readonly string[] = [
   'method_not_allowed',
   'not_authenticated',
   'not_found',
+  'owner_cannot_leave',
   'password_too_long',
   'password_too_short',
   'photo_not_in_recipe',

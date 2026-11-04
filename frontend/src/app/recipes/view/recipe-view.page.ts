@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
+import { openEditorSheet } from '../editor/editor-sheet';
 import { AuthStore } from '../../core/auth.store';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
@@ -61,6 +64,9 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             <span>{{ t('recipes.by', { name: r.author.displayName }) }}</span>
             @if (r.viewerIsAuthor && r.recipeId) {
               <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']">{{ t('recipes.edit') }}</a>
+            }
+            @if (auth.me()) {
+              <button type="button" class="btn" (click)="addToCookbook()">{{ t('cookbooks.addToCookbook') }}</button>
             }
           </div>
           <h1>{{ r.title }}</h1>
@@ -131,6 +137,9 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 export class RecipeViewPage {
   private readonly api = inject(RecipeApi);
   private readonly title = inject(Title);
+  private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
+  private readonly i18n = inject(TranslocoService);
   protected readonly auth = inject(AuthStore);
   protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
   protected readonly recipe = signal<PublicRecipe | null>(null);
@@ -158,6 +167,13 @@ export class RecipeViewPage {
       if (err.status === 404) this.notFound.set(true);
       else this.error.set(errorKey(err));
     }
+  }
+
+  protected addToCookbook(): void {
+    openEditorSheet(this.dialog, this.injector, AddToCookbookDialog, {
+      label: this.i18n.translate('cookbooks.addToCookbook'),
+      data: { ref: { shareToken: this.token } },
+    });
   }
 
   protected cover(r: PublicRecipe): string | null {

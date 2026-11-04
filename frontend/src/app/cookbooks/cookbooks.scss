@@ -1,0 +1,47 @@
+@use '../../styles/tokens' as t;
+
+:host { display: block; }
+h1 { margin: 0; color: t.$accent; font-size: 1.5rem; overflow-wrap: anywhere; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: t.$space-3; flex-wrap: wrap; margin-bottom: t.$space-4; }
+.actions { display: flex; gap: t.$space-2; flex-wrap: wrap; }
+.alert { color: #b3261e; }
+.loading, .empty, .desc { color: t.$muted; }
+.desc { margin: 0 0 t.$space-4; overflow-wrap: anywhere; white-space: pre-line; }
+button.btn, button.retry, button.new, a.btn {
+  @include t.touch-target;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid t.$border; border-radius: t.$radius; background: t.$surface; color: t.$ink; font: inherit;
+  padding: 0 t.$space-4; text-decoration: none; cursor: pointer;
+}
+button.new, button.retry { background: t.$accent; border-color: t.$accent; color: #fff; font-weight: 600; }
+button.danger { color: #b3261e; border-color: #b3261e; }
+
+.badges { display: flex; gap: t.$space-2; flex-wrap: wrap; }
+.badge { align-self: flex-start; font-size: 0.7rem; border: 1px solid t.$border; border-radius: 999px; padding: 2px 8px; }
+.badge[data-badge='PUBLIC'] { background: #e5f3e6; }
+.badge[data-badge='OWNER'] { background: #fff4e0; }
+
+.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: t.$space-3; grid-template-columns: 1fr; }
+a.cookbook {
+  @include t.touch-target;
+  display: flex; flex-direction: column; gap: t.$space-2; height: 100%; padding: t.$space-3;
+  background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; color: t.$ink; text-decoration: none;
+}
+.name { font-weight: 700; overflow-wrap: anywhere; }
+.count { color: t.$muted; font-size: 0.85rem; }
+
+.entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: t.$space-2; }
+li.entry {
+  display: flex; align-items: center; justify-content: space-between; gap: t.$space-3; padding: t.$space-2 t.$space-3;
+  background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius;
+}
+.entry-body { display: flex; flex-direction: column; min-width: 0; }
+.entry-title { font-weight: 700; overflow-wrap: anywhere; color: t.$ink; }
+.entry-meta { color: t.$muted; font-size: 0.85rem; }
+
+@media (min-width: t.$bp-desktop) {
+  .grid { grid-template-columns: repeat(3, 1fr); gap: t.$space-4; }
+}
+@media (min-width: 1000px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}

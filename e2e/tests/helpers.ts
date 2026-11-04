@@ -112,3 +112,23 @@ export async function createRecipe(page: Page, data: NewRecipeData): Promise<str
   await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
   return page.url();
 }
+
+/** Drives the UI: creates a cookbook named `name` and lands on its page. */
+export async function createCookbook(page: Page, name: string): Promise<string> {
+  await page.goto('/cookbooks');
+  await page.getByRole('button', { name: '+ New cookbook' }).click();
+  await page.getByRole('dialog').getByLabel('Name').fill(name);
+  await page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(page).toHaveURL(/\/cookbooks\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
+  return page.url();
+}
+
+/** Creates a recipe, publishes it (private) and returns the editor URL and the share URL. */
+export async function publishRecipe(page: Page, data: NewRecipeData): Promise<{ editorUrl: string; shareUrl: string }> {
+  const editorUrl = await createRecipe(page, data);
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(page.locator('[data-url]')).toBeVisible();
+  const shareUrl = (await page.locator('[data-url]').innerText()).trim();
+  return { editorUrl, shareUrl };
+}

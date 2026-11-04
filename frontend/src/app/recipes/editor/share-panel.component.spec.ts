@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore } from './editor-store';
 import { serverRecipe } from './editor-store.testing';
@@ -15,7 +16,7 @@ async function mount(initial: Recipe, resetLink = vi.fn(), status = signal<strin
     server.set({ ...initial, shareUrl: 'https://x.test/r/NEW' });
     return 'reset';
   }) };
-  TestBed.configureTestingModule({ providers: [provideTestTransloco(), { provide: EditorStore, useValue: store }] });
+  TestBed.configureTestingModule({ providers: [provideTestTransloco(), { provide: EditorStore, useValue: store }, { provide: CookbookApi, useValue: { mine: async () => [], addRecipe: vi.fn() } }] });
   const f = TestBed.createComponent(Host);
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, resetLink };
@@ -92,5 +93,20 @@ describe('SharePanelComponent', () => {
     await settle(f);
     expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.unknown);
     expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/OLD');
+  });
+
+  it('on a draft shows the publish-first hint for cookbooks and no Add to cookbook button', async () => {
+    const { el } = await mount(serverRecipe());
+    expect(el.textContent).toContain(en.cookbooks.publishFirst);
+    expect(btn(el, en.cookbooks.addToCookbook)).toBeUndefined();
+  });
+
+  it('on a published recipe Add to cookbook opens the picker for that recipe', async () => {
+    const { f, el } = await mount(serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }));
+    expect(el.textContent).not.toContain(en.cookbooks.publishFirst);
+    btn(el, en.cookbooks.addToCookbook)!.click();
+    await settle(f);
+    expect(overlay().textContent).toContain(en.cookbooks.addToCookbook);
+    expect(overlay().textContent).toContain(en.cookbooks.noneYet);
   });
 });
