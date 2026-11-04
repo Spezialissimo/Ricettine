@@ -25,9 +25,9 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   const { page, context } = await newUserPage(browser, testInfo, 'closetab');
   const editorUrl = await createRecipe(page, { title: 'Closed stew', ingredients: ['beans'], steps: ['Soak'] });
 
-  await context.setOffline(true);
-  // Offline emulation alone is racy: a request in flight can still reach the server. Abort the save
-  // for sure, so the text can only get to the server through the reopened tab's restore.
+  // This tab's saves fail as if offline. Not context.setOffline: going back online fires 'online' in a
+  // tab still being torn down, its editor retries at once, and Playwright lets a request from a page it
+  // already counts as closed through unrouted, so the text could reach the server before the reopen.
   await page.route('**/api/recipes/*', (route) =>
     route.request().method() === 'PUT' ? route.abort('internetdisconnected') : route.continue(),
   );
@@ -35,16 +35,16 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   await expect(page.getByRole('status').getByText('Offline: will save when you reconnect')).toBeVisible();
   await page.close();
 
-  await context.setOffline(false);
+  const id = editorUrl.match(/\/recipes\/([0-9a-f-]{36})\/edit$/)![1];
+  const serverStep = async () => (await (await context.request.get(`/api/recipes/${id}`)).json()).steps[0].text;
+  // The server never got the text: only the local backup has it.
+  expect(await serverStep()).toBe('Soak');
   const again = await context.newPage();
   await again.goto(editorUrl);
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
-  // The server never got the text, so this tab must restore it and save it.
+  // So this tab restored it from the backup, and must save it.
   await expect(saved(again)).toBeVisible();
-  const id = editorUrl.match(/\/recipes\/([0-9a-f-]{36})\/edit$/)![1];
-  await expect
-    .poll(async () => (await (await again.request.get(`/api/recipes/${id}`)).json()).steps[0].text)
-    .toBe('Soak overnight, then simmer');
+  await expect.poll(serverStep).toBe('Soak overnight, then simmer');
   await again.reload();
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
 });
