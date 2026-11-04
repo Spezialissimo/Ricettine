@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
-import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { ApiError, errorKey, fieldErrorKey } from '../core/api-error';
 
 export type AccountValues = { email: string; username: string; displayName: string; password: string };
@@ -114,7 +114,6 @@ export class AccountFormComponent {
   readonly busy = input(false);
   readonly error = input<ApiError | null>(null);
   readonly submitted = output<AccountValues>();
-  private readonly transloco = inject(TranslocoService);
   private attempted = false;
 
   readonly form = new FormGroup({
@@ -166,7 +165,7 @@ export class AccountFormComponent {
       }
     }
     const code = this.error()?.fields?.[name];
-    if (code) return fieldErrorKey(this.transloco, code);
+    if (code) return fieldErrorKey(code);
     const e = this.error();
     return e && this.serverField() === name ? errorKey(e) : null;
   }
