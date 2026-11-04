@@ -7,6 +7,7 @@ export const KNOWN_ERROR_CODES: readonly string[] = [
   'bad_credentials',
   'bad_request',
   'busy',
+  'conflict',
   'email_taken',
   'file_too_large',
   'forbidden',

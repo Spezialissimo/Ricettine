@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
+import com.ricettine.QuietSqlErrors;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.BlobStore;
@@ -28,12 +29,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
-@TestPropertySource(properties = "logging.level.org.hibernate.orm.jdbc.error=OFF")
 class MeIT extends IntegrationTest {
 
 	@Autowired JdbcTemplate jdbc;
@@ -113,6 +112,7 @@ class MeIT extends IntegrationTest {
 	}
 
 	@Test
+	@QuietSqlErrors
 	void takenUsernameIs409() throws Exception {
 		mvc.perform(patch("/api/me").with(csrf()).cookie(cookie).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"username\":\"taken\"}"))
