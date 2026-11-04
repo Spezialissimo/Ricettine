@@ -319,13 +319,33 @@ export class EditorStore {
     }
     if (this.autosave.dirty()) {
       // Edits typed during the request: adopt only the server metadata, then save them at the new version.
-      this._server.set(published);
-      this._recipe.update((cur) => ({ ...cur, version: published.version }));
+      this.adoptMetadata(published);
     } else {
       this.replace(published);
     }
     this.autosave.resume();
     return 'published';
+  }
+
+  /** Takes the server's metadata (status, version, share URL, ...) but keeps the working copy as typed. */
+  private adoptMetadata(r: Recipe): void {
+    this._server.set(r);
+    this._recipe.update((cur) => ({ ...cur, version: r.version }));
+  }
+
+  /**
+   * Replaces the share link. Reset bumps the version, so the returned version and URL are adopted
+   * while whatever is typed stays (autosave is held during the request, then saves at the new version).
+   */
+  async resetLink(): Promise<void> {
+    if (!this._id) return;
+    this.autosave.suspend();
+    try {
+      await this.autosave.settled();
+      this.adoptMetadata(await this.api.resetLink(this._id));
+    } finally {
+      this.autosave.resume();
+    }
   }
 
   isUntouchedDraft(): boolean {

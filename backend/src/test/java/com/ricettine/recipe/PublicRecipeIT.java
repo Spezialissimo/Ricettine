@@ -152,10 +152,17 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void viewerIsAuthorOnlyForTheAuthorsSession() throws Exception {
-		String t = token(published("PRIVATE"));
-		mvc.perform(get("/api/r/" + t).cookie(me)).andExpect(jsonPath("$.viewerIsAuthor").value(true));
-		mvc.perform(get("/api/r/" + t).cookie(other)).andExpect(jsonPath("$.viewerIsAuthor").value(false));
-		mvc.perform(get("/api/r/" + t)).andExpect(jsonPath("$.viewerIsAuthor").value(false));
+		String id = published("PRIVATE");
+		String t2 = token(id);
+		mvc.perform(get("/api/r/" + t2).cookie(me)).andExpect(jsonPath("$.viewerIsAuthor").value(true))
+			.andExpect(jsonPath("$.recipeId").value(id));
+		for (Cookie[] who : new Cookie[][] { { other }, {} }) {
+			var req = get("/api/r/" + t2);
+			if (who.length > 0) req = req.cookie(who[0]);
+			String body = mvc.perform(req).andExpect(jsonPath("$.viewerIsAuthor").value(false)).andReturn()
+				.getResponse().getContentAsString();
+			assertThat(body).doesNotContain("recipeId").doesNotContain(id);
+		}
 	}
 
 	@Test

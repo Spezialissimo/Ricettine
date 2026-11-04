@@ -157,9 +157,10 @@ public class RecipeService {
 				a.getAvatarKey() == null ? null : media.url(a.getAvatarKey(), ImageVariant.AVATAR));
 		List<PublicStepDto> steps = r.getSteps().stream()
 			.map(st -> new PublicStepDto(st.getText(), photo(st.getPhotoMediaId(), s))).toList();
+		boolean viewerIsAuthor = viewerId != null && viewerId.equals(r.getAuthorId());
 		return new PublicRecipe(r.getTitle(), author, r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(),
 				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), s), groups(r), steps, r.getPublishedAt(),
-				viewerId != null && viewerId.equals(r.getAuthorId()));
+				viewerIsAuthor, viewerIsAuthor ? r.getId() : null);
 	}
 
 	/** Deletes the recipe and all its photos (blobs after commit). A given {@code version} must be current (409). */

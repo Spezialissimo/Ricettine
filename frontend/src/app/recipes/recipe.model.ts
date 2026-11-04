@@ -79,3 +79,22 @@ export function toInput(r: Recipe): RecipeInput {
     steps: r.steps.map((s) => ({ text: s.text ?? '', photoMediaId: s.photo?.mediaId ?? null })),
   };
 }
+
+export type Author = { username: string; displayName: string; avatarUrl: string | null };
+
+/** The reader's view of a published recipe (GET /api/r/{token}). `recipeId` is present only for the author. */
+export type PublicRecipe = {
+  title: string | null;
+  author: Author;
+  portions: number;
+  prepMinutes: number | null;
+  cookMinutes: number | null;
+  source: string | null;
+  notes: string | null;
+  cover: Photo | null;
+  groups: ServerGroup[];
+  steps: Step[];
+  publishedAt: string;
+  viewerIsAuthor: boolean;
+  recipeId?: string;
+};

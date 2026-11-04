@@ -23,6 +23,11 @@ export const routes: Routes = [
       { path: 'login', component: LoginPage, canActivate: [guestGuard] },
       { path: 'invite/:token', component: RegisterPage },
       { path: 'reset/:token', component: ResetPasswordPage },
+      // public: readable without an account, so outside the authGuard shell (own minimal header)
+      {
+        path: 'r/:token',
+        loadComponent: () => import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+      },
       {
         path: '',
         component: ShellComponent,

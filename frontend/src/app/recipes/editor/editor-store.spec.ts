@@ -124,6 +124,33 @@ describe('EditorStore', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('resetLink adopts the new version and share URL without overwriting pending edits, so the next save succeeds', async () => {
+    const resetLink = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Server', version: 3, shareUrl: 'https://x.test/r/NEW' }));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 4, shareUrl: 'https://x.test/r/NEW' }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    await store.resetLink();
+    expect(resetLink).toHaveBeenCalledWith('r1');
+    expect(store.server()?.shareUrl).toBe('https://x.test/r/NEW');
+    expect(store.recipe()).toMatchObject({ title: 'Typed', version: 3 });
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed', version: 3 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('saved');
+  });
+
+  it('a failed resetLink resumes autosave and rethrows', async () => {
+    const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 500 }));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3 }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    await expect(store.resetLink()).rejects.toBeTruthy();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it('a failed publish resumes autosave for edits typed meanwhile', async () => {
     let rejectPublish!: (e: unknown) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((_, rej) => (rejectPublish = rej)));

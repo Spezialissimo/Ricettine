@@ -14,6 +14,7 @@ import { IngredientsEditorComponent } from './ingredients-editor.component';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoPickerComponent } from './photo-picker.component';
 import { PhotoSlotComponent } from './photo-slot.component';
+import { SharePanelComponent } from './share-panel.component';
 import { StepsEditorComponent } from './steps-editor.component';
 import { countingIngredients, countingSteps } from './completeness';
 
@@ -31,7 +32,7 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
  */
 @Component({
   selector: 'app-recipe-editor-page',
-  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, PhotoDropDirective, PhotoPickerComponent, PhotoSlotComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, PhotoDropDirective, PhotoPickerComponent, PhotoSlotComponent, SharePanelComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
   providers: [EditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-editor.page.scss',
@@ -117,6 +118,7 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 </label>
               }
             </fieldset>
+            <app-share-panel class="share" />
             <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid() || showUnnamed()" aria-labelledby="ingredients-heading">
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>
               @if (missing().includes('ingredients')) {

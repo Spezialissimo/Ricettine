@@ -133,7 +133,13 @@
     "emptyAction": "Create your first recipe",
     "creating": "Creating your recipe...",
     "loading": "Loading your recipes...",
-    "coverAlt": "Cover photo of {{title}}"
+    "coverAlt": "Cover photo of {{title}}",
+    "notFound": "This recipe is not available",
+    "notFoundBody": "The link may have been reset, or the recipe is no longer shared.",
+    "home": "Go to Ricettine",
+    "edit": "Edit",
+    "by": "by {{name}}",
+    "stepAlt": "Step {{n}}"
   },
   "units": {
     "g": "g",
@@ -262,6 +268,14 @@
     "removeStepPhoto": "Remove photo of step {{n}}",
     "photoGone": "A photo you added was removed from the server before it was saved, so it was taken off the recipe. Add it again.",
     "waitingForUploads": "Waiting for photos to finish uploading…",
-    "uploadsInProgress": "A photo is still uploading. Wait for it to finish before leaving."
+    "uploadsInProgress": "A photo is still uploading. Wait for it to finish before leaving.",
+    "publishToShare": "Publish to get a share link",
+    "shareTitle": "Share",
+    "resetLink": "Reset link",
+    "resetLinkConfirm": {
+      "title": "Reset the share link?",
+      "body": "The current link and its photo links stop working for everyone who has them. A new link is created.",
+      "confirm": "Reset"
+    }
   }
 }
