@@ -16,7 +16,8 @@ export type Backup = {
 /** A backup as read back: which writer (tab) wrote it. */
 export type ReadBackup = Backup & { writerId: string };
 
-export const backupKey = (recipeId: string) => `ricettine.unsaved.${recipeId}`;
+const KEY_PREFIX = 'ricettine.unsaved.';
+export const backupKey = (recipeId: string) => `${KEY_PREFIX}${recipeId}`;
 /** An entry older than this (since its last write) is ignored and deleted. */
 export const BACKUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -90,6 +91,39 @@ export class UnsavedBackup {
       if (!(writerId in entries)) return;
       delete entries[writerId];
       this.store(recipeId, entries);
+    } catch {
+      // storage unavailable
+    }
+  }
+
+  /**
+   * Deletes every expired or malformed entry of every recipe (also those never reopened: other users'
+   * on a shared browser, deleted recipes) and keys left empty. Fresh entries and non-backup keys stay.
+   * Run at app start and after logout.
+   */
+  sweep(): void {
+    try {
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k?.startsWith(KEY_PREFIX)) keys.push(k);
+      }
+      const now = Date.now();
+      for (const key of keys) {
+        try {
+          const id = key.slice(KEY_PREFIX.length);
+          const entries = this.entries(id);
+          const kept: Entries = {};
+          for (const [w, b] of Object.entries(entries)) {
+            if (valid(b) && now - b.savedAt <= BACKUP_TTL_MS) kept[w] = b;
+          }
+          if (Object.keys(kept).length !== Object.keys(entries).length || !localStorage.getItem(key)?.startsWith('{')) {
+            this.store(id, kept);
+          }
+        } catch {
+          // this key is unreadable or locked: leave it
+        }
+      }
     } catch {
       // storage unavailable
     }

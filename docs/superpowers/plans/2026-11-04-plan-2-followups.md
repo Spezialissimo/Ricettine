@@ -70,11 +70,17 @@ Collected from the per-task and per-PR reviews of Plan 2 (SDD ledger). Nothing h
   - Enter/Space on the handle do nothing (keyboard reorder).
 - Share and public page: the share-link e2e lacks side-by-side/stacked bounding-box assertions; the `resetLink` mock has the wrong return type.
 - Unsaved-text backup:
-  - A tab opening a recipe takes over another tab's entry until that tab writes again.
+  - A tab opening a recipe takes over another tab's entry until that tab writes again; if that tab is still live (or offline), both save and one gets a false 409. Idea: keep `writerId` in `sessionStorage` and do not auto-apply a very recent foreign entry.
   - The restored notice lingers after a save.
   - There is no indicator during 5xx retries.
   - A failed takeover write keeps the source entry, so refused text can return after Load latest when storage is full.
-  - Malformed backup entries are never pruned.
+  - A failed (quota) write deletes this tab's older entry, so the net drops to nothing silently; consider keeping it, or sweeping and retrying once, plus a quiet hint when the write fails (R27).
+  - A reload or close with a save in flight and more typed meanwhile gives a false conflict on the same device (backup base is older than the committed copy).
+  - Logout with a failed or in-flight upload drops the photo without asking; after Delete with a failed upload the leave guard still asks about a deleted recipe (add a `leaving` flag).
+  - Text typed while "Load latest" is fetching is overwritten without a backup.
+  - `write()` re-parses and re-serialises all writers' entries on every keystroke (about 1 MB for a huge recipe); consider throttling, still synchronous on `pagehide`/`visibilitychange`.
+  - Missing e2e: session expiry -> login -> restore, logout failure, and the "restored" notice after closing the tab.
+  - The copyable conflict block has only title/notes/steps, so an ingredient-only conflict edit is lost on Load latest.
 - Unsaved-safety e2e: `saved()` right after `goto` can match an idle "Saved ✓" (the reload assertion is the real proof); the conflict spec does not check device 1's text on the server before Load latest; there is no step-photo retry e2e (the retry spec uses the cover photo; step retry is covered by unit specs).
 
 ## Still open from Plan 1 follow-ups

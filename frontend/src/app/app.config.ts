@@ -9,6 +9,7 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
 import { AuthStore } from './core/auth.store';
+import { UnsavedBackup } from './recipes/editor/unsaved-backup';
 import { provideAppTransloco } from './core/i18n.config';
 
 export const appConfig: ApplicationConfig = {
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([authInterceptor]),
     ),
     provideAppTransloco(),
+    provideAppInitializer(() => inject(UnsavedBackup).sweep()),
     provideAppInitializer(() => inject(AuthStore).load()),
   ],
 };

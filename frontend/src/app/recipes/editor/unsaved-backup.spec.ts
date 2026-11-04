@@ -88,4 +88,50 @@ describe('UnsavedBackup', () => {
     expect(backup.read('r1', 'u1')).toBeNull();
     expect(() => backup.clear('r1', 't')).not.toThrow();
   });
+
+  describe('sweep', () => {
+    const entry = (savedAt: number) => ({ input: emptyInput(), baseVersion: 0, savedAt, userId: 'u2' });
+    const put = (id: string, v: unknown) => localStorage.setItem(backupKey(id), typeof v === 'string' ? v : JSON.stringify(v));
+
+    it('removes expired entries (any recipe, any user) and keeps fresh ones', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(10 * BACKUP_TTL_MS);
+      put('old', { a: entry(1) });
+      put('mixed', { a: entry(1), b: entry(10 * BACKUP_TTL_MS - 1000) });
+      put('fresh', { a: entry(10 * BACKUP_TTL_MS - 1000) });
+      backup.sweep();
+      expect(localStorage.getItem(backupKey('old'))).toBeNull();
+      expect(Object.keys(JSON.parse(localStorage.getItem(backupKey('mixed'))!))).toEqual(['b']);
+      expect(Object.keys(JSON.parse(localStorage.getItem(backupKey('fresh'))!))).toEqual(['a']);
+    });
+
+    it('removes malformed values and entries', () => {
+      put('junk', 'not json');
+      put('arr', []);
+      put('bad', { a: { userId: 1 }, b: entry(Date.now()) });
+      backup.sweep();
+      expect(localStorage.getItem(backupKey('junk'))).toBeNull();
+      expect(localStorage.getItem(backupKey('arr'))).toBeNull();
+      expect(Object.keys(JSON.parse(localStorage.getItem(backupKey('bad'))!))).toEqual(['b']);
+    });
+
+    it('leaves keys without the backup prefix alone', () => {
+      localStorage.setItem('other', 'x');
+      localStorage.setItem('ricettine.unsavedish', '{}');
+      localStorage.setItem('ricettine.lang', 'it');
+      backup.sweep();
+      expect(localStorage.getItem('other')).toBe('x');
+      expect(localStorage.getItem('ricettine.unsavedish')).toBe('{}');
+      expect(localStorage.getItem('ricettine.lang')).toBe('it');
+    });
+
+    it('tolerates throwing storage', () => {
+      put('r1', 'junk');
+      for (const m of ['getItem', 'setItem', 'removeItem', 'key'] as const) {
+        vi.spyOn(Storage.prototype, m).mockImplementation(() => {
+          throw new DOMException('denied', 'SecurityError');
+        });
+      }
+      expect(() => backup.sweep()).not.toThrow();
+    });
+  });
 });

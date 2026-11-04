@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AuthStore } from '../core/auth.store';
+import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 
 /**
  * Two layouts, switched purely by CSS at the desktop breakpoint: a top navigation bar on desktop
@@ -51,9 +52,11 @@ import { AuthStore } from '../core/auth.store';
 export class ShellComponent {
   protected readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly backup = inject(UnsavedBackup);
 
   async logout(): Promise<void> {
     await this.auth.logout();
+    this.backup.sweep();
     await this.router.navigateByUrl('/login');
   }
 }
