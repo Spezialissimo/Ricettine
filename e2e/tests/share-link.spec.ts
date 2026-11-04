@@ -66,6 +66,7 @@ test('share link: anonymous reader, author edit link, reset invalidates old link
   await page.getByRole('button', { name: 'Reset link' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
   await expect.poll(() => shareUrl(page)).not.toBe(oldUrl);
+  await expect(page.getByRole('status').getByText('Link reset')).toBeVisible();
   const newUrl = await shareUrl(page);
 
   // next autosave succeeds with the new version
