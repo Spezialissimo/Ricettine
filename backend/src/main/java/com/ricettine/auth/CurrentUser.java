@@ -3,6 +3,7 @@ package com.ricettine.auth;
 import com.ricettine.account.User;
 import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -29,6 +30,20 @@ public class CurrentUser {
 		}
 		catch (IllegalArgumentException e) {
 			throw notAuthenticated();
+		}
+	}
+
+	/** The caller's id, or empty for an anonymous request. */
+	public Optional<UUID> optionalId() {
+		Authentication a = SecurityContextHolder.getContext().getAuthentication();
+		if (a == null || a instanceof AnonymousAuthenticationToken || !a.isAuthenticated()) {
+			return Optional.empty();
+		}
+		try {
+			return Optional.of(UUID.fromString(a.getName()));
+		}
+		catch (IllegalArgumentException e) {
+			return Optional.empty();
 		}
 	}
 

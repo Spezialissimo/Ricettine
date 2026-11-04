@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -58,14 +59,15 @@ public class RecipeController {
 		return recipes.publish(currentUser.id(), parse(id), request.version());
 	}
 
+	/** {@code version} is optional for now: when given and stale, 409 {@code recipe_conflict}. */
 	@DeleteMapping("/{id}")
-	ResponseEntity<Void> delete(@PathVariable String id) {
-		recipes.delete(currentUser.id(), parse(id));
+	ResponseEntity<Void> delete(@PathVariable String id, @RequestParam(required = false) Long version) {
+		recipes.delete(currentUser.id(), parse(id), version);
 		return ResponseEntity.noContent().build();
 	}
 
 	/** A malformed id can't be anyone's recipe: same 404 as an unknown one. */
-	private static UUID parse(String id) {
+	static UUID parse(String id) {
 		try {
 			return UUID.fromString(id);
 		}

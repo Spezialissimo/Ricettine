@@ -20,6 +20,16 @@ export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe[
     bumpEpoch: () => epoch.update((n) => n + 1),
     invalidAmounts: invalid.asReadonly(),
     setInvalidAmounts: (n: number) => invalid.set(n),
+    uploads: signal([]).asReadonly(),
+    uploadFor: () => undefined,
+    photoOf: () => null,
+    uploadPhoto: async () => {},
+    rejectPhoto: () => {},
+    removePhoto: () => {},
+    previewLoaded: () => {},
+    stepInserted: () => {},
+    stepRemoved: () => {},
+    stepMoved: () => {},
     update: (fn: (r: RecipeInput) => RecipeInput) => recipe.set(fn(recipe())),
   } as unknown as EditorStore & { recipe: () => RecipeInput; bumpEpoch: () => void };
 }

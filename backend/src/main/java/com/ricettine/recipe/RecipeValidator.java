@@ -21,6 +21,8 @@ public final class RecipeValidator {
 	static final int MAX_SOURCE = 500;
 	static final int MAX_NOTES = 10_000;
 	static final int MAX_GROUPS = 20;
+	/** Raw groups (empty ones included) accepted before anything is iterated. */
+	static final int MAX_RAW_GROUPS = 1000;
 	static final int MAX_GROUP_NAME = 100;
 	static final int MAX_INGREDIENTS = 200;
 	static final int MAX_INGREDIENT_NAME = 200;
@@ -79,6 +81,10 @@ public final class RecipeValidator {
 			e.put("visibility", INVALID);
 		}
 		List<GroupDto> groups = in.groups() == null ? List.of() : in.groups();
+		if (groups.size() > MAX_RAW_GROUPS) {
+			e.put("groups", TOO_MANY);
+			groups = List.of();
+		}
 		int keptGroups = 0;
 		int ingredients = 0;
 		for (int g = 0; g < groups.size(); g++) {
@@ -179,7 +185,7 @@ public final class RecipeValidator {
 		if (ingredientNames.stream().noneMatch(n -> clean(n) != null)) {
 			missing.add("ingredients");
 		}
-		if (steps.stream().noneMatch(s -> s != null && (clean(s.text()) != null || s.photoMediaId() != null))) {
+		if (steps.stream().noneMatch(s -> s != null && (clean(s.text()) != null || clean(s.photoMediaId()) != null))) {
 			missing.add("steps");
 		}
 		return missing;

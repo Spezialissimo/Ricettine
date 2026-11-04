@@ -11,6 +11,9 @@ import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore, conflictText } from './editor-store';
 import { openEditorSheet } from './editor-sheet';
 import { IngredientsEditorComponent } from './ingredients-editor.component';
+import { PhotoDropDirective } from './photo-drop.directive';
+import { PhotoPickerComponent } from './photo-picker.component';
+import { PhotoSlotComponent } from './photo-slot.component';
 import { StepsEditorComponent } from './steps-editor.component';
 import { countingIngredients, countingSteps } from './completeness';
 
@@ -28,7 +31,7 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
  */
 @Component({
   selector: 'app-recipe-editor-page',
-  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, PhotoDropDirective, PhotoPickerComponent, PhotoSlotComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
   providers: [EditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-editor.page.scss',
@@ -52,7 +55,8 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
           }}</span>
           <span class="spacer"></span>
           @if (store.server()?.status === 'DRAFT') {
-            <button type="button" class="btn primary publish" [disabled]="busy()" (click)="publish()">{{ t('editor.publish') }}</button>
+            <button type="button" class="btn primary publish" [disabled]="busy() || store.uploading()"
+              [attr.aria-describedby]="store.uploading() ? 'uploads-hint' : null" (click)="publish()">{{ t('editor.publish') }}</button>
           }
           <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [disabled]="busy()"
             [cdkMenuTriggerFor]="menu">⋯</button>
@@ -76,13 +80,22 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         @if (store.saveError(); as e) {
           <p class="alert" role="alert">{{ t(e) }}</p>
         }
+        @if (store.uploading()) {
+          <p id="uploads-hint" class="hint" role="status">{{ t('editor.waitingForUploads') }}</p>
+        }
+        @if (store.photoGone()) {
+          <p class="alert" role="alert">{{ t('editor.photoGone') }}</p>
+        }
         @if (actionError(); as e) {
           <p class="alert" role="alert">{{ t(e) }}</p>
         }
 
         <div class="cols">
           <div class="col-left">
-            <div class="cover">{{ t('editor.cover') }}</div>
+            <div class="cover" [class.has-photo]="!!r.coverMediaId || !!store.uploadFor('cover')" appPhotoDrop
+              (dropped)="store.uploadPhoto('cover', $event)" (rejected)="store.rejectPhoto('cover', $event)">
+              <app-photo-slot slot="cover" />
+            </div>
             <div class="title-field">
               <label for="recipe-title">{{ t('editor.title') }}</label>
               <input id="recipe-title" type="text" [maxLength]="maxTitle" [placeholder]="t('editor.titlePlaceholder')"
@@ -135,7 +148,9 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         </div>
 
         <div class="bottom-bar">
-          <button type="button" class="btn" disabled>{{ t('editor.photo') }}</button>
+          <app-photo-picker [capture]="true" icon="📷" [label]="t('editor.photo')"
+            [ariaLabel]="t('editor.addStepPhoto', { n: (steps()?.targetStep() ?? 0) + 1 })" (picked)="steps()?.attachPhoto($event)"
+            (rejected)="rejectBarPhoto($event)" />
           <button type="button" class="btn primary" (click)="nextStep()">{{ t('editor.nextStep') }}</button>
         </div>
       }
@@ -196,6 +211,12 @@ export class RecipeEditorPage {
       if (this.store.status() === 'saved') untracked(() => this.actionError.set(null));
     });
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
+  }
+
+  /** The bottom bar has no step of its own: a refused file is reported on the step it was meant for. */
+  protected rejectBarPhoto(key: string): void {
+    const steps = this.store.recipe().steps.length;
+    this.store.rejectPhoto(steps === 0 ? 'cover' : this.steps()?.targetStep() ?? steps - 1, key);
   }
 
   protected nextStep(): void {
@@ -265,6 +286,11 @@ export class RecipeEditorPage {
    */
   async done(): Promise<void> {
     if (this.busy()) return;
+    if (this.store.uploading()) {
+      // a photo still going up is not saved yet: stay, so it is not lost
+      this.actionError.set('editor.uploadsInProgress');
+      return;
+    }
     if (this.store.hasUnsavedInput()) {
       // input that cannot be saved (invalid amount, nameless ingredient with data): stay, so nothing is lost
       this.actionError.set('editor.unsavedInput');

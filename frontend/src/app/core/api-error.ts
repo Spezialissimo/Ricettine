@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-export type ApiError = { status: number; code: string; fields?: Record<string, string> };
+export type ApiError = { status: number; code: string; fields?: Record<string, string>; mediaIds?: string[] };
 
 /** Every `code` the backend can emit (plus frontend-only network_error / unknown). */
 export const KNOWN_ERROR_CODES: readonly string[] = [
@@ -44,7 +44,12 @@ export function toApiError(e: unknown): ApiError {
     }
     const body = e.error;
     if (body && typeof body === 'object' && typeof body.code === 'string') {
-      return { status: e.status, code: body.code, fields: body.fields ?? undefined };
+      return {
+        status: e.status,
+        code: body.code,
+        fields: body.fields ?? undefined,
+        mediaIds: Array.isArray(body.mediaIds) ? body.mediaIds.filter((m: unknown) => typeof m === 'string') : undefined,
+      };
     }
     return { status: e.status, code: 'unknown' };
   }

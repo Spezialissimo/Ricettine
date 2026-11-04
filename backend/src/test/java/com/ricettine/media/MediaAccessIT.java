@@ -49,12 +49,18 @@ class MediaAccessIT extends IntegrationTest {
 				.andExpect(header().string("Cache-Control", "public, max-age=31536000, immutable"));
 	}
 
+	/** RECIPE media: the owner gets it privately cached; another user and an anonymous caller get 404. */
 	@Test
-	void recipeKindWithoutPolicyIs404ForEveryone() throws Exception {
+	void recipeMediaIsOwnerOnly() throws Exception {
+		accounts.create(new NewAccountRequest("x@x.com", Sessions.PASSWORD, "xother", "X"), false);
 		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.THUMB)), owner.getId(), MediaKind.RECIPE, null);
+		var ownerCookie = Sessions.login(mvc, "o@x.com");
+		mvc.perform(get(media.url(id, ImageVariant.THUMB)).cookie(ownerCookie)).andExpect(status().isOk())
+				.andExpect(header().string("Cache-Control", "private, max-age=3600"));
+		var otherCookie = Sessions.login(mvc, "x@x.com");
+		mvc.perform(get(media.url(id, ImageVariant.THUMB)).cookie(otherCookie)).andExpect(status().isNotFound());
 		mvc.perform(get(media.url(id, ImageVariant.THUMB))).andExpect(status().isNotFound());
-		var cookie = Sessions.login(mvc, "o@x.com");
-		mvc.perform(get(media.url(id, ImageVariant.THUMB)).cookie(cookie)).andExpect(status().isNotFound());
+		mvc.perform(get(media.url(id, ImageVariant.THUMB)).param("s", "anything")).andExpect(status().isNotFound());
 	}
 
 	@Test

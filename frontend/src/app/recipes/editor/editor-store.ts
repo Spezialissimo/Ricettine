@@ -2,9 +2,10 @@ import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angul
 import { errorKey, toApiError } from '../../core/api-error';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
-import { Recipe, RecipeInput, toInput } from '../recipe.model';
+import { Photo, Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
 import { unnamedRows } from './completeness';
+import { remapIndex } from './remap-index';
 
 const EMPTY: RecipeInput = {
   version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
@@ -39,6 +40,18 @@ export function conflictText(r: RecipeInput): string {
     .join('\n\n');
 }
 
+/** Where a photo goes: the cover, or the step at this index. */
+export type PhotoSlot = 'cover' | number;
+
+/** An upload (or a refused pick) shown in its slot. `preview` is an object URL, revoked once the server thumb loaded. */
+export type PhotoUpload = {
+  id: number;
+  slot: PhotoSlot;
+  status: 'uploading' | 'done' | 'failed';
+  preview: string | null;
+  error: string | null;
+};
+
 /**
  * Working copy of one recipe in the editor. Provided per editor page (not root).
  * Every `update()` autosaves; the server copy (`server`) is refreshed by each successful save.
@@ -51,10 +64,14 @@ export class EditorStore {
   private readonly _loadError = signal<string | null>(null);
   private readonly _invalidAmounts = signal(0);
   private readonly _epoch = signal(0);
+  private readonly _uploads = signal<PhotoUpload[]>([]);
+  private readonly _photos = signal<Record<string, Photo>>({});
+  private readonly _photoGone = signal(false);
+  private nextUploadId = 1;
   private _id: string | null = null;
 
   readonly autosave = new Autosave({
-    save: (input) => this.api.save(this._id!, input),
+    save: (input) => this.saveDroppingGonePhotos(input),
     read: () => withoutBlankIngredients(this._recipe()),
     saved: (r) => {
       this._server.set(r);
@@ -63,6 +80,12 @@ export class EditorStore {
   });
 
   readonly recipe: Signal<RecipeInput> = this._recipe.asReadonly();
+  /** Uploads and refused picks per slot (see `uploadFor`). */
+  readonly uploads: Signal<PhotoUpload[]> = this._uploads.asReadonly();
+  /** True while any photo is still being uploaded (Publish waits). */
+  readonly uploading = computed(() => this._uploads().some((u) => u.status === 'uploading'));
+  /** True after a save found that an uploaded photo had been cleaned up and dropped its reference. */
+  readonly photoGone: Signal<boolean> = this._photoGone.asReadonly();
   readonly status: Signal<SaveStatus> = this.autosave.status;
   /** Last server copy (id, status, share link, photo URLs), refreshed by load and every save. */
   readonly server: Signal<Recipe | null> = this._server.asReadonly();
@@ -95,6 +118,8 @@ export class EditorStore {
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
+      this._uploads().forEach((u) => this.revoke(u.preview));
+      this._uploads.set([]);
       pending.track(this.autosave.flush().finally(() => this.autosave.dispose()));
     });
   }
@@ -118,6 +143,127 @@ export class EditorStore {
     if (!this.loaded()) return;
     this._recipe.set(fn(this._recipe()));
     this.autosave.changed();
+  }
+
+  // ---- photos ----
+
+  uploadFor(slot: PhotoSlot): PhotoUpload | undefined {
+    return this._uploads().find((u) => u.slot === slot);
+  }
+
+  /** The photo (thumb and display URLs) behind a media id: uploaded this session, or on the server copy. */
+  photoOf(mediaId: string | null | undefined): Photo | null {
+    if (!mediaId) return null;
+    const fresh = this._photos()[mediaId];
+    if (fresh) return fresh;
+    const s = this._server();
+    if (!s) return null;
+    return [s.cover, ...s.steps.map((st) => st.photo)].find((p) => p?.mediaId === mediaId) ?? null;
+  }
+
+  /** Uploads `file` into `slot`: shows a local preview at once, then saves the reference through `update`. */
+  async uploadPhoto(slot: PhotoSlot, file: File): Promise<void> {
+    if (!this._id) return;
+    this._photoGone.set(false);
+    const id = this.nextUploadId++;
+    const preview = URL.createObjectURL(file);
+    this.setUpload({ id, slot, status: 'uploading', preview, error: null });
+    try {
+      const photo = await this.api.uploadPhoto(this._id, file);
+      const mine = this._uploads().find((u) => u.id === id);
+      if (!mine) return; // replaced, removed or its step deleted meanwhile; setUpload/dropUpload revoked the preview
+      this._photos.update((m) => ({ ...m, [photo.mediaId]: photo }));
+      this.setReference(mine.slot, photo.mediaId);
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done' } : u)));
+    } catch (e) {
+      const mine = this._uploads().find((u) => u.id === id);
+      if (!mine) return;
+      this.revoke(preview);
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(toApiError(e)) } : u)));
+    }
+  }
+
+  /** A file the client refused (too large, not an image): the slot shows the message. */
+  rejectPhoto(slot: PhotoSlot, key: string): void {
+    this.setUpload({ id: this.nextUploadId++, slot, status: 'failed', preview: null, error: key });
+  }
+
+  removePhoto(slot: PhotoSlot): void {
+    this.dropUpload(slot);
+    this.setReference(slot, null);
+  }
+
+  /** The server thumb is on screen: the local preview is no longer needed. */
+  previewLoaded(slot: PhotoSlot): void {
+    const u = this.uploadFor(slot);
+    if (u?.status === 'done') this.dropUpload(slot);
+  }
+
+  /** Steps below an inserted/removed step move: their uploads follow (the removed step's upload is discarded). */
+  stepInserted(at: number): void {
+    this._uploads.update((us) => us.map((u) => (typeof u.slot === 'number' && u.slot >= at ? { ...u, slot: u.slot + 1 } : u)));
+  }
+
+  stepRemoved(at: number): void {
+    this.dropUpload(at);
+    this._uploads.update((us) => us.map((u) => (typeof u.slot === 'number' && u.slot > at ? { ...u, slot: u.slot - 1 } : u)));
+  }
+
+  /** A step moved from `from` to `to`: the uploads of every step in between follow it (the moved step's goes with it). */
+  stepMoved(from: number, to: number): void {
+    this._uploads.update((us) =>
+      us.map((u) => (typeof u.slot === 'number' ? { ...u, slot: remapIndex(u.slot, from, to) } : u)),
+    );
+  }
+
+  private setReference(slot: PhotoSlot, mediaId: string | null): void {
+    this.update((r) =>
+      slot === 'cover'
+        ? { ...r, coverMediaId: mediaId }
+        : slot < r.steps.length
+          ? { ...r, steps: r.steps.map((s, i) => (i === slot ? { ...s, photoMediaId: mediaId } : s)) }
+          : r,
+    );
+  }
+
+  private setUpload(u: PhotoUpload): void {
+    this._uploads().filter((x) => x.slot === u.slot).forEach((x) => this.revoke(x.preview));
+    this._uploads.update((us) => [...us.filter((x) => x.slot !== u.slot), u]);
+  }
+
+  private dropUpload(slot: PhotoSlot): void {
+    this._uploads().filter((x) => x.slot === slot).forEach((x) => this.revoke(x.preview));
+    this._uploads.update((us) => us.filter((x) => x.slot !== slot));
+  }
+
+  private revoke(url: string | null): void {
+    if (url) URL.revokeObjectURL(url);
+  }
+
+  /**
+   * An upload that nothing referenced for 24 h is orphan-cleaned; saving its reference then gives 400
+   * `photo_not_in_recipe` naming exactly those ids. Drop only them, tell the person, and save again.
+   * Without the ids nothing is dropped and the error shows.
+   */
+  private async saveDroppingGonePhotos(input: RecipeInput): Promise<Recipe> {
+    try {
+      return await this.api.save(this._id!, input);
+    } catch (e) {
+      const err = toApiError(e);
+      if (err.code !== 'photo_not_in_recipe' || !err.mediaIds?.length) throw e;
+      const gone = new Set(err.mediaIds);
+      const keep = (id: string | null) => (id !== null && gone.has(id) ? null : id);
+      const strip = (r: RecipeInput): RecipeInput => ({
+        ...r,
+        coverMediaId: keep(r.coverMediaId),
+        steps: r.steps.map((s) => ({ ...s, photoMediaId: keep(s.photoMediaId) })),
+      });
+      const fixed = strip(input);
+      if (JSON.stringify(fixed) === JSON.stringify(input)) throw e;
+      this._recipe.update(strip);
+      this._photoGone.set(true);
+      return this.api.save(this._id!, fixed);
+    }
   }
 
   setInvalidAmounts(n: number): void {
@@ -151,7 +297,7 @@ export class EditorStore {
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
-    if (!this._id) return 'blocked';
+    if (!this._id || this.uploading()) return 'blocked';
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
