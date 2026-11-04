@@ -69,3 +69,7 @@ export const tokenFromShareUrl = (url: string | null): string | null => {
   const seg = url?.split(/[?#]/)[0].split('/').filter(Boolean).pop();
   return seg || null;
 };
+
+export type CookbookInvite = { id: string; createdAt: string; expiresAt: string };
+export type CookbookInviteCreated = { id: string; url: string; expiresAt: string };
+export type CookbookInvitePreview = { cookbookName: string; owner: Person | null; expiresAt: string };

@@ -58,6 +58,10 @@ export const routes: Routes = [
             loadComponent: () => import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
           },
           { path: 'cookbooks/:id', loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage) },
+          {
+            path: 'cookbook-invite/:token',
+            loadComponent: () => import('./cookbooks/accept-invite.page').then((m) => m.AcceptInvitePage),
+          },
           { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
           { path: 'settings/profile', component: ProfilePage },
           { path: 'settings/password', component: PasswordPage },
