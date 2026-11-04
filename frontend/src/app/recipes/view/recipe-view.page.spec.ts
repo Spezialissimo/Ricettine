@@ -70,7 +70,7 @@ describe('RecipeViewPage', () => {
     expect(cover.getAttribute('loading')).toBe('eager');
     expect(cover.getAttribute('fetchpriority')).toBe('high');
     expect(el.textContent).toContain('Rest it');
-    expect(TestBed.inject(Title).getTitle()).toBe('Lasagne');
+    expect(TestBed.inject(Title).getTitle()).toBe('Lasagne · Ricettine');
   });
 
   it('is accessible: hidden chip emoji, explicit list roles, group headings, focusable ingredients box', async () => {

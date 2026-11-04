@@ -1,11 +1,11 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { AppDatePipe } from './app-date.pipe';
 
 /** Shows a one-time link with its expiry, plus Copy and (where supported) Share buttons. */
 @Component({
   selector: 'app-copy-link',
-  imports: [TranslocoDirective, DatePipe],
+  imports: [TranslocoDirective, AppDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
@@ -21,7 +21,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
     <div class="box" *transloco="let t">
       <code class="url" data-url>{{ url() }}</code>
       @if (expiresAt(); as exp) {
-        <p class="expiry">{{ t('common.expiresOn', { date: (exp | date: 'medium') }) }}</p>
+        <p class="expiry">{{ t('common.expiresOn', { date: (exp | appDate: 'dateTime') }) }}</p>
       }
       <div class="row">
         <button type="button" (click)="copy()">{{ t('common.copy') }}</button>

@@ -12,6 +12,23 @@
     "logout": "Log out",
     "retry": "Retry"
   },
+  "titles": {
+    "setup": "Set up",
+    "login": "Log in",
+    "invite": "Create account",
+    "reset": "Reset password",
+    "myRecipes": "My recipes",
+    "newRecipe": "New recipe",
+    "editRecipe": "Edit recipe",
+    "cookbooks": "Cookbooks",
+    "cookbook": "Cookbook",
+    "cookbookInvite": "Cookbook invite",
+    "profile": "Profile",
+    "password": "Change password",
+    "deleteAccount": "Delete account",
+    "invites": "Invites",
+    "users": "Users"
+  },
   "nav": {
     "recipes": "My recipes",
     "cookbooks": "Cookbooks",

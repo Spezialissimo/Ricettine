@@ -1,12 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, inject, signal } from '@angular/core';
-import { Title } from '@angular/platform-browser';
+import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { openEditorSheet } from '../editor/editor-sheet';
 import { AuthStore } from '../../core/auth.store';
+import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
 import { formatAmount } from '../amount';
@@ -144,7 +144,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 export class RecipeViewPage {
   private readonly api = inject(RecipeApi);
   private readonly cookbooks = inject(CookbookApi);
-  private readonly title = inject(Title);
+  private readonly title = inject(PageTitle);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
@@ -164,8 +164,6 @@ export class RecipeViewPage {
   protected readonly amount = formatAmount;
 
   constructor() {
-    const previous = this.title.getTitle();
-    inject(DestroyRef).onDestroy(() => this.title.setTitle(previous));
     void this.load();
   }
 
@@ -179,7 +177,7 @@ export class RecipeViewPage {
       }
       const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
       this.recipe.set(r);
-      if (r.title) this.title.setTitle(r.title);
+      if (r.title) this.title.set(r.title);
     } catch (e) {
       const err = toApiError(e);
       if (err.status === 404) this.notFound.set(true);

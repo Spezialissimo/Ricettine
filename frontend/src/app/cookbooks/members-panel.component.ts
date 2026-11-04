@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
@@ -8,6 +7,7 @@ import { errorKey, toApiError } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { mediaUrl } from '../core/media';
 import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookInvite, CookbookInviteCreated, Person } from './cookbook.model';
@@ -16,7 +16,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
 /** Owner and co-authors. Owner: invite, revoke, remove. Author: leave. */
 @Component({
   selector: 'app-members-panel',
-  imports: [TranslocoDirective, CopyLinkComponent, DatePipe],
+  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
@@ -74,7 +74,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
           <ul class="invites">
             @for (i of invites(); track i.id) {
               <li class="invite" [attr.data-invite]="i.id">
-                <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | date: 'medium') }) }}</span>
+                <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') }) }}</span>
                 <button type="button" (click)="revoke(i.id)">{{ t('cookbooks.revokeInvite') }}</button>
               </li>
             }
