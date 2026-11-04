@@ -91,7 +91,7 @@ public class CookbookService {
 	}
 
 	public CookbookDto update(UUID userId, UUID id, CookbookInput in) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		requireOwnerOf(c, userId);
 		validate(in, false);
 		if (in.name() != null) {
@@ -108,7 +108,7 @@ public class CookbookService {
 	}
 
 	public void delete(UUID userId, UUID id) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		requireOwnerOf(c, userId);
 		String cover = c.getCoverMediaId();
 		cookbooks.delete(c);
@@ -123,7 +123,7 @@ public class CookbookService {
 	 * cover media; the old blobs go after commit, the new ones are removed if this rolls back.
 	 */
 	public CookbookDto setCover(UUID userId, UUID id, ProcessedUpload upload) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		requireOwnerOf(c, userId);
 		String old = c.getCoverMediaId();
 		c.setCoverMediaId(media.register(upload, userId, MediaKind.COOKBOOK, null, id));
@@ -137,7 +137,7 @@ public class CookbookService {
 
 	/** Owner only; idempotent. */
 	public CookbookDto removeCover(UUID userId, UUID id) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		requireOwnerOf(c, userId);
 		String old = c.getCoverMediaId();
 		if (old != null) {
@@ -160,7 +160,7 @@ public class CookbookService {
 	 * already there is a no-op (created = false).
 	 */
 	public AddResult addRecipe(UUID userId, UUID id, RecipeRef ref) {
-		Cookbook c = cookbooks.lockById(id).orElseThrow(CookbookService::notFound);
+		Cookbook c = lock(id);
 		role(c, userId);
 		UUID recipeId = recipes.resolveAddable(ref, userId);
 		if (entries.existsById(new CookbookEntry.Key(id, recipeId))) {
@@ -177,7 +177,7 @@ public class CookbookService {
 
 	/** Idempotent: removing what is not there changes nothing. */
 	public void removeRecipe(UUID userId, UUID id, UUID recipeId) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		role(c, userId);
 		if (entries.deleteEntry(id, recipeId) > 0) {
 			c.touch();
@@ -187,7 +187,7 @@ public class CookbookService {
 
 	/** Owner only: the old token stops opening the cookbook, its recipes and their photos at once. */
 	public CookbookDto resetShareLink(UUID userId, UUID id) {
-		Cookbook c = find(id);
+		Cookbook c = lock(id);
 		requireOwnerOf(c, userId);
 		c.resetShareToken(Tokens.newToken());
 		c.touch();
@@ -264,6 +264,11 @@ public class CookbookService {
 
 	private Cookbook find(UUID id) {
 		return cookbooks.findById(id).orElseThrow(CookbookService::notFound);
+	}
+
+	/** Loads the cookbook with a row lock: every write goes through here so writers queue up and none overwrites another's state. */
+	private Cookbook lock(UUID id) {
+		return cookbooks.lockById(id).orElseThrow(CookbookService::notFound);
 	}
 
 	private CookbookRole role(Cookbook c, UUID userId) {

@@ -17,6 +17,11 @@ import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountService;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
+import java.sql.Connection;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +35,7 @@ import tools.jackson.databind.ObjectMapper;
 class PublicCookbookIT extends IntegrationTest {
 
 	@Autowired JdbcTemplate jdbc;
+	@Autowired DataSource dataSource;
 	@Autowired AccountService accounts;
 	@Autowired ObjectMapper json;
 
@@ -173,6 +179,34 @@ class PublicCookbookIT extends IntegrationTest {
 		mvc.perform(get("/api/c/" + t + "/recipes/" + r)).andExpect(status().isNotFound());
 		mvc.perform(get(photo)).andExpect(status().isNotFound());
 		mvc.perform(get("/api/c/" + t)).andExpect(jsonPath("$.recipes").isEmpty());
+	}
+
+	@Test
+	void resetWaitsForTheCookbookRowLock() throws Exception {
+		String cb = cookbookWith(recipe());
+		String oldT = cookbookToken(cb);
+		try (Connection holder = dataSource.getConnection()) {
+			holder.setAutoCommit(false);
+			try (var st = holder.prepareStatement("select id from cookbook where id = ?::uuid for update")) {
+				st.setString(1, cb);
+				st.executeQuery();
+			}
+			CompletableFuture<Void> reset = CompletableFuture.runAsync(() -> {
+				try {
+					mvc.perform(post("/api/cookbooks/" + cb + "/share-link/reset").with(csrf()).cookie(other))
+						.andExpect(status().isOk());
+				}
+				catch (Exception e) {
+					throw new IllegalStateException(e);
+				}
+			});
+			// the reset queues behind the held row lock and has not touched the token
+			org.junit.jupiter.api.Assertions.assertThrows(TimeoutException.class, () -> reset.get(1, TimeUnit.SECONDS));
+			assertThat(cookbookToken(cb)).isEqualTo(oldT);
+			holder.commit();
+			reset.get(10, TimeUnit.SECONDS);
+		}
+		assertThat(cookbookToken(cb)).isNotEqualTo(oldT);
 	}
 
 	@Test
