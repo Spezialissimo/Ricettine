@@ -18,8 +18,11 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
     <ng-container *transloco="let t">
       <header class="topbar">
         <div class="bar">
-          <a class="logo" routerLink="/recipes">{{ t('common.appName') }}</a>
+          <a class="logo" routerLink="/">{{ t('common.appName') }}</a>
           <nav class="main-nav" [attr.aria-label]="t('nav.main')">
+            <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
+              t('nav.home')
+            }}</a>
             <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
               t('nav.recipes')
             }}</a>
@@ -39,6 +42,9 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
       </header>
       <main><router-outlet /></main>
       <nav class="bottom-nav" [attr.aria-label]="t('nav.sections')">
+        <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
+          t('nav.home')
+        }}</a>
         <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
           t('nav.recipes')
         }}</a>

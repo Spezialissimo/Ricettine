@@ -128,6 +128,7 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
                 </label>
               }
             </fieldset>
+            <p class="visibility-hint">{{ t(r.visibility === 'PRIVATE' ? 'editor.privateHint' : 'editor.publicHint') }}</p>
             <app-share-panel class="share" />
             <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid() || showUnnamed()" aria-labelledby="ingredients-heading">
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>

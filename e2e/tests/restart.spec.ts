@@ -37,7 +37,7 @@ test('session and avatar survive an app restart', async ({ browser, baseURL }, t
   // still on /settings/profile: no redirect to /login, session intact, avatar rendered again
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(avatar).toBeVisible();
-  await page.getByRole('link', { name: 'My recipes' }).click();
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expectHome(page, who.displayName);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(avatar).toBeVisible();

@@ -27,9 +27,9 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await userCtx.close();
   });
 
-  test('admin logs in and My recipes shows their name, with an Admin link', async () => {
+  test('admin logs in and the feed shows their name, with an Admin link', async () => {
     await admin.goto('/');
-    await expect(admin).toHaveURL(/\/login\?next=%2Frecipes$/);
+    await expect(admin).toHaveURL(/\/login\?next=%2F$/);
     await logIn(admin, ADMIN);
     await expect(admin.getByRole('link', { name: 'Admin' })).toBeVisible();
   });
@@ -56,11 +56,11 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await logIn(admin, ADMIN);
     admin.off('framenavigated', onNav);
     expect((await loginResponse).status()).toBe(200);
-    // only the in-app route change after the successful login may have happened (to `/` then `/recipes`)
-    expect(navigations.every((u) => ['/', '/recipes'].includes(new URL(u).pathname))).toBe(true);
+    // only the in-app route change after the successful login may have happened (to `/`)
+    expect(navigations.every((u) => ['/'].includes(new URL(u).pathname))).toBe(true);
   });
 
-  test('invited person registers and lands on My recipes without an Admin link', async () => {
+  test('invited person registers and lands on the feed without an Admin link', async () => {
     await register(user, invitePath, who);
     await expect(user.getByRole('link', { name: 'Settings' })).toBeVisible();
     await expect(user.getByRole('link', { name: 'Admin' })).toHaveCount(0);
@@ -70,7 +70,7 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await logOut(user);
     await logIn(user, who);
     await user.goto('/admin/users');
-    await expectHome(user, who.displayName); // adminGuard redirects non-admins home (/ -> /recipes)
+    await expectHome(user, who.displayName); // adminGuard redirects non-admins home (back to the feed at /)
     await expect(user.getByRole('heading', { name: 'Users' })).toHaveCount(0);
   });
 

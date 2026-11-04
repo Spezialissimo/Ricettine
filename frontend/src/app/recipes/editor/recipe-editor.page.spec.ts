@@ -67,6 +67,14 @@ describe('RecipeEditorPage', () => {
     expect(el.textContent).toContain(en.editor.uploadsInProgress);
   });
 
+  it('explains visibility under the switch: private hides from the feed, public lists once published', async () => {
+    const priv = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T', visibility: 'PRIVATE' })) });
+    expect(priv.el.querySelector('.visibility-hint')?.textContent).toContain(en.editor.privateHint);
+    (priv.el.querySelector('input[name="visibility"][value="PUBLIC"]') as HTMLInputElement).click();
+    await settle(priv.f);
+    expect(priv.el.querySelector('.visibility-hint')?.textContent).toContain(en.editor.publicHint);
+  });
+
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
 
   it('loads the recipe into labelled fields laid out per the mockups', async () => {
