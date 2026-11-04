@@ -30,6 +30,8 @@ a.chip { text-decoration: underline; }
 h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
 .ingredients { background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; padding: t.$space-4; align-self: start; }
 .ingredients:focus-visible { outline: 2px solid t.$accent; outline-offset: 2px; }
+.ing-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: t.$space-2; margin-bottom: t.$space-2; }
+.ing-head h2 { margin: 0; }
 .grp { margin: t.$space-3 0 t.$space-1; font-size: 1rem; font-weight: 600; }
 .ingr-list { list-style: none; margin: 0; padding: 0; }
 .ingr-list li { padding: 4px 0; }

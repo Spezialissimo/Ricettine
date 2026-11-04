@@ -102,6 +102,21 @@ class PublicRecipeIT extends IntegrationTest {
 	}
 
 	@Test
+	void amountsKeepThreeDecimals() throws Exception {
+		String id = create(me);
+		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(me).contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{"version":0,"title":"Pasta","portions":3,"visibility":"PRIVATE",
+				 "groups":[{"name":"","ingredients":[{"name":"milk","amount":0.333,"unit":"cup"}]}],
+				 "steps":[{"text":"mix","photoMediaId":null}]}"""))
+			.andExpect(status().isOk());
+		publish(id, 1);
+		mvc.perform(get("/api/r/" + token(id))).andExpect(status().isOk())
+			.andExpect(jsonPath("$.portions").value(3))
+			.andExpect(jsonPath("$.groups[0].ingredients[0].amount").value(0.333));
+	}
+
+	@Test
 	void anonymousReadsPublishedPrivateAndPublicRecipesByToken() throws Exception {
 		for (String vis : new String[] { "PRIVATE", "PUBLIC" }) {
 			String id = published(vis);

@@ -9,10 +9,11 @@ import { AuthStore } from '../../core/auth.store';
 import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
-import { formatAmount } from '../amount';
+import { displayAmount, scaleAmount } from '../amount';
 import { durationKey } from '../editor/time-sheet.component';
 import { RecipeApi } from '../recipe.api';
-import { PublicRecipe } from '../recipe.model';
+import { Ingredient, PublicRecipe } from '../recipe.model';
+import { PortionsStepperComponent } from './portions-stepper.component';
 
 /** Only web links become links; any other source text is shown as plain text. */
 export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
@@ -23,7 +24,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
  */
 @Component({
   selector: 'app-recipe-view-page',
-  imports: [TranslocoDirective, RouterLink],
+  imports: [TranslocoDirective, RouterLink, PortionsStepperComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-view.page.scss',
   template: `
@@ -78,7 +79,6 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           </div>
           <h1>{{ r.title }}</h1>
           <ul class="chips" role="list">
-            <li class="chip"><span aria-hidden="true">🍽</span> {{ t('editor.chips.serves', { n: r.portions }) }}</li>
             @if (r.prepMinutes !== null) {
               @let p = duration(r.prepMinutes);
               <li class="chip"><span aria-hidden="true">⏱</span> {{ t('editor.chips.prep', { time: t(p.key, p.params) }) }}</li>
@@ -98,13 +98,16 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           <div class="rp">
             <!-- tabindex: on desktop this is a scroll box, which keyboard users must be able to scroll -->
             <section class="ingredients" aria-labelledby="ing-h" tabindex="0">
-              <h2 id="ing-h">{{ t('editor.ingredients') }}</h2>
+              <div class="ing-head">
+                <h2 id="ing-h">{{ t('editor.ingredients') }}</h2>
+                <app-portions-stepper [value]="chosen() ?? r.portions" [written]="r.portions" (valueChange)="chosen.set($event)" />
+              </div>
               @for (g of r.groups; track $index) {
                 @if (g.name) { <h3 class="grp">{{ g.name }}</h3> }
                 <ul class="ingr-list" role="list">
                   @for (i of g.ingredients; track $index) {
                     <li>
-                      @if (i.amount !== null) { <b>{{ amount(i.amount) }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b> }
+                      @if (i.amount !== null) { <b>{{ amount(i, r.portions) }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b> }
                       {{ i.name }}@if (i.note) { <span class="note">, {{ i.note }}</span> }
                     </li>
                   }
@@ -160,7 +163,8 @@ export class RecipeViewPage {
   protected readonly error = signal<string | null>(null);
   protected readonly duration = durationKey;
   protected readonly isWeb = isWebUrl;
-  protected readonly amount = formatAmount;
+  /** The portions picked with the stepper; null = as written. */
+  protected readonly chosen = signal<number | null>(null);
 
   constructor() {
     void this.load();
@@ -171,6 +175,7 @@ export class RecipeViewPage {
     this.notFound.set(false);
     try {
       const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
+      this.chosen.set(null);
       this.recipe.set(r);
       if (r.title) this.title.set(r.title);
     } catch (e) {
@@ -178,6 +183,11 @@ export class RecipeViewPage {
       if (err.status === 404) this.notFound.set(true);
       else this.error.set(errorKey(err));
     }
+  }
+
+  protected amount(i: Pick<Ingredient, 'amount' | 'unit'>, written: number): string {
+    const chosen = this.chosen() ?? written;
+    return displayAmount(scaleAmount(i.amount, written, chosen), i.unit, { scaled: chosen !== written, locale: this.i18n.getActiveLang() });
   }
 
   protected addToCookbook(): void {

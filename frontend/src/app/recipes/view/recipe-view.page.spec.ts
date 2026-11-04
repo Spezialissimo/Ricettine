@@ -47,7 +47,8 @@ describe('RecipeViewPage', () => {
     expect(el.querySelector('h1')?.textContent).toContain('Lasagne');
     expect(el.textContent).toContain('Giulia');
     const chips = el.querySelector('.chips')!.textContent!;
-    expect(chips).toContain('Serves 4');
+    expect(chips).not.toContain('Serves');
+    expect(el.querySelector('.ingredients [role="status"]')?.textContent).toContain('Serves 4');
     expect(chips).toContain('Prep 30m');
     expect(chips).toContain('Cook 1h 30');
     const ing = el.querySelector('.ingredients')!;
@@ -89,6 +90,32 @@ describe('RecipeViewPage', () => {
     const box = el.querySelector('.ingredients')!;
     expect(box.getAttribute('tabindex')).toBe('0');
     expect(el.querySelector('#' + box.getAttribute('aria-labelledby'))?.textContent).toContain(en.editor.ingredients);
+  });
+
+  it('scales amounts with the portions stepper and Reset restores the written ones', async () => {
+    const r = pub({
+      portions: 4,
+      groups: [{ name: null, ingredients: [
+        { amount: 200, unit: 'g', name: 'flour', note: null },
+        { amount: null, unit: null, name: 'salt', note: null },
+      ] }],
+    });
+    const { f, el } = await mount(vi.fn().mockResolvedValue(r));
+    const ing = () => el.querySelector('.ingredients')!.textContent!.replace(/\s+/g, ' ');
+    const click = async (label: string) => {
+      (Array.from(el.querySelectorAll('.ingredients button')).find((b) => b.getAttribute('aria-label') === label || b.textContent?.trim() === label) as HTMLElement).click();
+      await settle(f);
+    };
+    expect(ing()).toContain('200 g flour');
+    await click('More portions');
+    await click('More portions');
+    expect(ing()).toContain('300 g flour');
+    expect(ing()).toContain('Serves 6');
+    expect(ing()).toMatch(/salt/);
+    expect(ing()).not.toMatch(/\d salt/);
+    await click('Reset');
+    expect(ing()).toContain('200 g flour');
+    expect(ing()).toContain('Serves 4');
   });
 
   it('shows the not-found state with a link home on 404', async () => {
