@@ -27,6 +27,10 @@ a.cookbook {
   display: flex; flex-direction: column; gap: t.$space-2; height: 100%; padding: t.$space-3;
   background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; color: t.$ink; text-decoration: none;
 }
+.cover, .cover-thumb { display: block; width: 100%; object-fit: cover; border-radius: t.$radius; background: t.$border; }
+.cover { max-height: 260px; margin-bottom: t.$space-3; }
+.cover-thumb { aspect-ratio: 16 / 9; }
+.cover-actions { display: flex; gap: t.$space-2; flex-wrap: wrap; margin-bottom: t.$space-3; }
 .name { font-weight: 700; overflow-wrap: anywhere; }
 .count { color: t.$muted; font-size: 0.85rem; }
 

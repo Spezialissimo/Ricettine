@@ -14,7 +14,10 @@ import com.ricettine.cookbook.CookbookDtos.PublicCookbook;
 import com.ricettine.cookbook.CookbookDtos.PublicCookbookEntry;
 import com.ricettine.cookbook.CookbookDtos.RecipeRef;
 import com.ricettine.media.ImageVariant;
+import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
+import com.ricettine.media.ProcessedUpload;
+import com.ricettine.recipe.RecipeDtos.PhotoDto;
 import com.ricettine.recipe.RecipeDtos.PublicRecipe;
 import com.ricettine.recipe.RecipeService;
 import com.ricettine.recipe.Visibility;
@@ -76,7 +79,8 @@ public class CookbookService {
 		return cookbooks.summariesFor(userId).stream()
 			.map(r -> new CookbookSummary(r.id(), r.name(), r.visibility(),
 					(r.ownerId().equals(userId) ? CookbookRole.OWNER : CookbookRole.AUTHOR).name(),
-					(int) r.recipeCount(), null, r.updatedAt()))
+					(int) r.recipeCount(), r.coverMediaId() == null ? null
+							: media.url(r.coverMediaId(), ImageVariant.THUMB), r.updatedAt()))
 			.toList();
 	}
 
@@ -106,8 +110,49 @@ public class CookbookService {
 	public void delete(UUID userId, UUID id) {
 		Cookbook c = find(id);
 		requireOwnerOf(c, userId);
+		String cover = c.getCoverMediaId();
 		cookbooks.delete(c);
 		cookbooks.flush();
+		if (cover != null) {
+			media.delete(cover);
+		}
+	}
+
+	/**
+	 * Owner only: registers the (already processed) upload as the cover, swaps the reference and deletes the old
+	 * cover media; the old blobs go after commit, the new ones are removed if this rolls back.
+	 */
+	public CookbookDto setCover(UUID userId, UUID id, ProcessedUpload upload) {
+		Cookbook c = find(id);
+		requireOwnerOf(c, userId);
+		String old = c.getCoverMediaId();
+		c.setCoverMediaId(media.register(upload, userId, MediaKind.COOKBOOK, null, id));
+		c.touch();
+		cookbooks.saveAndFlush(c);
+		if (old != null) {
+			media.delete(old);
+		}
+		return toDto(c, CookbookRole.OWNER, userId);
+	}
+
+	/** Owner only; idempotent. */
+	public CookbookDto removeCover(UUID userId, UUID id) {
+		Cookbook c = find(id);
+		requireOwnerOf(c, userId);
+		String old = c.getCoverMediaId();
+		if (old != null) {
+			c.setCoverMediaId(null);
+			c.touch();
+			cookbooks.saveAndFlush(c);
+			media.delete(old);
+		}
+		return toDto(c, CookbookRole.OWNER, userId);
+	}
+
+	private PhotoDto coverDto(Cookbook c, String queryOrEmpty) {
+		String id = c.getCoverMediaId();
+		return id == null ? null : new PhotoDto(id, media.url(id, ImageVariant.THUMB) + queryOrEmpty,
+				media.url(id, ImageVariant.DISPLAY) + queryOrEmpty);
 	}
 
 	/**
@@ -168,7 +213,8 @@ public class CookbookService {
 					coverThumb(r, c.getShareToken())))
 			.toList();
 		return new PublicCookbook(c.getName(), c.getDescription(), person(byId.get(c.getOwnerId())),
-				authorIds.stream().map(a -> person(byId.get(a))).toList(), null, recipeList,
+				authorIds.stream().map(a -> person(byId.get(a))).toList(), coverDto(c, query(c.getShareToken())),
+				recipeList,
 				role == null ? null : role.name(), role == null ? null : c.getId());
 	}
 
@@ -283,7 +329,7 @@ public class CookbookService {
 		Map<UUID, User> byId = users.findAllById(ids).stream().collect(Collectors.toMap(User::getId, Function.identity()));
 		return new CookbookDto(c.getId(), c.getName(), c.getDescription(), c.getVisibility().name(), role.name(),
 				person(byId.get(c.getOwnerId())), authorIds.stream().map(a -> person(byId.get(a))).toList(),
-				urls.base() + "/c/" + c.getShareToken(), null,
+				urls.base() + "/c/" + c.getShareToken(), coverDto(c, ""),
 				entryDtos(entries.rows(c.getId()), viewerId, c.getShareToken()), c.getUpdatedAt());
 	}
 }

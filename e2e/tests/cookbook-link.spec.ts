@@ -120,3 +120,45 @@ test('cookbook link: anonymous reader, recipes through it, reset invalidates lin
   await expect(b.page.getByRole('heading', { name: 'Link soup', level: 1 })).toBeVisible();
   await anon.close();
 });
+
+test('cover: the owner sets and removes a cover; members and link readers see it', async ({ browser }, testInfo) => {
+  const a = await newUserPage(browser, testInfo, 'cvrA');
+  await createCookbook(a.page, 'Covered book');
+  await expect(a.page.getByRole('heading', { name: 'Covered book', level: 1 })).toBeVisible();
+  const cookbookPath = new URL(a.page.url()).pathname;
+
+  const chooser = a.page.waitForEvent('filechooser');
+  await a.page.getByRole('button', { name: 'Add cover photo' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  const cover = a.page.locator('img.cover');
+  await expect(cover).toBeVisible();
+  await expect.poll(() => cover.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
+  await expect(a.page.getByRole('button', { name: 'Replace cover photo' })).toBeVisible();
+
+  // My cookbooks shows the thumb
+  await a.page.goto('/cookbooks');
+  const thumb = a.page.locator('a.cookbook', { hasText: 'Covered book' }).locator('img.cover-thumb');
+  await expect(thumb).toBeVisible();
+  await expect.poll(() => thumb.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
+
+  // an anonymous reader sees it through the link
+  await a.page.goto(cookbookPath);
+  const linkPath = new URL((await a.page.locator('[data-url]').innerText()).trim()).pathname;
+  const anon = await newContext(browser, testInfo);
+  const reader = await anon.newPage();
+  await reader.goto(linkPath);
+  const shown = reader.locator('img.cover');
+  await expect(shown).toBeVisible();
+  expect(await shown.getAttribute('src')).toContain('?c=');
+  await expect.poll(() => shown.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
+
+  // Remove: gone after reload, for the owner and for the reader
+  await a.page.getByRole('button', { name: 'Remove cover photo' }).click();
+  await expect(a.page.locator('img.cover')).toHaveCount(0);
+  await a.page.reload();
+  await expect(a.page.getByRole('heading', { name: 'Covered book', level: 1 })).toBeVisible();
+  await expect(a.page.locator('img.cover')).toHaveCount(0);
+  await reader.reload();
+  await expect(reader.getByRole('heading', { name: 'Covered book', level: 1 })).toBeVisible();
+  await expect(reader.locator('img.cover')).toHaveCount(0);
+});

@@ -5,6 +5,7 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
 import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { mediaUrl } from '../core/media';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInput, CookbookSummary } from './cookbook.model';
 import { CookbookFormDialog } from './cookbook-form.dialog';
@@ -32,6 +33,7 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
             @for (b of list; track b.id) {
               <li>
                 <a class="cookbook" [routerLink]="['/cookbooks', b.id]">
+                  @if (mediaUrl(b.coverThumbUrl); as src) { <img class="cover-thumb" [src]="src" alt="" loading="lazy" /> }
                   <span class="name">{{ b.name }}</span>
                   <span class="count">{{ t(b.recipeCount === 1 ? 'cookbooks.recipeCountOne' : 'cookbooks.recipeCountOther', { count: b.recipeCount }) }}</span>
                   <span class="badges">
@@ -57,6 +59,7 @@ export class MyCookbooksPage {
   private readonly i18n = inject(TranslocoService);
   protected readonly books = signal<CookbookSummary[] | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly mediaUrl = mediaUrl;
 
   constructor() {
     void this.load();

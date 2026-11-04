@@ -18,17 +18,18 @@ public interface CookbookRepository extends JpaRepository<Cookbook, UUID> {
 
 	Optional<Cookbook> findByShareToken(String shareToken);
 
-	record SummaryRow(UUID id, String name, String visibility, UUID ownerId, long recipeCount, Instant updatedAt) {
+	record SummaryRow(UUID id, String name, String visibility, UUID ownerId, long recipeCount, Instant updatedAt,
+			String coverMediaId) {
 	}
 
 	/** Cookbooks the user owns or co-authors, with the entry count computed in SQL. */
 	@Query("""
 		select new com.ricettine.cookbook.CookbookRepository$SummaryRow(c.id, c.name, str(c.visibility), c.ownerId,
-			count(e.recipeId), c.updatedAt)
+			count(e.recipeId), c.updatedAt, c.coverMediaId)
 		from Cookbook c left join CookbookEntry e on e.cookbookId = c.id
 		where c.ownerId = :userId
 			or exists (select 1 from CookbookAuthor a where a.cookbookId = c.id and a.userId = :userId)
-		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt
+		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId
 		order by c.updatedAt desc, c.id asc""")
 	List<SummaryRow> summariesFor(UUID userId);
 }

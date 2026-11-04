@@ -64,6 +64,12 @@ public class MediaService {
 	 * fails, or if the surrounding transaction (if any) later rolls back.
 	 */
 	public String register(ProcessedUpload upload, UUID ownerId, MediaKind kind, UUID recipeIdOrNull) {
+		return register(upload, ownerId, kind, recipeIdOrNull, null);
+	}
+
+	/** {@link #register(ProcessedUpload, UUID, MediaKind, UUID)} for a media that belongs to a cookbook (its cover). */
+	public String register(ProcessedUpload upload, UUID ownerId, MediaKind kind, UUID recipeIdOrNull,
+			UUID cookbookIdOrNull) {
 		String id = Tokens.newToken();
 		List<String> written = new ArrayList<>();
 		try {
@@ -72,7 +78,7 @@ public class MediaService {
 				blobs.put(k, e.getValue(), "image/jpeg");
 				written.add(k);
 			}
-			repo.saveAndFlush(new Media(id, ownerId, kind, recipeIdOrNull));
+			repo.saveAndFlush(new Media(id, ownerId, kind, recipeIdOrNull, cookbookIdOrNull));
 		}
 		catch (RuntimeException ex) {
 			for (String k : written) {

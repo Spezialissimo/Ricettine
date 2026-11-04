@@ -41,6 +41,15 @@ describe('MyCookbooksPage', () => {
     expect(links[1].textContent).toContain(en.cookbooks.visibility.PUBLIC);
   });
 
+  it('shows the cover thumb of a cookbook that has one', async () => {
+    setup({ mine: async () => [sum({ id: 'a', coverThumbUrl: '/media/m1/thumb.jpg' }), sum({ id: 'b' })] });
+    const f = TestBed.createComponent(MyCookbooksPage);
+    await settle(f);
+    const imgs = (f.nativeElement as HTMLElement).querySelectorAll('a.cookbook img.cover-thumb');
+    expect(imgs.length).toBe(1);
+    expect(imgs[0].getAttribute('src')).toBe('/media/m1/thumb.jpg');
+  });
+
   it('shows an empty state that invites creating a cookbook', async () => {
     setup({ mine: async () => [] });
     const f = TestBed.createComponent(MyCookbooksPage);

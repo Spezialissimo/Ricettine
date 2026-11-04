@@ -104,6 +104,52 @@ describe('CookbookPage', () => {
     expect(el.querySelector('h1')?.textContent).toContain('Sweets');
   });
 
+  const cover = { mediaId: 'm1', thumbUrl: '/media/m1/thumb.jpg', displayUrl: '/media/m1/display.jpg' };
+  const choose = (el: HTMLElement, file: File) => {
+    const input = el.querySelector('app-photo-picker input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+  };
+
+  it('the owner sets the cover from a picked file and sees it', async () => {
+    const setCover = vi.fn().mockResolvedValue(book({ cover }));
+    const { f, el } = await mount({ get: vi.fn().mockResolvedValue(book()), setCover });
+    expect(el.querySelector('img.cover')).toBeNull();
+    const file = new File(['x'], 'p.jpg', { type: 'image/jpeg' });
+    choose(el, file);
+    await settle(f);
+    expect(setCover).toHaveBeenCalledWith('c1', file);
+    expect(el.querySelector('img.cover')?.getAttribute('src')).toBe('/media/m1/display.jpg');
+  });
+
+  it('an oversize file is rejected on the client without a request', async () => {
+    const setCover = vi.fn();
+    const { f, el } = await mount({ get: vi.fn().mockResolvedValue(book()), setCover });
+    const big = new File(['x'], 'big.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(big, 'size', { value: 16 * 1024 * 1024 });
+    choose(el, big);
+    await settle(f);
+    expect(setCover).not.toHaveBeenCalled();
+    expect(el.textContent).toContain(en.errors.file_too_large);
+  });
+
+  it('Remove cover clears it', async () => {
+    const removeCover = vi.fn().mockResolvedValue(book());
+    const { f, el } = await mount({ get: vi.fn().mockResolvedValue(book({ cover })), removeCover });
+    expect(el.querySelector('img.cover')).not.toBeNull();
+    btn(el, en.cookbooks.cover.remove)!.click();
+    await settle(f);
+    expect(removeCover).toHaveBeenCalledWith('c1');
+    expect(el.querySelector('img.cover')).toBeNull();
+  });
+
+  it('an author sees the cover but cannot change it', async () => {
+    const { el } = await mount({ get: vi.fn().mockResolvedValue(book({ role: 'AUTHOR', cover })) });
+    expect(el.querySelector('img.cover')).not.toBeNull();
+    expect(el.querySelector('app-photo-picker')).toBeNull();
+    expect(btn(el, en.cookbooks.cover.remove)).toBeUndefined();
+  });
+
   it('says so when the cookbook is not found', async () => {
     const { el } = await mount({ get: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 404, error: { code: 'cookbook_not_found' } })) });
     expect(el.textContent).toContain(en.errors.cookbook_not_found);

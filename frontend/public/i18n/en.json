@@ -166,6 +166,11 @@
     "name": "Name",
     "description": "Description",
     "visibilityLabel": "Visibility",
+    "cover": {
+      "add": "Add cover photo",
+      "replace": "Replace cover photo",
+      "remove": "Remove cover photo"
+    },
     "visibility": {
       "PRIVATE": "Private",
       "PUBLIC": "Public"

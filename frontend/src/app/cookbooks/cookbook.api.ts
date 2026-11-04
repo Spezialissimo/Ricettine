@@ -35,6 +35,14 @@ export class CookbookApi {
       this.http.delete<void>(`/api/cookbooks/${encodeURIComponent(id)}/recipes/${encodeURIComponent(recipeId)}`),
     );
   }
+  setCover(id: string, file: File): Promise<Cookbook> {
+    const body = new FormData();
+    body.append('file', file);
+    return firstValueFrom(this.http.put<Cookbook>(`/api/cookbooks/${encodeURIComponent(id)}/cover`, body));
+  }
+  removeCover(id: string): Promise<Cookbook> {
+    return firstValueFrom(this.http.delete<Cookbook>(`/api/cookbooks/${encodeURIComponent(id)}/cover`));
+  }
   resetLink(id: string): Promise<Cookbook> {
     return firstValueFrom(this.http.post<Cookbook>(`/api/cookbooks/${encodeURIComponent(id)}/share-link/reset`, {}));
   }

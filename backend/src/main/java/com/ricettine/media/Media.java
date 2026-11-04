@@ -26,6 +26,8 @@ public class Media implements Persistable<String> {
 	private MediaKind kind;
 	@Column(name = "recipe_id")
 	private UUID recipeId;
+	@Column(name = "cookbook_id")
+	private UUID cookbookId;
 	@Column(name = "created_at")
 	private Instant createdAt;
 	@Transient
@@ -34,11 +36,12 @@ public class Media implements Persistable<String> {
 	protected Media() {
 	}
 
-	public Media(String id, UUID ownerId, MediaKind kind, UUID recipeId) {
+	public Media(String id, UUID ownerId, MediaKind kind, UUID recipeId, UUID cookbookId) {
 		this.id = id;
 		this.ownerId = ownerId;
 		this.kind = kind;
 		this.recipeId = recipeId;
+		this.cookbookId = cookbookId;
 		this.createdAt = Instant.now();
 	}
 
@@ -55,5 +58,6 @@ public class Media implements Persistable<String> {
 	public UUID getOwnerId() { return ownerId; }
 	public MediaKind getKind() { return kind; }
 	public UUID getRecipeId() { return recipeId; }
+	public UUID getCookbookId() { return cookbookId; }
 	public Instant getCreatedAt() { return createdAt; }
 }

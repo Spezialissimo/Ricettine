@@ -11,11 +11,12 @@ import { Cookbook, CookbookInput, tokenFromShareUrl } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
 import { mediaUrl } from '../core/media';
 import { CookbookFormDialog } from './cookbook-form.dialog';
+import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
 
 /** One cookbook: its recipes, and (owner only) Edit and Delete. Every member can remove entries. */
 @Component({
   selector: 'app-cookbook-page',
-  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent],
+  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent, PhotoPickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbooks.scss',
   template: `
@@ -37,6 +38,17 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
           <span class="badge" [attr.data-badge]="b.role">{{ t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor') }}</span>
           <span class="badge" [attr.data-badge]="b.visibility">{{ t('cookbooks.visibility.' + b.visibility) }}</span>
         </div>
+        @if (mediaUrl(b.cover?.displayUrl); as src) { <img class="cover" [src]="src" alt="" /> }
+        @if (b.role === 'OWNER') {
+          <div class="cover-actions">
+            <app-photo-picker [label]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
+              [ariaLabel]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
+              (picked)="setCover(b, $event)" (rejected)="actionError.set($event)" />
+            @if (b.cover) {
+              <button type="button" class="btn" (click)="removeCover(b)">{{ t('cookbooks.cover.remove') }}</button>
+            }
+          </div>
+        }
         @if (b.description) { <p class="desc">{{ b.description }}</p> }
         <app-cookbook-share-panel [book]="b" (updated)="book.set($event)" />
         @if (actionError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
@@ -117,6 +129,24 @@ export class CookbookPage {
     try {
       await this.api.remove(b.id);
       await this.router.navigateByUrl('/cookbooks');
+    } catch (e) {
+      this.actionError.set(errorKey(toApiError(e)));
+    }
+  }
+
+  protected async setCover(b: Cookbook, file: File): Promise<void> {
+    this.actionError.set(null);
+    try {
+      this.book.set(await this.api.setCover(b.id, file));
+    } catch (e) {
+      this.actionError.set(errorKey(toApiError(e)));
+    }
+  }
+
+  protected async removeCover(b: Cookbook): Promise<void> {
+    this.actionError.set(null);
+    try {
+      this.book.set(await this.api.removeCover(b.id));
     } catch (e) {
       this.actionError.set(errorKey(toApiError(e)));
     }
