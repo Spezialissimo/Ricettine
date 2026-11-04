@@ -134,4 +134,25 @@ describe('UnsavedBackup', () => {
       expect(() => backup.sweep()).not.toThrow();
     });
   });
+
+  describe('sweep of malformed and future entries', () => {
+    const set = (id: string, v: string) => localStorage.setItem(`ricettine.unsaved.${id}`, v);
+
+    it('removes keys whose value is broken JSON, not a plain object, or keeps no entry', () => {
+      for (const [id, v] of [['a', '{broken'], ['b', '{}'], ['c', '[]'], ['d', '"x"']]) set(id, v);
+      backup.sweep();
+      for (const id of ['a', 'b', 'c', 'd']) expect(localStorage.getItem(`ricettine.unsaved.${id}`)).toBeNull();
+    });
+
+    it('drops entries saved more than a minute in the future and keeps valid ones', () => {
+      const now = Date.now();
+      backup.write('r1', 'ok', 'u1', emptyInput({ title: 'ok' }));
+      const raw = JSON.parse(localStorage.getItem('ricettine.unsaved.r1')!);
+      raw.future = { ...raw.ok, savedAt: now + 60 * 60 * 1000 };
+      raw.soon = { ...raw.ok, savedAt: now + 10 * 1000 };
+      set('r1', JSON.stringify(raw));
+      backup.sweep();
+      expect(Object.keys(JSON.parse(localStorage.getItem('ricettine.unsaved.r1')!)).sort()).toEqual(['ok', 'soon']);
+    });
+  });
 });

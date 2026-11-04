@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { TranslocoService } from '@jsverse/transloco';
 
 export type ApiError = { status: number; code: string; fields?: Record<string, string>; mediaIds?: string[] };
 
@@ -59,4 +60,10 @@ export function toApiError(e: unknown): ApiError {
 
 export function errorKey(e: ApiError): string {
   return KNOWN_ERROR_CODES.includes(e.code) ? `errors.${e.code}` : 'errors.unknown';
+}
+
+/** Key for a per-field server error code: `errors.field.{code}`, else `errors.validation_failed`. */
+export function fieldErrorKey(transloco: TranslocoService, code: string): string {
+  const key = `errors.field.${code}`;
+  return transloco.translate(key) !== key ? key : 'errors.validation_failed';
 }

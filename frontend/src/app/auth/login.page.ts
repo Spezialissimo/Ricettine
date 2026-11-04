@@ -13,7 +13,10 @@ import { safeNext } from './safe-next';
   styleUrl: './auth-page.scss',
   styles: `
     @use '../../styles/tokens' as t;
-    label { display: block; margin-bottom: t.$space-4; font-weight: 600; }
+    .field { margin-bottom: t.$space-4; }
+    label { display: block; font-weight: 600; }
+    .error { display: block; color: #b3261e; font-weight: 400; font-size: 0.85rem; margin-top: t.$space-1; }
+    input[aria-invalid='true'] { border-color: #b3261e; }
     input { @include t.touch-target; display: block; width: 100%; margin-top: t.$space-1; padding: 0 t.$space-3;
       font: inherit; border: 1px solid t.$border; border-radius: t.$radius; background: t.$surface; color: t.$ink; }
     .alert { color: #b3261e; margin: 0 0 t.$space-4; }
@@ -25,16 +28,28 @@ import { safeNext } from './safe-next';
     <ng-container *transloco="let t">
       <h1>{{ t('common.appName') }}</h1>
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
-        <label>
-          {{ t('auth.email') }}
-          <input type="email" name="email" formControlName="email" autocomplete="username"
-            autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
-        </label>
-        <label>
-          {{ t('auth.password') }}
-          <input type="password" name="password" formControlName="password" autocomplete="current-password" />
-        </label>
-        @if (error(); as e) {
+        <div class="field">
+          <label>
+            {{ t('auth.email') }}
+            <input type="email" name="email" formControlName="email" autocomplete="username"
+              autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email"
+              [attr.aria-invalid]="missing('email') ? 'true' : null"
+              [attr.aria-describedby]="missing('email') ? 'err-email' : null" />
+          </label>
+          @if (missing('email')) { <span class="error" id="err-email">{{ t('auth.required') }}</span> }
+        </div>
+        <div class="field">
+          <label>
+            {{ t('auth.password') }}
+            <input type="password" name="password" formControlName="password" autocomplete="current-password"
+              [attr.aria-invalid]="missing('password') ? 'true' : null"
+              [attr.aria-describedby]="missing('password') ? 'err-password' : null" />
+          </label>
+          @if (missing('password')) { <span class="error" id="err-password">{{ t('auth.required') }}</span> }
+        </div>
+        @if (attempted() && form.invalid) {
+          <p class="alert" role="alert">{{ t('auth.fillBoth') }}</p>
+        } @else if (error(); as e) {
           <p class="alert" role="alert">{{ t(key(e)) }}</p>
         }
         <button type="submit" [disabled]="busy()">{{ t('auth.login') }}</button>
@@ -49,14 +64,22 @@ export class LoginPage {
 
   readonly busy = signal(false);
   readonly error = signal<ApiError | null>(null);
+  readonly attempted = signal(false);
   readonly key = errorKey;
   readonly form = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
+  /** True once a submit was tried and the field is still empty (stays reactive to typing via the form value). */
+  missing(name: 'email' | 'password'): boolean {
+    return this.attempted() && this.form.controls[name].invalid;
+  }
+
   async submit(): Promise<void> {
-    if (this.form.invalid || this.busy()) return;
+    if (this.busy()) return;
+    this.attempted.set(true);
+    if (this.form.invalid) return;
     this.busy.set(true);
     this.error.set(null);
     try {

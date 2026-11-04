@@ -21,7 +21,20 @@ export const backupKey = (recipeId: string) => `${KEY_PREFIX}${recipeId}`;
 /** An entry older than this (since its last write) is ignored and deleted. */
 export const BACKUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** An entry stamped further ahead than this is a clock accident and is dropped by the sweep. */
+const FUTURE_SKEW_MS = 60 * 1000;
+
 type Entries = Record<string, Backup>;
+
+/** The entries of a stored value; null when it is not JSON, not a plain object, or holds no entry. */
+const parseEntries = (raw: string): Entries | null => {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length ? (v as Entries) : null;
+  } catch {
+    return null;
+  }
+};
 
 const valid = (b: unknown): b is Backup => {
   const x = b as Partial<Backup> | null;
@@ -97,8 +110,8 @@ export class UnsavedBackup {
   }
 
   /**
-   * Deletes every expired or malformed entry of every recipe (also those never reopened: other users'
-   * on a shared browser, deleted recipes) and keys left empty. Fresh entries and non-backup keys stay.
+   * Deletes every expired, malformed or future-dated (more than a minute ahead) entry of every recipe (also those never reopened: other users'
+   * on a shared browser, deleted recipes) and keys that are not JSON objects or keep no entry. Fresh entries and non-backup keys stay.
    * Run at app start and after logout.
    */
   sweep(): void {
@@ -111,15 +124,17 @@ export class UnsavedBackup {
       const now = Date.now();
       for (const key of keys) {
         try {
-          const id = key.slice(KEY_PREFIX.length);
-          const entries = this.entries(id);
+          const raw = localStorage.getItem(key);
+          const entries = raw === null ? null : parseEntries(raw);
+          if (!entries) {
+            localStorage.removeItem(key);
+            continue;
+          }
           const kept: Entries = {};
           for (const [w, b] of Object.entries(entries)) {
-            if (valid(b) && now - b.savedAt <= BACKUP_TTL_MS) kept[w] = b;
+            if (valid(b) && now - b.savedAt <= BACKUP_TTL_MS && b.savedAt - now <= FUTURE_SKEW_MS) kept[w] = b;
           }
-          if (Object.keys(kept).length !== Object.keys(entries).length || !localStorage.getItem(key)?.startsWith('{')) {
-            this.store(id, kept);
-          }
+          if (Object.keys(kept).length !== Object.keys(entries).length) this.store(key.slice(KEY_PREFIX.length), kept);
         } catch {
           // this key is unreadable or locked: leave it
         }

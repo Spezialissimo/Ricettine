@@ -76,4 +76,21 @@ describe('LoginPage', () => {
     await settle(f);
     expect(nav).toHaveBeenCalledWith('/settings?x=1');
   });
+
+  it('empty submit shows auth.fillBoth in an alert and marks both inputs invalid and described', async () => {
+    const f = setup();
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle(f);
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(en.auth.fillBoth);
+    for (const sel of ['input[type=email]', 'input[type=password]']) {
+      const i = el.querySelector(sel)!;
+      expect(i.getAttribute('aria-invalid')).toBe('true');
+      const id = i.getAttribute('aria-describedby')!;
+      expect(id).toBeTruthy();
+      expect(el.querySelector(`#${id}`)).not.toBeNull();
+      expect(i.closest('label')!.contains(el.querySelector(`#${id}`))).toBe(false);
+    }
+  });
 });
