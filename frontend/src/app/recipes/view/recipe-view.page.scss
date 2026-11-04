@@ -19,6 +19,8 @@ main { max-width: t.$content-max-width; margin: 0 auto; padding: t.$space-4; }
 
 .cover { display: block; width: 100%; max-height: 420px; object-fit: cover; border-radius: t.$radius; background: t.$bg; }
 .author { display: flex; align-items: center; gap: 10px; margin: t.$space-3 0 t.$space-1; color: t.$muted; }
+.author { flex-wrap: wrap; }
+.keep { margin-left: auto; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: t.$border; flex: none; }
 h1 { margin: 0 0 t.$space-2; font-size: 1.8rem; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 t.$space-4; padding: 0; list-style: none; }

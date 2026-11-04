@@ -13,6 +13,7 @@ import { displayAmount, scaleAmount } from '../amount';
 import { durationKey } from '../editor/time-sheet.component';
 import { RecipeApi } from '../recipe.api';
 import { Ingredient, PublicRecipe } from '../recipe.model';
+import { KeepScreenOnComponent } from './keep-screen-on.component';
 import { PortionsStepperComponent } from './portions-stepper.component';
 
 /** Only web links become links; any other source text is shown as plain text. */
@@ -24,7 +25,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
  */
 @Component({
   selector: 'app-recipe-view-page',
-  imports: [TranslocoDirective, RouterLink, PortionsStepperComponent],
+  imports: [TranslocoDirective, RouterLink, PortionsStepperComponent, KeepScreenOnComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-view.page.scss',
   template: `
@@ -76,6 +77,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             @if (auth.me() && !viaCookbook) {
               <button type="button" class="btn" (click)="addToCookbook()">{{ t('cookbooks.addToCookbook') }}</button>
             }
+            <app-keep-screen-on class="keep" />
           </div>
           <h1>{{ r.title }}</h1>
           <ul class="chips" role="list">

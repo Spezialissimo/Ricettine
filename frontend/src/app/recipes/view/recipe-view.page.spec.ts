@@ -118,6 +118,17 @@ describe('RecipeViewPage', () => {
     expect(ing()).toContain('Serves 4');
   });
 
+  it('offers Keep screen on beside the author when the Wake Lock API exists', async () => {
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: vi.fn() } });
+    try {
+      const { el } = await mount(vi.fn().mockResolvedValue(pub()));
+      expect(el.querySelector('.author input[type="checkbox"]')).not.toBeNull();
+      expect(el.querySelector('.author')!.textContent).toContain(en.recipes.keepScreenOn);
+    } finally {
+      delete (navigator as unknown as { wakeLock?: unknown }).wakeLock;
+    }
+  });
+
   it('shows the not-found state with a link home on 404', async () => {
     const { el } = await mount(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')));
     expect(el.textContent).toContain(en.recipes.notFound);

@@ -173,6 +173,7 @@
     "notFoundBody": "The link may have been reset, or the recipe is no longer shared.",
     "home": "Go to Ricettine",
     "edit": "Edit",
+    "keepScreenOn": "Keep screen on",
     "scale": {
       "fewer": "Fewer portions",
       "more": "More portions",
