@@ -26,6 +26,11 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   const editorUrl = await createRecipe(page, { title: 'Closed stew', ingredients: ['beans'], steps: ['Soak'] });
 
   await context.setOffline(true);
+  // Offline emulation alone is racy: a request in flight can still reach the server. Abort the save
+  // for sure, so the text can only get to the server through the reopened tab's restore.
+  await page.route('**/api/recipes/*', (route) =>
+    route.request().method() === 'PUT' ? route.abort('internetdisconnected') : route.continue(),
+  );
   await step1(page).fill('Soak overnight, then simmer');
   await expect(page.getByRole('status').getByText('Offline: will save when you reconnect')).toBeVisible();
   await page.close();
@@ -34,9 +39,8 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   const again = await context.newPage();
   await again.goto(editorUrl);
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
-  // "Saved ✓" is not guaranteed: the request that failed "offline" may still have reached the server
-  // before the tab closed, and then the reopened editor finds nothing left to save and stays silent.
-  // What must hold is that the text ends up on the server, so ask the server.
+  // The server never got the text, so this tab must restore it and save it.
+  await expect(saved(again)).toBeVisible();
   const id = editorUrl.match(/\/recipes\/([0-9a-f-]{36})\/edit$/)![1];
   await expect
     .poll(async () => (await (await again.request.get(`/api/recipes/${id}`)).json()).steps[0].text)
