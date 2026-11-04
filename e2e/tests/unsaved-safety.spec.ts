@@ -34,7 +34,13 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   const again = await context.newPage();
   await again.goto(editorUrl);
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
-  await expect(saved(again)).toBeVisible();
+  // "Saved ✓" is not guaranteed: the request that failed "offline" may still have reached the server
+  // before the tab closed, and then the reopened editor finds nothing left to save and stays silent.
+  // What must hold is that the text ends up on the server, so ask the server.
+  const id = editorUrl.match(/\/recipes\/([0-9a-f-]{36})\/edit$/)![1];
+  await expect
+    .poll(async () => (await (await again.request.get(`/api/recipes/${id}`)).json()).steps[0].text)
+    .toBe('Soak overnight, then simmer');
   await again.reload();
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
 });
