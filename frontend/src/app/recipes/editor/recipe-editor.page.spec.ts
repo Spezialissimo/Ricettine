@@ -527,7 +527,7 @@ describe('RecipeEditorPage', () => {
       localStorage.setItem('ricettine.unsaved.r1', JSON.stringify({
         input: { version: 1, title: 'Restored', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
           visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [] },
-        baseVersion: 1, savedAt: 1, userId: 'u1',
+        baseVersion: 1, savedAt: Date.now(), userId: 'u1',
       }));
       const { el } = await mount({
         get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old' })),

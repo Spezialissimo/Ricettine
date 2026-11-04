@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 import { PendingSaves } from './pending-saves';
 
 export type Me = {
@@ -16,6 +17,7 @@ export type Me = {
 export class AuthStore {
   private readonly http = inject(HttpClient);
   private readonly pending = inject(PendingSaves);
+  private readonly backups = inject(UnsavedBackup);
   private readonly _me = signal<Me | null>(null);
   private readonly _ready = signal(false);
 
@@ -38,9 +40,14 @@ export class AuthStore {
     this._me.set(await firstValueFrom(this.http.post<Me>('/api/auth/login', { email, password })));
   }
 
-  /** Sends unsaved work of open pages first (the session must still be valid for that), then logs out. */
+  /**
+   * Sends unsaved work of open pages first (the session must still be valid for that), then logs out.
+   * If everything was saved, this user's local backups go too; otherwise they stay for the next login.
+   */
   async logout(): Promise<void> {
-    await this.pending.flushAll();
+    const userId = this._me()?.id ?? null;
+    const clean = await this.pending.flushAll();
+    if (clean && userId) this.backups.clearAllFor(userId);
     try {
       await firstValueFrom(this.http.post<void>('/api/auth/logout', null));
     } catch {

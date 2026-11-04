@@ -224,7 +224,7 @@ describe('EditorStore unsaved backup', () => {
     return raw ? JSON.parse(raw) : null;
   };
   const putBackup = (input: Partial<ReturnType<typeof emptyInput>>, baseVersion: number, userId = 'u1') =>
-    localStorage.setItem(KEY, JSON.stringify({ input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: 1, userId }));
+    localStorage.setItem(KEY, JSON.stringify({ input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: Date.now(), userId }));
   function setupAs(api: Partial<RecipeApi>, userId: string | null = 'u1') {
     const store = setup(api);
     TestBed.inject(AuthStore).setMe(userId ? me(userId) : null);
@@ -300,6 +300,41 @@ describe('EditorStore unsaved backup', () => {
     expect(stored()).toBeNull();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('an 8-day-old backup is discarded on load', async () => {
+    const now = Date.now();
+    localStorage.setItem(KEY, JSON.stringify({
+      input: emptyInput({ title: 'Ancient', version: 3 }), baseVersion: 3, savedAt: now - 8 * 24 * 60 * 60 * 1000, userId: 'u1',
+    }));
+    const save = vi.fn();
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })), save });
+    await store.load('r1');
+    expect(store.recipe().title).toBe('Server');
+    expect(store.restored()).toBe(false);
+    expect(stored()).toBeNull();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('PendingSaves.flushAll is not clean while an editor still has unsaved text', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Unsent' }));
+    expect(await TestBed.inject(PendingSaves).flushAll()).toBe(false);
+    save.mockResolvedValue(serverRecipe({ title: 'Unsent', version: 2 }));
+    expect(await TestBed.inject(PendingSaves).flushAll()).toBe(true);
+  });
+
+  it('a destroyed editor whose leaving flush could not save makes flushAll not clean', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    const pending = TestBed.inject(PendingSaves);
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Unsent' }));
+    TestBed.resetTestingModule();
+    expect(await pending.flushAll()).toBe(false);
   });
 
   it("never applies another user's backup", async () => {

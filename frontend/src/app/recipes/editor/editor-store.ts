@@ -144,15 +144,20 @@ export class EditorStore {
 
   constructor() {
     // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
+    // Rejects when text stayed unsaved, so a logout keeps the local backups.
     const pending = inject(PendingSaves);
-    const unregister = pending.register(() => this.autosave.flush());
+    const unregister = pending.register(() => this.autosave.flush().then(() => this.assertSaved()));
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this._uploads().forEach((u) => this.revoke(u.preview));
       this._uploads.set([]);
-      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()));
+      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()).then(() => this.assertSaved()));
     });
+  }
+
+  private assertSaved(): void {
+    if (this.autosave.dirty() || this.hasUnsavedInput()) throw new Error('unsaved recipe text');
   }
 
   id(): string | null {
