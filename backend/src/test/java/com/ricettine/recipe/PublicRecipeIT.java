@@ -77,6 +77,16 @@ class PublicRecipeIT extends IntegrationTest {
 			.andExpect(status().isOk());
 	}
 
+	long version(String id) {
+		return jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id);
+	}
+
+	org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder reset(String id, Cookie who, long v) {
+		var req = post("/api/recipes/" + id + "/share-link/reset").with(csrf())
+			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + v + "}");
+		return who == null ? req : req.cookie(who);
+	}
+
 	String token(String id) {
 		return jdbc.queryForObject("select share_token from recipe where id = ?::uuid", String.class, id);
 	}
@@ -137,6 +147,11 @@ class PublicRecipeIT extends IntegrationTest {
 		int sessions = jdbc.queryForObject("select count(*) from spring_session", Integer.class);
 		MvcResult r = mvc.perform(get("/api/r/" + t)).andExpect(status().isOk()).andReturn();
 		assertThat(r.getResponse().getCookie("SESSION")).isNull();
+		// XSRF-TOKEN is set by design: csrf().spa() loads the token eagerly (no deferred token) so the SPA can
+		// read it on any page and its first POST (e.g. "Log in" from this page's header) passes CSRF. It is a
+		// stateless double-submit cookie (CookieCsrfTokenRepository): no server-side state, unlike SESSION.
+		assertThat(r.getResponse().getCookie("XSRF-TOKEN")).isNotNull()
+			.satisfies(c -> assertThat(c.isHttpOnly()).isFalse());
 		assertThat(jdbc.queryForObject("select count(*) from spring_session", Integer.class)).isEqualTo(sessions);
 	}
 
@@ -183,8 +198,8 @@ class PublicRecipeIT extends IntegrationTest {
 		String oldPhoto = before.get("cover").get("thumbUrl").asText();
 		mvc.perform(get(oldPhoto)).andExpect(status().isOk());
 
-		long v = jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id);
-		MvcResult res = mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me))
+		long v = version(id);
+		MvcResult res = mvc.perform(reset(id, me, v))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.version").value(v + 1)).andReturn();
 		assertThat(jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id))
 			.isEqualTo(v + 1);
@@ -206,13 +221,41 @@ class PublicRecipeIT extends IntegrationTest {
 	void resetIsAuthorOnlyAndWorksOnDrafts() throws Exception {
 		String id = create(me);
 		String old = token(id);
-		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(other))
+		mvc.perform(reset(id, other, 0))
 			.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("recipe_not_found"));
-		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()))
+		mvc.perform(reset(id, null, 0))
 			.andExpect(status().isUnauthorized());
 		assertThat(token(id)).isEqualTo(old);
-		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me))
+		mvc.perform(reset(id, me, 0))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.shareUrl").doesNotExist());
 		assertThat(token(id)).isNotEqualTo(old);
+	}
+
+	@Test
+	void resetWithStaleVersionIs409AndChangesNothing() throws Exception {
+		String id = published("PRIVATE");
+		String old = token(id);
+		long v = version(id);
+		mvc.perform(reset(id, me, v - 1)).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("recipe_conflict"));
+		assertThat(token(id)).isEqualTo(old);
+		assertThat(version(id)).isEqualTo(v);
+		mvc.perform(get("/api/r/" + old)).andExpect(status().isOk());
+	}
+
+	@Test
+	void resetWithoutVersionIs400() throws Exception {
+		String id = published("PRIVATE");
+		String old = token(id);
+		long v = version(id);
+		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me)
+			.contentType(MediaType.APPLICATION_JSON).content("{}"))
+			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"))
+			.andExpect(jsonPath("$.fields.version").value("required"));
+		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me))
+			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"))
+			.andExpect(jsonPath("$.fields.version").value("required"));
+		assertThat(token(id)).isEqualTo(old);
+		assertThat(version(id)).isEqualTo(v);
 	}
 }

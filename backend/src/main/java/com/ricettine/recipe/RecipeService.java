@@ -137,9 +137,13 @@ public class RecipeService {
 		return toDto(recipes.saveAndFlush(r));
 	}
 
-	/** New share token (old link and old photo URLs stop working); a change to the recipe, so it bumps version. */
-	public RecipeDto resetShareLink(UUID authorId, UUID id) {
+	/**
+	 * New share token (old link and old photo URLs stop working); a change to the recipe, so it bumps version.
+	 * {@code version} must be current (409 otherwise), so a reset never lets a stale working copy save on top.
+	 */
+	public RecipeDto resetShareLink(UUID authorId, UUID id, Long version) {
 		Recipe r = ownedForUpdate(authorId, id);
+		checkVersion(r, version);
 		r.resetShareToken(Tokens.newToken());
 		r.touch();
 		return toDto(recipes.saveAndFlush(r));
