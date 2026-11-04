@@ -119,20 +119,23 @@ export class IngredientsEditorComponent {
   protected readonly total = computed(() => countingIngredients(this.store.recipe().groups));
   protected readonly count = computed(() => this.store.recipe().groups.reduce((n, g) => n + g.ingredients.length, 0));
 
-  protected readonly invalidKeys = computed(() =>
-    Object.entries(this.texts()).filter(([, t]) => parseAmount(t) === 'invalid').map(([k]) => k),
+  /** Typed amount texts that are not valid amounts, by "group.row". */
+  private readonly invalidTexts = computed(() =>
+    Object.fromEntries(Object.entries(this.texts()).filter(([, t]) => parseAmount(t) === 'invalid')),
   );
+  protected readonly invalidKeys = computed(() => Object.keys(this.invalidTexts()));
 
   constructor() {
-    // A server copy replaced the working copy (publish, Load latest): drop typed text.
+    // A new working copy (load, publish, Load latest, a restored backup): drop typed text, or take
+    // the amount texts the restored backup kept.
     effect(() => {
       this.store.epoch();
-      untracked(() => this.texts.set({}));
+      untracked(() => this.texts.set({ ...this.store.restoredAmountTexts() }));
     });
-    // Tell the store how many amounts are invalid (status "not saved: fix", Publish refuses).
+    // Tell the store which amounts are invalid (status "not saved: fix", Publish refuses, kept in the local backup).
     effect(() => {
-      const n = this.invalidKeys().length;
-      untracked(() => this.store.setInvalidAmounts(n));
+      const t = this.invalidTexts();
+      untracked(() => this.store.setInvalidAmounts(t));
     });
   }
 

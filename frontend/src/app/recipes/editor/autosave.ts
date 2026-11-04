@@ -6,6 +6,8 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | 'o
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
 export const AUTOSAVE_MAX_WAIT_MS = 5000;
+/** Waits before retrying a save that failed for a transient reason; the last one repeats. */
+export const AUTOSAVE_RETRY_DELAYS_MS: readonly number[] = [2000, 5000, 15_000, 30_000];
 
 export interface AutosaveDeps {
   /** Sends the working copy (PUT); resolves with the server's new RecipeDto. */
@@ -14,6 +16,12 @@ export interface AutosaveDeps {
   read(): RecipeInput;
   /** Called after each successful save; must adopt `r.version` without touching newer local edits. */
   saved(r: Recipe): void;
+  /**
+   * The local copy of unsent text: `write()` runs synchronously on every change (before anything is
+   * sent), after a save that left newer changes pending (re-based on the new version) and on entering
+   * a conflict; `clear()` once the server confirmed a save that includes the newest change.
+   */
+  backup?: { write(): void; clear(): void };
 }
 
 export interface AutosaveOptions {
@@ -21,6 +29,9 @@ export interface AutosaveOptions {
   maxWaitMs?: number;
   /** Subscribes to "connection is back"; returns an unsubscribe. Defaults to `window` 'online'. */
   onOnline?: (cb: () => void) => () => void;
+  /** Subscribes to "the page is visible again"; returns an unsubscribe. Defaults to document 'visibilitychange'. */
+  onVisible?: (cb: () => void) => () => void;
+  retryDelaysMs?: readonly number[];
 }
 
 const windowOnline = (cb: () => void) => {
@@ -29,10 +40,24 @@ const windowOnline = (cb: () => void) => {
   return () => window.removeEventListener('online', cb);
 };
 
+const documentVisible = (cb: () => void) => {
+  if (typeof document === 'undefined') return () => {};
+  const h = () => {
+    if (document.visibilityState === 'visible') cb();
+  };
+  document.addEventListener('visibilitychange', h);
+  return () => document.removeEventListener('visibilitychange', h);
+};
+
+/** Worth trying again by itself: no connection (status 0), a server error or 503 busy. */
+const transient = (e: ApiError) => e.status === 0 || e.status >= 500;
+
 /**
  * Autosave timing per the Global Constraints: debounce after the last change, at most `maxWaitMs`
  * between saves while changes keep coming, one request in flight; changes made during a flight are
  * sent next with the version the server returned. A 409 blocks all saving until `reset()`.
+ * A transient failure (offline, 5xx, 503 busy) is retried after 2 s, 5 s, 15 s, then every 30 s, and
+ * at once when the browser goes online or the page becomes visible again.
  *
  * Plain class (no DI) so it can be driven with fake timers. Signals are its only output.
  */
@@ -54,22 +79,31 @@ export class Autosave {
   private sendAgain = false;
   private disposed = false;
   private suspended = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private retries = 0;
+  private failedTransiently = false;
   private readonly debounceMs: number;
   private readonly maxWaitMs: number;
+  private readonly retryDelays: readonly number[];
   private readonly unlistenOnline: () => void;
+  private readonly unlistenVisible: () => void;
 
   constructor(private readonly deps: AutosaveDeps, options: AutosaveOptions = {}) {
     this.debounceMs = options.debounceMs ?? AUTOSAVE_DEBOUNCE_MS;
     this.maxWaitMs = options.maxWaitMs ?? AUTOSAVE_MAX_WAIT_MS;
-    this.unlistenOnline = (options.onOnline ?? windowOnline)(() => {
-      if (this._status() === 'offline' && this.dirty()) this.trigger();
-    });
+    this.retryDelays = options.retryDelaysMs ?? AUTOSAVE_RETRY_DELAYS_MS;
+    const retryNow = () => {
+      if (this.failedTransiently && this.dirty()) this.trigger();
+    };
+    this.unlistenOnline = (options.onOnline ?? windowOnline)(retryNow);
+    this.unlistenVisible = (options.onVisible ?? documentVisible)(retryNow);
   }
 
   /** Records a local change and schedules a save. */
   changed(): void {
     if (this.disposed) return;
     this.rev.update((r) => r + 1);
+    this.deps.backup?.write(); // first, synchronously: survives a tab close a moment later
     if (this._status() === 'saved') this._status.set('idle');
     this.schedule();
   }
@@ -94,6 +128,8 @@ export class Autosave {
   reset(): void {
     this.clearTimers();
     this.sendAgain = false;
+    this.retries = 0;
+    this.failedTransiently = false;
     this.savedRev.set(this.rev());
     this._error.set(null);
     this._status.set('idle');
@@ -122,6 +158,7 @@ export class Autosave {
     this.clearTimers();
     this.sendAgain = false;
     this.unlistenOnline();
+    this.unlistenVisible();
   }
 
   private blocked(): boolean {
@@ -138,7 +175,8 @@ export class Autosave {
   private clearTimers(): void {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     if (this.maxTimer) clearTimeout(this.maxTimer);
-    this.debounceTimer = this.maxTimer = null;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    this.debounceTimer = this.maxTimer = this.retryTimer = null;
   }
 
   private trigger(): void {
@@ -163,6 +201,18 @@ export class Autosave {
     this.clearTimers();
     this._error.set(err);
     this._status.set('conflict');
+    this.deps.backup?.write(); // the conflict's text now lives only here and in the backup
+  }
+
+  private scheduleRetry(): void {
+    if (this.blocked()) return;
+    const delay = this.retryDelays[Math.min(this.retries, this.retryDelays.length - 1)];
+    this.retries++;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.dirty()) this.trigger();
+    }, delay);
   }
 
   private async send(): Promise<void> {
@@ -174,6 +224,10 @@ export class Autosave {
       this.deps.saved(saved);
       this.savedRev.set(sentRev);
       this._error.set(null);
+      this.retries = 0;
+      this.failedTransiently = false;
+      if (this.dirty()) this.deps.backup?.write(); // newer text still pending: keep it, on the new version
+      else this.deps.backup?.clear();
       if (this.dirty()) {
         // Newer edits are waiting: send them right away if a timer already fired during the flight.
         this._status.set(this.sendAgain ? 'saving' : 'idle');
@@ -187,10 +241,11 @@ export class Autosave {
       if (err.status === 409 || err.code === 'recipe_conflict') {
         this.clearTimers();
         this._status.set('conflict');
-      } else if (err.code === 'network_error') {
-        this._status.set('offline');
+        this.deps.backup?.write(); // the conflict's text now lives only here and in the backup
       } else {
-        this._status.set('error');
+        this._status.set(err.code === 'network_error' ? 'offline' : 'error');
+        this.failedTransiently = transient(err);
+        if (this.failedTransiently) this.scheduleRetry();
       }
     }
   }

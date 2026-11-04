@@ -1,11 +1,13 @@
 import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
-import { errorKey, toApiError } from '../../core/api-error';
+import { ApiError, errorKey, toApiError } from '../../core/api-error';
+import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Photo, Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
 import { unnamedRows } from './completeness';
 import { remapIndex } from './remap-index';
+import { ReadBackup, UnsavedBackup } from './unsaved-backup';
 
 const EMPTY: RecipeInput = {
   version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
@@ -40,16 +42,54 @@ export function conflictText(r: RecipeInput): string {
     .join('\n\n');
 }
 
+/** Ingredient rows holding nothing at all (no name, amount, unit or note) carry no typed text. */
+const withoutEmptyRows = (r: RecipeInput): RecipeInput => ({
+  ...r,
+  groups: r.groups.map((g) => ({
+    ...g,
+    ingredients: g.ingredients.filter((i) => !(blank(i.name) && i.amount === null && i.unit === null && blank(i.note))),
+  })),
+});
+
+/**
+ * Same recipe content, whatever the version and key order (a backup the server already has). Compares
+ * the raw working copy: a nameless row holding an amount, unit or note is typed text the server never got.
+ */
+function sameContent(a: RecipeInput, b: RecipeInput): boolean {
+  const canon = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(canon)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon((v as Record<string, unknown>)[k])]))
+        : v;
+  const strip = (r: RecipeInput) => JSON.stringify(canon({ ...withoutEmptyRows(r), version: 0 }));
+  return strip(a) === strip(b);
+}
+
+const sameTexts = (a: Record<string, string>, b: Record<string, string>) =>
+  Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([k, v]) => b[k] === v);
+
+/** Identifies one editor instance (one tab) among the writers of a recipe's backup. */
+const newWriterId = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+/** An upload failure worth retrying with the same file (no connection, server error, 503 busy). */
+const retryableUpload = (e: ApiError) => e.status === 0 || e.status >= 500;
+
 /** Where a photo goes: the cover, or the step at this index. */
 export type PhotoSlot = 'cover' | number;
 
-/** An upload (or a refused pick) shown in its slot. `preview` is an object URL, revoked once the server thumb loaded. */
+/**
+ * An upload (or a refused pick) shown in its slot. `preview` is an object URL, revoked once the server
+ * thumb loaded. A failed upload that can be retried keeps its `file` and preview ("Upload failed — Retry").
+ */
 export type PhotoUpload = {
   id: number;
   slot: PhotoSlot;
   status: 'uploading' | 'done' | 'failed';
   preview: string | null;
   error: string | null;
+  file?: File | null;
 };
 
 /**
@@ -59,10 +99,23 @@ export type PhotoUpload = {
 @Injectable()
 export class EditorStore {
   private readonly api = inject(RecipeApi);
+  private readonly backup = inject(UnsavedBackup);
+  private readonly auth = inject(AuthStore);
+  /** Whose editor this is (captured at load): the backup is written and read for this user only. */
+  private userId: string | null = null;
+  /** This editor's (tab's) entry in the recipe's backup: it writes and clears only its own. */
+  private readonly writerId = newWriterId();
+  /** Whether this editor's last backup write was stored (storage may be full or blocked). */
+  private lastWriteOk = false;
+  private readonly _restored = signal(false);
+  /** True once a save after the restore succeeded (the restored text is on the server). */
+  private readonly _restoreSaved = signal(false);
+  /** Amount texts from the restored backup (by "group.row"), handed to the ingredients editor. */
+  private readonly _restoredTexts = signal<Record<string, string>>({});
   private readonly _recipe = signal<RecipeInput>(EMPTY);
   private readonly _server = signal<Recipe | null>(null);
   private readonly _loadError = signal<string | null>(null);
-  private readonly _invalidAmounts = signal(0);
+  private readonly _invalidTexts = signal<Record<string, string>>({});
   private readonly _epoch = signal(0);
   private readonly _uploads = signal<PhotoUpload[]>([]);
   private readonly _photos = signal<Record<string, Photo>>({});
@@ -76,7 +129,10 @@ export class EditorStore {
     saved: (r) => {
       this._server.set(r);
       this._recipe.update((cur) => ({ ...cur, version: r.version }));
+      this._restoreSaved.set(true);
     },
+    // Input that is never sent (nameless rows with data, invalid amounts) stays backed up after a save.
+    backup: { write: () => this.writeBackup(), clear: () => (this.hasUnsavedInput() ? this.writeBackup() : this.clearBackup()) },
   });
 
   readonly recipe: Signal<RecipeInput> = this._recipe.asReadonly();
@@ -84,19 +140,27 @@ export class EditorStore {
   readonly uploads: Signal<PhotoUpload[]> = this._uploads.asReadonly();
   /** True while any photo is still being uploaded (Publish waits). */
   readonly uploading = computed(() => this._uploads().some((u) => u.status === 'uploading'));
+  /** True while a photo is uploading or failed and can be retried: Publish waits, leaving asks first. */
+  readonly uploadsUnfinished = computed(() => this._uploads().some((u) => u.status === 'uploading' || (u.status === 'failed' && !!u.file)));
+  /** True when this visit started from text saved locally on an earlier visit (applied and saved, or being saved). */
+  readonly restored: Signal<boolean> = this._restored.asReadonly();
+  /** Amount texts restored from the local backup (by "group.row"); replaced by each server copy. */
+  readonly restoredAmountTexts: Signal<Record<string, string>> = this._restoredTexts.asReadonly();
   /** True after a save found that an uploaded photo had been cleaned up and dropped its reference. */
   readonly photoGone: Signal<boolean> = this._photoGone.asReadonly();
   readonly status: Signal<SaveStatus> = this.autosave.status;
   /** Last server copy (id, status, share link, photo URLs), refreshed by load and every save. */
   readonly server: Signal<Recipe | null> = this._server.asReadonly();
-  /** Number of ingredient amount fields currently holding text that is not a valid amount (reported by the ingredients editor). */
-  readonly invalidAmounts: Signal<number> = this._invalidAmounts.asReadonly();
+  /** Amount fields holding text that is not a valid amount, by "group.row" (reported by the ingredients editor). */
+  readonly invalidAmountTexts: Signal<Record<string, string>> = this._invalidTexts.asReadonly();
+  /** Number of ingredient amount fields currently holding text that is not a valid amount. */
+  readonly invalidAmounts = computed(() => Object.keys(this._invalidTexts()).length);
   /** Bumped whenever a server copy replaces the working copy (load, load latest, publish): editors drop local text. */
   readonly epoch: Signal<number> = this._epoch.asReadonly();
   /** Nameless ingredient rows holding an amount, unit or note: never saved, so an unsaved state to the person. */
   readonly unnamedIngredients = computed(() => unnamedRows(this._recipe().groups).length);
   /** True while typed input exists that cannot be saved (invalid amounts, nameless rows with data). */
-  readonly hasUnsavedInput = computed(() => this._invalidAmounts() > 0 || this.unnamedIngredients() > 0);
+  readonly hasUnsavedInput = computed(() => this.invalidAmounts() > 0 || this.unnamedIngredients() > 0);
   readonly loaded = computed(() => this._server() !== null);
   /** i18n key of the load failure, if any. */
   readonly loadError: Signal<string | null> = this._loadError.asReadonly();
@@ -104,6 +168,15 @@ export class EditorStore {
   readonly saveError = computed(() => {
     const e = this.autosave.error();
     return e && this.status() !== 'conflict' ? errorKey(e) : null;
+  });
+  /**
+   * The server refused (4xx, not a conflict) the save of text restored from the local backup before it
+   * was ever saved: the page offers "Use saved version" (Load latest), which discards this backup.
+   */
+  readonly restoreRefused = computed(() => {
+    const e = this.autosave.error();
+    return this._restored() && !this._restoreSaved() && this.status() === 'error' &&
+      !!e && e.status >= 400 && e.status < 500 && e.status !== 401;
   });
   /** Server-reported field problems by dotted path (`title`, `steps[3].text`, ...). */
   readonly fieldErrors = computed<Record<string, string>>(() => {
@@ -113,15 +186,28 @@ export class EditorStore {
 
   constructor() {
     // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
+    // Rejects when text stayed unsaved, so a logout keeps the local backups.
     const pending = inject(PendingSaves);
-    const unregister = pending.register(() => this.autosave.flush());
+    const unregister = pending.register(() => this.autosave.flush().then(() => this.savedForLogout()));
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this._uploads().forEach((u) => this.revoke(u.preview));
       this._uploads.set([]);
-      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()));
+      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()).then(() => this.savedForLogout()));
     });
+  }
+
+  /**
+   * After a flush: rejects if text stayed unsaved, re-writing this editor's backup entry first (it is
+   * all that will be left of the text); otherwise deletes this editor's entry (never another tab's).
+   */
+  private savedForLogout(): void {
+    if (this.autosave.dirty() || this.hasUnsavedInput()) {
+      this.writeBackup();
+      throw new Error('unsaved recipe text');
+    }
+    this.clearBackup();
   }
 
   id(): string | null {
@@ -130,12 +216,64 @@ export class EditorStore {
 
   async load(id: string): Promise<void> {
     this._id = id;
+    this.userId = this.auth.me()?.id ?? null;
     this._loadError.set(null);
+    let server: Recipe;
     try {
-      this.replace(await this.api.get(id));
+      server = await this.api.get(id);
     } catch (e) {
       this._loadError.set(errorKey(toApiError(e)));
+      return;
     }
+    this.replace(server);
+    const b = this.userId ? this.backup.read(id, this.userId) : null;
+    if (b) this.restore(server, b);
+  }
+
+  /**
+   * Text kept locally from an earlier visit that the server never confirmed. Based on the server's
+   * current version: apply it and save. Based on an older one (changed elsewhere meanwhile): the
+   * conflict banner, with the backup's text in the editor and its copyable block. Already on the
+   * server: just drop it.
+   */
+  private restore(server: Recipe, b: ReadBackup): void {
+    const texts = Object.fromEntries(
+      Object.entries(b.amountTexts ?? {}).filter(([k, v]) => {
+        const [g, i] = k.split('.').map(Number);
+        return typeof v === 'string' && !!b.input.groups?.[g]?.ingredients?.[i];
+      }),
+    );
+    if (!Object.keys(texts).length && sameContent(b.input, toInput(server))) {
+      this.backup.clear(this._id!, b.writerId);
+      return;
+    }
+    this._epoch.update((n) => n + 1);
+    this._restoredTexts.set(texts);
+    this._invalidTexts.set(texts);
+    if (b.baseVersion === server.version) {
+      this._recipe.set({ ...b.input, version: server.version });
+      this._restored.set(true);
+      this._restoreSaved.set(false);
+      this.autosave.changed();
+      void this.autosave.flush();
+    } else {
+      this._recipe.set(b.input);
+      this.autosave.markConflict({ status: 409, code: 'recipe_conflict' });
+      this.autosave.changed(); // unsaved: Done stays, the backup stays
+    }
+    // This editor took the text over (its own entry now holds it): the entry it came from goes, so a
+    // later save or "Load latest" here doesn't leave it behind to be restored again. Kept if our write failed.
+    if (b.writerId !== this.writerId && this.lastWriteOk) this.backup.clear(this._id!, b.writerId);
+  }
+
+  private writeBackup(): void {
+    if (!this._id || !this.userId) return;
+    this.lastWriteOk = this.backup.write(this._id, this.writerId, this.userId, this._recipe(), this._invalidTexts());
+  }
+
+  private clearBackup(): void {
+    if (!this._id || !this.userId) return;
+    this.backup.clear(this._id, this.writerId);
   }
 
   /** Applies a change to the working copy and schedules an autosave. Ignored before load. */
@@ -174,13 +312,25 @@ export class EditorStore {
       if (!mine) return; // replaced, removed or its step deleted meanwhile; setUpload/dropUpload revoked the preview
       this._photos.update((m) => ({ ...m, [photo.mediaId]: photo }));
       this.setReference(mine.slot, photo.mediaId);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done' } : u)));
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done', file: null } : u)));
     } catch (e) {
       const mine = this._uploads().find((u) => u.id === id);
       if (!mine) return;
+      const err = toApiError(e);
+      if (retryableUpload(err)) {
+        // never dropped silently: the preview stays with "Upload failed — Retry"
+        this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', file, error: 'editor.uploadFailed' } : u)));
+        return;
+      }
       this.revoke(preview);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(toApiError(e)) } : u)));
+      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(err) } : u)));
     }
+  }
+
+  /** Sends the file of a failed upload again (same slot, same file). */
+  retryUpload(slot: PhotoSlot): Promise<void> {
+    const u = this.uploadFor(slot);
+    return u?.status === 'failed' && u.file ? this.uploadPhoto(u.slot, u.file) : Promise.resolve();
   }
 
   /** A file the client refused (too large, not an image): the slot shows the message. */
@@ -266,8 +416,13 @@ export class EditorStore {
     }
   }
 
-  setInvalidAmounts(n: number): void {
-    this._invalidAmounts.set(n);
+  /** The ingredients editor reports the amount texts that are not valid amounts; they are kept in the local backup. */
+  setInvalidAmounts(texts: Record<string, string>): void {
+    if (sameTexts(texts, this._invalidTexts())) return;
+    this._invalidTexts.set({ ...texts });
+    if (!this.loaded()) return;
+    if (this.autosave.dirty() || this.hasUnsavedInput()) this.writeBackup();
+    else this.clearBackup();
   }
 
   flush(): Promise<void> {
@@ -279,12 +434,16 @@ export class EditorStore {
     if (!this._id) return;
     await this.autosave.settled();
     this.replace(await this.api.get(this._id));
+    this.clearBackup(); // the person chose the server copy (the banner showed their text to copy)
   }
 
   /** Replaces the working copy with a server copy (load, load latest, publish). */
   replace(r: Recipe): void {
     this._server.set(r);
     this._recipe.set(toInput(r));
+    this._restored.set(false);
+    this._restoredTexts.set({});
+    this._invalidTexts.set({}); // the ingredients editor drops its typed texts on the epoch bump
     this.autosave.reset();
     this._epoch.update((n) => n + 1);
   }
@@ -297,7 +456,7 @@ export class EditorStore {
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
-    if (!this._id || this.uploading()) return 'blocked';
+    if (!this._id || this.uploadsUnfinished()) return 'blocked';
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
@@ -331,6 +490,8 @@ export class EditorStore {
   private adoptMetadata(r: Recipe): void {
     this._server.set(r);
     this._recipe.update((cur) => ({ ...cur, version: r.version }));
+    // text typed meanwhile is now based on this version (also if the page was left during the request)
+    if (this.autosave.dirty() || this.hasUnsavedInput()) this.writeBackup();
   }
 
   /**
@@ -397,6 +558,7 @@ export class EditorStore {
       throw e;
     }
     this.autosave.dispose();
+    this.clearBackup();
     return true;
   }
 
@@ -411,5 +573,6 @@ export class EditorStore {
       throw e;
     }
     this.autosave.dispose();
+    this.clearBackup();
   }
 }

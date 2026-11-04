@@ -6,7 +6,7 @@ import { PhotoPickerComponent } from './photo-picker.component';
 
 /**
  * One photo place (the cover or a step): the image (local preview while uploading, then the server
- * thumb), the "Uploading…" label or error, and Add photo / Replace / Remove with names that say where.
+ * thumb), the "Uploading…" label or error (a failed upload keeps its preview and offers Retry), and Add photo / Replace / Remove with names that say where.
  */
 @Component({
   selector: 'app-photo-slot',
@@ -50,6 +50,9 @@ import { PhotoPickerComponent } from './photo-picker.component';
         <p class="error" role="alert">{{ t(e) }}</p>
       }
       <div class="actions">
+        @if (up?.status === 'failed' && up?.file) {
+          <button type="button" class="btn retry" [attr.aria-label]="retryName(t)" (click)="retry()">{{ t('editor.retry') }}</button>
+        }
         <app-photo-picker [capture]="capture()" [label]="t(thumb || up?.preview ? 'editor.replace' : (isCover() ? 'editor.cover' : 'editor.addPhoto'))"
           [ariaLabel]="pickerName(t)" (picked)="pick($event)" (rejected)="store.rejectPhoto(slot(), $event)" />
         @if (thumb || up?.preview) {
@@ -86,6 +89,14 @@ export class PhotoSlotComponent {
 
   protected removeName(t: (k: string, p?: object) => string): string {
     return this.isCover() ? t('editor.removeCover') : t('editor.removeStepPhoto', { n: this.n() });
+  }
+
+  protected retryName(t: (k: string, p?: object) => string): string {
+    return this.isCover() ? t('editor.retryCoverUpload') : t('editor.retryStepUpload', { n: this.n() });
+  }
+
+  protected retry(): void {
+    void this.store.retryUpload(this.slot());
   }
 
   protected pick(file: File): void {

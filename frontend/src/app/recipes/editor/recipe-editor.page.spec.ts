@@ -5,9 +5,12 @@ import { en, provideTestTransloco, settle } from '../../testing/transloco';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
 import { serverRecipe } from './editor-store.testing';
+import { AuthStore } from '../../core/auth.store';
+import { routes } from '../../app.routes';
+import { leaveEditorGuard } from './leave-editor.guard';
 import { RecipeEditorPage } from './recipe-editor.page';
 
-async function mount(api: Partial<RecipeApi>) {
+async function mount(api: Partial<RecipeApi>, before: () => void = () => {}) {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
@@ -17,6 +20,7 @@ async function mount(api: Partial<RecipeApi>) {
     ],
   });
   const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  before();
   const f = TestBed.createComponent(RecipeEditorPage);
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, nav };
@@ -458,6 +462,118 @@ describe('RecipeEditorPage', () => {
       next.click();
       await settle(f);
       expect(el.querySelectorAll('.steps textarea').length).toBe(1);
+    });
+  });
+
+  describe('leaving and restoring', () => {
+    const me = { id: 'u1', email: 'u1@x.test', username: 'u1', displayName: 'U', avatarUrl: null, admin: false };
+    const putBackup = (title: string) =>
+      localStorage.setItem('ricettine.unsaved.r1', JSON.stringify({ earlier: {
+        input: { version: 1, title, portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
+          visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [] },
+        baseVersion: 1, savedAt: Date.now(), userId: 'u1',
+      } }));
+    const failUpload = async (api: Partial<RecipeApi> = {}) => {
+      URL.createObjectURL = vi.fn(() => 'blob:x');
+      URL.revokeObjectURL = vi.fn();
+      const m = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 })),
+        ...api,
+      });
+      TestBed.inject(AuthStore).setMe(me);
+      const input = m.el.querySelector('.cover input[type="file"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [new File(['x'], 'p.jpg', { type: 'image/jpeg' })] });
+      input.dispatchEvent(new Event('change'));
+      await settle(m.f);
+      return m;
+    };
+    afterEach(() => {
+      localStorage.clear();
+      TestBed.inject(AuthStore).setMe(null);
+    });
+
+    it('the editor route has the leave guard', () => {
+      const find = (rs: typeof routes): (typeof routes)[number] | undefined =>
+        rs.flatMap((r) => [r, ...(r.children ? [find(r.children)] : [])]).find((r) => r?.path === 'recipes/:id/edit');
+      expect(find(routes)?.canDeactivate).toContain(leaveEditorGuard);
+    });
+
+    it('with a failed upload Publish stays disabled and says why', async () => {
+      const { el } = await failUpload();
+      expect((el.querySelector('button.publish') as HTMLButtonElement).disabled).toBe(true);
+      expect(el.textContent).toContain(en.editor.uploadFailedHint);
+    });
+
+    it('leaving with a failed upload asks first; Stay keeps the page, Leave goes', async () => {
+      const { f } = await failUpload();
+      const first = f.componentInstance.canLeave();
+      await settle(f);
+      let dialog = document.querySelector('app-confirm-leave-dialog')!;
+      expect(dialog.textContent).toContain(en.editor.leaveConfirm.body);
+      byText(dialog, 'button', en.editor.leaveConfirm.stay)!.click();
+      expect(await first).toBe(false);
+
+      const second = f.componentInstance.canLeave();
+      await settle(f);
+      dialog = document.querySelector('app-confirm-leave-dialog')!;
+      byText(dialog, 'button', en.editor.leaveConfirm.leave)!.click();
+      expect(await second).toBe(true);
+    });
+
+    it('leaving with nothing pending does not ask', async () => {
+      const { f } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })) });
+      expect(await f.componentInstance.canLeave()).toBe(true);
+    });
+
+    it('leaving after the session ended does not ask, even with a failed upload', async () => {
+      const failed = await failUpload();
+      TestBed.inject(AuthStore).setMe(null); // session expired / logged out: the redirect must not be held up
+      expect(await failed.f.componentInstance.canLeave()).toBe(true);
+    });
+
+    it('closing the tab with a failed upload asks for confirmation (beforeunload)', async () => {
+      await failUpload();
+      const ev = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+    });
+
+    it('closing the tab with nothing pending does not ask', async () => {
+      await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })) });
+      const ev = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(false);
+    });
+
+    it('a restored backup the server refuses shows the error with "Use saved version", which loads the saved copy', async () => {
+      putBackup('');
+      const get = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Saved' }));
+      const { f, el } = await mount({
+        get,
+        save: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } })),
+      }, () => TestBed.inject(AuthStore).setMe(me));
+      await settle(f);
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('');
+      expect(el.textContent).toContain(en.editor.restored);
+      expect(el.textContent).not.toContain('being saved');
+      byText(el, 'button', en.editor.useSaved)!.click();
+      await settle(f);
+      expect(get).toHaveBeenCalledTimes(2);
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('Saved');
+      expect(byText(el, 'button', en.editor.useSaved)).toBeUndefined();
+      expect(el.textContent).not.toContain(en.editor.restored);
+      expect(localStorage.getItem('ricettine.unsaved.r1')).toBeNull();
+    });
+
+    it('says so when unsaved text from an earlier visit was restored', async () => {
+      putBackup('Restored');
+      const { el } = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old' })),
+        save: vi.fn().mockResolvedValue(serverRecipe({ title: 'Restored', version: 2 })),
+      }, () => TestBed.inject(AuthStore).setMe(me));
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('Restored');
+      expect(el.textContent).toContain(en.editor.restored);
     });
   });
 });

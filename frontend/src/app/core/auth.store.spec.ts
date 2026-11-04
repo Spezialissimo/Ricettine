@@ -69,6 +69,23 @@ describe('AuthStore', () => {
     expect(store.me()).toBeNull();
   });
 
+  it('a hung save does not block logout: it goes ahead after the flush timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      store.setMe(me);
+      TestBed.inject(PendingSaves).register(() => new Promise<void>(() => {}));
+      const p = store.logout();
+      await vi.advanceTimersByTimeAsync(4999);
+      http.expectNone('/api/auth/logout');
+      await vi.advanceTimersByTimeAsync(1);
+      http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await p;
+      expect(store.me()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('logout clears me even when the request fails', async () => {
     store.setMe(me);
     const p = store.logout();

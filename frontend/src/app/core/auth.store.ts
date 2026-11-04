@@ -38,7 +38,11 @@ export class AuthStore {
     this._me.set(await firstValueFrom(this.http.post<Me>('/api/auth/login', { email, password })));
   }
 
-  /** Sends unsaved work of open pages first (the session must still be valid for that), then logs out. */
+  /**
+   * Sends unsaved work of open pages first (the session must still be valid for that), then logs out.
+   * Each open editor deletes its own local backup once its flush saved it; anything not saved (failed,
+   * timed out) stays in the backup for the next login.
+   */
   async logout(): Promise<void> {
     await this.pending.flushAll();
     try {

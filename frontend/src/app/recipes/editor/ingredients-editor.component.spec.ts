@@ -164,6 +164,22 @@ describe('IngredientsEditorComponent', () => {
       expect(store.invalidAmounts()).toBe(0);
     });
 
+    it('reports the invalid texts themselves (for the local backup)', async () => {
+      const { f, el, store } = await mount([group(null, 'a', 'b')]);
+      type(amounts(el)[1], '1//2');
+      await settle(f);
+      expect(store.invalidAmountTexts()).toEqual({ '0.1': '1//2' });
+    });
+
+    it('shows amount text restored from the local backup when the restored copy arrives', async () => {
+      const { f, el, store } = await mount([group(null, 'a', 'b')]);
+      store.restoreAmountTexts({ '0.1': '1//2' });
+      await settle(f);
+      expect(amounts(el)[1].value).toBe('1//2');
+      expect(amounts(el)[1].getAttribute('aria-invalid')).toBe('true');
+      expect(store.invalidAmounts()).toBe(1);
+    });
+
     it('focuses the neighbouring name (previous, else next) after deleting a row, else the add button', async () => {
       const { f, el } = await mount([group(null, 'a', 'b', 'c')]);
       const names = () => Array.from(el.querySelectorAll('input.name')) as HTMLInputElement[];

@@ -266,4 +266,60 @@ describe('cover photo and photo_not_in_recipe', () => {
     expect(store.recipe().steps.map((s) => s.photoMediaId)).toEqual([null, 'm1', null]);
     expect(store.recipe().steps.map((s) => s.text)).toEqual(['A', 'C', 'B']);
   });
+
+  describe('failed uploads', () => {
+    it('a failed upload keeps its preview and shows Retry; Publish waits; retry re-sends the same file and sets the reference', async () => {
+      const uploadPhoto = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 0 })).mockResolvedValue(photo('m9'));
+      const { f, el, store } = await mount({ uploadPhoto, publish: vi.fn() });
+      const file = jpeg();
+      choose(inputs(el)[0], file);
+      await settle(f);
+      expect(el.textContent).toContain(en.editor.uploadFailed);
+      expect(stepEl(el, 0).querySelector('img.photo-preview')?.getAttribute('src')).toBeTruthy();
+      const retry = buttonNamed(el, 'Retry photo upload for step 1');
+      expect(retry?.textContent?.trim()).toBe(en.editor.retry);
+      expect(store.uploadsUnfinished()).toBe(true);
+      expect(await store.publish()).toBe('blocked');
+      expect(store.recipe().steps[0].photoMediaId).toBeNull();
+
+      retry!.click();
+      await settle(f);
+      expect(uploadPhoto).toHaveBeenCalledTimes(2);
+      expect(uploadPhoto.mock.calls[1][1]).toBe(file);
+      expect(store.recipe().steps[0].photoMediaId).toBe('m9');
+      expect(store.uploadsUnfinished()).toBe(false);
+      expect(buttonNamed(el, 'Retry photo upload for step 1')).toBeUndefined();
+    });
+
+    it('a 503 busy upload is retryable too', async () => {
+      const { f, el, store } = await mount({
+        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 503, error: { code: 'busy' } })),
+      });
+      choose(inputs(el)[1], jpeg());
+      await settle(f);
+      expect(buttonNamed(el, 'Retry photo upload for step 2')).toBeTruthy();
+      expect(store.uploadsUnfinished()).toBe(true);
+    });
+
+    it('a refused file (4xx) shows the reason without Retry and does not hold Publish', async () => {
+      const { f, el, store } = await mount({
+        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 413, error: { code: 'image_too_large' } })),
+      });
+      choose(inputs(el)[0], jpeg());
+      await settle(f);
+      expect(el.textContent).toContain(en.errors.image_too_large);
+      expect(buttonNamed(el, 'Retry photo upload for step 1')).toBeUndefined();
+      expect(store.uploadsUnfinished()).toBe(false);
+    });
+
+    it('Remove gives up a failed upload', async () => {
+      const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 })) });
+      choose(inputs(el)[0], jpeg());
+      await settle(f);
+      buttonNamed(el, 'Remove photo of step 1')!.click();
+      await settle(f);
+      expect(store.uploadsUnfinished()).toBe(false);
+      expect(URL.revokeObjectURL).toHaveBeenCalled();
+    });
+  });
 });
