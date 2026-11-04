@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { Recipe, RecipeInput } from '../recipe.model';
 import { EditorStore } from './editor-store';
 
@@ -12,14 +12,22 @@ export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe[
   const recipe = signal(emptyInput(over));
   const server = signal(serverRecipe({ status }));
   const epoch = signal(0);
-  const invalid = signal(0);
+  const invalidTexts = signal<Record<string, string>>({});
+  const restoredTexts = signal<Record<string, string>>({});
   return {
     recipe: recipe.asReadonly(),
     server: server.asReadonly(),
     epoch: epoch.asReadonly(),
     bumpEpoch: () => epoch.update((n) => n + 1),
-    invalidAmounts: invalid.asReadonly(),
-    setInvalidAmounts: (n: number) => invalid.set(n),
+    invalidAmounts: computed(() => Object.keys(invalidTexts()).length),
+    invalidAmountTexts: invalidTexts.asReadonly(),
+    setInvalidAmounts: (t: Record<string, string>) => invalidTexts.set(t),
+    restoredAmountTexts: restoredTexts.asReadonly(),
+    /** Test helper: the store restored a backup with these amount texts (bumps the epoch, as restore does). */
+    restoreAmountTexts: (t: Record<string, string>) => {
+      restoredTexts.set(t);
+      epoch.update((n) => n + 1);
+    },
     uploads: signal([]).asReadonly(),
     uploadFor: () => undefined,
     photoOf: () => null,
@@ -31,7 +39,7 @@ export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe[
     stepRemoved: () => {},
     stepMoved: () => {},
     update: (fn: (r: RecipeInput) => RecipeInput) => recipe.set(fn(recipe())),
-  } as unknown as EditorStore & { recipe: () => RecipeInput; bumpEpoch: () => void };
+  } as unknown as EditorStore & { recipe: () => RecipeInput; bumpEpoch: () => void; restoreAmountTexts: (t: Record<string, string>) => void };
 }
 
 export const serverRecipe = (over: Partial<Recipe> = {}): Recipe => ({

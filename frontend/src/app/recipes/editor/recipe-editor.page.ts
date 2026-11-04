@@ -82,6 +82,9 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         }
         @if (store.saveError(); as e) {
           <p class="alert" role="alert">{{ t(e) }}</p>
+          @if (store.restoreRefused()) {
+            <button type="button" class="btn use-saved" (click)="loadLatest()">{{ t('editor.useSaved') }}</button>
+          }
         }
         @if (store.uploading()) {
           <p id="uploads-hint" class="hint" role="status">{{ t('editor.waitingForUploads') }}</p>

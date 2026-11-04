@@ -18,8 +18,8 @@ export interface AutosaveDeps {
   saved(r: Recipe): void;
   /**
    * The local copy of unsent text: `write()` runs synchronously on every change (before anything is
-   * sent) and after a save that left newer changes pending (re-based on the new version); `clear()`
-   * once the server confirmed a save that includes the newest change.
+   * sent), after a save that left newer changes pending (re-based on the new version) and on entering
+   * a conflict; `clear()` once the server confirmed a save that includes the newest change.
    */
   backup?: { write(): void; clear(): void };
 }
@@ -201,6 +201,7 @@ export class Autosave {
     this.clearTimers();
     this._error.set(err);
     this._status.set('conflict');
+    this.deps.backup?.write(); // the conflict's text now lives only here and in the backup
   }
 
   private scheduleRetry(): void {
@@ -240,6 +241,7 @@ export class Autosave {
       if (err.status === 409 || err.code === 'recipe_conflict') {
         this.clearTimers();
         this._status.set('conflict');
+        this.deps.backup?.write(); // the conflict's text now lives only here and in the backup
       } else {
         this._status.set(err.code === 'network_error' ? 'offline' : 'error');
         this.failedTransiently = transient(err);

@@ -8,6 +8,7 @@ import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore, conflictText, isUntouchedDraft, withoutBlankIngredients } from './editor-store';
 import { emptyInput, serverRecipe } from './editor-store.testing';
+import { Backup } from './unsaved-backup';
 
 function setup(api: Partial<RecipeApi>) {
   TestBed.configureTestingModule({ providers: [EditorStore, { provide: RecipeApi, useValue: api }] });
@@ -220,12 +221,19 @@ describe('EditorStore', () => {
 describe('EditorStore unsaved backup', () => {
   const KEY = 'ricettine.unsaved.r1';
   const me = (id: string) => ({ id, email: `${id}@x.test`, username: id, displayName: id, avatarUrl: null, admin: false });
-  const stored = () => {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : null;
+  /** The newest backup entry of r1 (any tab), or null. */
+  const stored = (key = KEY) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const entries = Object.values(JSON.parse(raw) as Record<string, Backup>);
+    return entries.length ? entries.reduce((a, b) => (b.savedAt >= a.savedAt ? b : a)) : null;
   };
-  const putBackup = (input: Partial<ReturnType<typeof emptyInput>>, baseVersion: number, userId = 'u1') =>
-    localStorage.setItem(KEY, JSON.stringify({ input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: Date.now(), userId }));
+  const putBackup = (input: Partial<ReturnType<typeof emptyInput>>, baseVersion: number, userId = 'u1', writer = 'earlier-visit',
+    amountTexts?: Record<string, string>) =>
+    localStorage.setItem(KEY, JSON.stringify({
+      ...JSON.parse(localStorage.getItem(KEY) ?? '{}'),
+      [writer]: { input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: Date.now(), userId, amountTexts },
+    }));
   function setupAs(api: Partial<RecipeApi>, userId: string | null = 'u1') {
     const store = setup(api);
     TestBed.inject(AuthStore).setMe(userId ? me(userId) : null);
@@ -303,11 +311,98 @@ describe('EditorStore unsaved backup', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('two tabs on one recipe: A saving never erases the text of B, which is in a conflict', async () => {
+    const save = vi.fn().mockImplementation(async (_id: string, i: { title: string }) => {
+      if (i.title === 'B text') throw new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } });
+      return serverRecipe({ title: i.title, version: 2 });
+    });
+    const api = { get: vi.fn().mockResolvedValue(serverRecipe()), save };
+    TestBed.configureTestingModule({ providers: [{ provide: RecipeApi, useValue: api }] });
+    TestBed.inject(AuthStore).setMe(me('u1'));
+    const tabA = TestBed.runInInjectionContext(() => new EditorStore());
+    const tabB = TestBed.runInInjectionContext(() => new EditorStore());
+    await tabA.load('r1');
+    await tabB.load('r1');
+    tabB.update((r) => ({ ...r, title: 'B text' }));
+    await tabB.flush();
+    expect(tabB.status()).toBe('conflict');
+    tabA.update((r) => ({ ...r, title: 'A text' }));
+    await tabA.flush();
+    expect(tabA.status()).toBe('saved');
+    // B leaves during its conflict (its flush is blocked): its text is still there
+    expect(stored()?.input.title).toBe('B text');
+    const tabC = TestBed.runInInjectionContext(() => new EditorStore());
+    api.get.mockResolvedValue(serverRecipe({ title: 'A text', version: 2 }));
+    await tabC.load('r1');
+    expect(tabC.status()).toBe('conflict');
+    expect(conflictText(tabC.recipe())).toBe('B text');
+  });
+
+  it("entering a conflict writes this tab's backup again (e.g. after another tab opened the recipe and took the entry over)", async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Mine' }));
+    localStorage.removeItem(KEY); // another tab restored it into its own entry, then discarded it
+    await store.flush();
+    expect(store.status()).toBe('conflict');
+    expect(stored()?.input.title).toBe('Mine');
+  });
+
+  it('a nameless ingredient row holding an amount is never sent, so the backup keeps it and a reload restores it', async () => {
+    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] }));
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'T', groups: [{ name: null, ingredients: [{ amount: 2, unit: 'g', name: '', note: null }] }] }));
+    await store.flush();
+    expect(store.autosave.dirty()).toBe(false);
+    expect(stored()?.input.groups[0].ingredients[0]).toMatchObject({ amount: 2, unit: 'g', name: '' });
+
+    TestBed.resetTestingModule();
+    const again = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] })), save });
+    await again.load('r1');
+    expect(again.recipe().groups[0].ingredients[0]).toMatchObject({ amount: 2, unit: 'g', name: '' });
+    expect(again.unnamedIngredients()).toBe(1);
+  });
+
+  it('invalid amount text is kept in the backup and handed back on reload', async () => {
+    const save = vi.fn().mockResolvedValue(serverRecipe({ version: 2, groups: [{ name: null, ingredients: [{ amount: 1, unit: null, name: 'milk', note: null }] }] }));
+    const ing = { amount: 1, unit: null, name: 'milk', note: null };
+    const server = serverRecipe({ groups: [{ name: null, ingredients: [ing] }] });
+    const store = setupAs({ get: vi.fn().mockResolvedValue(server), save });
+    await store.load('r1');
+    store.setInvalidAmounts({ '0.0': '1//2' });
+    expect(stored()?.amountTexts).toEqual({ '0.0': '1//2' });
+    expect(store.invalidAmounts()).toBe(1);
+
+    TestBed.resetTestingModule();
+    const again = setupAs({ get: vi.fn().mockResolvedValue(server), save });
+    await again.load('r1');
+    expect(again.restoredAmountTexts()).toEqual({ '0.0': '1//2' });
+    expect(again.restored()).toBe(true);
+  });
+
+  it('a restored backup the server refuses (4xx) offers the saved version, which discards it', async () => {
+    putBackup({ title: '' }, 1);
+    const get = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Saved', version: 1 }));
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } }));
+    const store = setupAs({ get, save });
+    await store.load('r1');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.status()).toBe('error');
+    expect(store.restoreRefused()).toBe(true);
+    await store.loadLatest();
+    expect(store.recipe().title).toBe('Saved');
+    expect(store.restored()).toBe(false);
+    expect(store.restoreRefused()).toBe(false);
+    expect(stored()).toBeNull();
+  });
+
   it('an 8-day-old backup is discarded on load', async () => {
     const now = Date.now();
-    localStorage.setItem(KEY, JSON.stringify({
+    localStorage.setItem(KEY, JSON.stringify({ old: {
       input: emptyInput({ title: 'Ancient', version: 3 }), baseVersion: 3, savedAt: now - 8 * 24 * 60 * 60 * 1000, userId: 'u1',
-    }));
+    } }));
     const save = vi.fn();
     const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })), save });
     await store.load('r1');
@@ -330,7 +425,7 @@ describe('EditorStore unsaved backup', () => {
 
   it('a clean logout flush clears the open recipe\'s backup only; a backup of a recipe not open survives', async () => {
     const other = 'ricettine.unsaved.rB';
-    localStorage.setItem(other, JSON.stringify({ input: emptyInput({ title: 'B text' }), baseVersion: 1, savedAt: Date.now(), userId: 'u1' }));
+    localStorage.setItem(other, JSON.stringify({ tabX: { input: emptyInput({ title: 'B text' }), baseVersion: 1, savedAt: Date.now(), userId: 'u1' } }));
     const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'A text', version: 2 }));
     TestBed.configureTestingModule({
       providers: [EditorStore, { provide: RecipeApi, useValue: { get: vi.fn().mockResolvedValue(serverRecipe()), save } },
@@ -348,7 +443,7 @@ describe('EditorStore unsaved backup', () => {
     await out;
     expect(auth.me()).toBeNull();
     expect(stored()).toBeNull(); // A: saved by this logout's flush
-    expect(JSON.parse(localStorage.getItem(other)!).input.title).toBe('B text'); // B: never restored, kept until it expires
+    expect(stored(other)?.input.title).toBe('B text'); // B: never restored, kept until it expires
   });
 
   it('a clean flush never deletes a backup this editor did not write (e.g. another tab typing offline)', async () => {

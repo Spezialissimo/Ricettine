@@ -282,12 +282,13 @@
     "retryCoverUpload": "Retry cover photo upload",
     "retryStepUpload": "Retry photo upload for step {{n}}",
     "uploadFailedHint": "A photo didn't upload. Retry it or remove it before publishing.",
-    "restored": "Changes you made earlier on this device had not been saved. They were restored and are being saved now.",
+    "restored": "Changes you made earlier on this device had not been saved. They were restored.",
     "leaveConfirm": {
       "title": "Leave without this photo?",
       "body": "A photo hasn't finished uploading and will be lost if you leave. Your text is kept.",
       "stay": "Stay",
       "leave": "Leave"
-    }
+    },
+    "useSaved": "Use saved version"
   }
 }

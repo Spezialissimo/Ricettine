@@ -450,6 +450,12 @@ describe('RecipeEditorPage', () => {
 
   describe('leaving and restoring', () => {
     const me = { id: 'u1', email: 'u1@x.test', username: 'u1', displayName: 'U', avatarUrl: null, admin: false };
+    const putBackup = (title: string) =>
+      localStorage.setItem('ricettine.unsaved.r1', JSON.stringify({ earlier: {
+        input: { version: 1, title, portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
+          visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [] },
+        baseVersion: 1, savedAt: Date.now(), userId: 'u1',
+      } }));
     const failUpload = async (api: Partial<RecipeApi> = {}) => {
       URL.createObjectURL = vi.fn(() => 'blob:x');
       URL.revokeObjectURL = vi.fn();
@@ -523,12 +529,28 @@ describe('RecipeEditorPage', () => {
       expect(ev.defaultPrevented).toBe(false);
     });
 
+    it('a restored backup the server refuses shows the error with "Use saved version", which loads the saved copy', async () => {
+      putBackup('');
+      const get = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Saved' }));
+      const { f, el } = await mount({
+        get,
+        save: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } })),
+      }, () => TestBed.inject(AuthStore).setMe(me));
+      await settle(f);
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('');
+      expect(el.textContent).toContain(en.editor.restored);
+      expect(el.textContent).not.toContain('being saved');
+      byText(el, 'button', en.editor.useSaved)!.click();
+      await settle(f);
+      expect(get).toHaveBeenCalledTimes(2);
+      expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('Saved');
+      expect(byText(el, 'button', en.editor.useSaved)).toBeUndefined();
+      expect(el.textContent).not.toContain(en.editor.restored);
+      expect(localStorage.getItem('ricettine.unsaved.r1')).toBeNull();
+    });
+
     it('says so when unsaved text from an earlier visit was restored', async () => {
-      localStorage.setItem('ricettine.unsaved.r1', JSON.stringify({
-        input: { version: 1, title: 'Restored', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
-          visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [] },
-        baseVersion: 1, savedAt: Date.now(), userId: 'u1',
-      }));
+      putBackup('Restored');
       const { el } = await mount({
         get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old' })),
         save: vi.fn().mockResolvedValue(serverRecipe({ title: 'Restored', version: 2 })),
