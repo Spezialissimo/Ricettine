@@ -105,6 +105,14 @@ class PublicCookbookIT extends IntegrationTest {
 	}
 
 	@Test
+	void recipeThroughCookbookCarriesCookbookName() throws Exception {
+		String r = recipe();
+		String t = cookbookToken(cookbookWith(r));
+		mvc.perform(get("/api/c/" + t + "/recipes/" + r)).andExpect(status().isOk())
+			.andExpect(jsonPath("$.cookbookName").value("Dinners"));
+	}
+
+	@Test
 	void anonymousReadsPrivateCookbookAndItsPrivateRecipeWithPhotos() throws Exception {
 		String r = recipe();
 		String cb = cookbookWith(r);

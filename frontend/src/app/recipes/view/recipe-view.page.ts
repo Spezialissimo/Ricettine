@@ -56,7 +56,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           </div>
         } @else if (recipe(); as r) {
           @if (viaCookbook) {
-            <a class="back" [routerLink]="['/c', token]">{{ cookbookName() ? t('cookbooks.backTo', { name: cookbookName() }) : t('cookbooks.back') }}</a>
+            <a class="back" [routerLink]="['/c', token]">{{ r.cookbookName ? t('cookbooks.backTo', { name: r.cookbookName }) : t('cookbooks.back') }}</a>
           }
           @if (cover(r); as src) {
             <!-- decorative here: the title is the h1 right below; the cover is the page's main image (LCP) -->
@@ -155,7 +155,6 @@ export class RecipeViewPage {
   protected readonly token = this.snapshot.paramMap.get('token') ?? '';
   private readonly recipeId = this.snapshot.paramMap.get('recipeId') ?? '';
   protected readonly loginNext = this.viaCookbook ? `/c/${this.token}/r/${this.recipeId}` : `/r/${this.token}`;
-  protected readonly cookbookName = signal<string | null>(null);
   protected readonly recipe = signal<PublicRecipe | null>(null);
   protected readonly notFound = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -171,10 +170,6 @@ export class RecipeViewPage {
     this.error.set(null);
     this.notFound.set(false);
     try {
-      if (this.viaCookbook) {
-        // the name only labels the Back link: never let its failure hide the recipe
-        void this.cookbooks.byToken(this.token).then((b) => this.cookbookName.set(b.name), () => undefined);
-      }
       const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
       this.recipe.set(r);
       if (r.title) this.title.set(r.title);

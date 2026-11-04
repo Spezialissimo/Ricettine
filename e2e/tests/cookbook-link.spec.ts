@@ -79,6 +79,12 @@ test('cookbook link: anonymous reader, recipes through it, reset invalidates lin
   if (desktop) expect(second.x).toBeGreaterThan(first.x);
   else expect(second.x).toBe(first.x);
 
+  // the cookbook name comes with the recipe: the recipe page never re-reads the cookbook
+  const cookbookApiPath = `/api${oldPath}`;
+  let cookbookReads = 0;
+  reader.on('request', (req) => {
+    if (new URL(req.url()).pathname === cookbookApiPath) cookbookReads++;
+  });
   await card.getByRole('link').click();
   await expect(reader).toHaveURL(/\/c\/[A-Za-z0-9_-]+\/r\/[0-9a-f-]{36}$/);
   const oldRecipePath = new URL(reader.url()).pathname;
@@ -91,6 +97,8 @@ test('cookbook link: anonymous reader, recipes through it, reset invalidates lin
   expect(oldPhotoUrl).toContain('?c=');
   expect((await reader.request.get(oldPhotoUrl)).status()).toBe(200);
 
+  await expect(reader.getByRole('link', { name: 'Back to Linked book' })).toBeVisible();
+  expect(cookbookReads).toBe(0);
   await reader.getByRole('link', { name: 'Back to Linked book' }).click();
   await expect(reader).toHaveURL(oldPath);
   await reader.locator('li.card', { hasText: 'Link stew' }).getByRole('link').click();

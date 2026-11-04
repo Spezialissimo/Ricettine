@@ -122,6 +122,7 @@ class PublicRecipeIT extends IntegrationTest {
 				.andExpect(jsonPath("$.publishedAt").isNotEmpty())
 				.andExpect(jsonPath("$.viewerIsAuthor").value(false))
 				.andExpect(jsonPath("$.id").doesNotExist())
+				.andExpect(jsonPath("$.cookbookName").doesNotExist())
 				.andExpect(jsonPath("$.shareUrl").doesNotExist());
 		}
 	}
