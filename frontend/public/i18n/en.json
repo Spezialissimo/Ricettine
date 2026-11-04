@@ -166,6 +166,11 @@
     "name": "Name",
     "description": "Description",
     "visibilityLabel": "Visibility",
+    "cover": {
+      "add": "Add cover photo",
+      "replace": "Replace cover photo",
+      "remove": "Remove cover photo"
+    },
     "visibility": {
       "PRIVATE": "Private",
       "PUBLIC": "Public"
@@ -195,7 +200,24 @@
     "alreadyIn": "Already in this cookbook",
     "publishFirst": "Publish the recipe to add it to a cookbook.",
     "noneYet": "You have no cookbooks yet.",
-    "close": "Close"
+    "close": "Close",
+    "notFound": "This cookbook is not available",
+    "notFoundBody": "The link may have been reset, or the cookbook no longer exists.",
+    "home": "Home",
+    "by": "By {{names}}",
+    "openMine": "Open in my cookbooks",
+    "backTo": "Back to {{name}}",
+    "back": "Back to the cookbook",
+    "shareTitle": "Share link",
+    "resetLink": "Reset link",
+    "linkReset": "Link reset",
+    "resetLinkConfirm": {
+      "title": "Reset the cookbook link?",
+      "body": "The old link stops working for everyone, including the recipes opened through it. Co-authors and the people you share the new link with will see the new one.",
+      "confirm": "Reset"
+    },
+    "recipesHeading": "Recipes",
+    "editRecipe": "Edit {{title}}"
   },
   "units": {
     "g": "g",

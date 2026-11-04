@@ -1,5 +1,6 @@
 package com.ricettine.cookbook;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.ricettine.recipe.RecipeDtos.PhotoDto;
 import java.time.Instant;
 import java.util.List;
@@ -33,5 +34,14 @@ public final class CookbookDtos {
 
 	/** Exactly one of the two must be set. */
 	public record RecipeRef(UUID recipeId, String shareToken) {
+	}
+
+	public record PublicCookbookEntry(UUID recipeId, String title, PersonDto author, String coverThumbUrl) {
+	}
+
+	/** Anonymous cookbook view; viewerRole is OWNER / AUTHOR for members, else null, and cookbookId is members-only. */
+	public record PublicCookbook(String name, String description, PersonDto owner, List<PersonDto> authors,
+			PhotoDto cover, List<PublicCookbookEntry> recipes, String viewerRole,
+			@JsonInclude(JsonInclude.Include.NON_NULL) UUID cookbookId) {
 	}
 }

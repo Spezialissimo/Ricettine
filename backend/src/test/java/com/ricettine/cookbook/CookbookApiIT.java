@@ -106,7 +106,7 @@ class CookbookApiIT extends IntegrationTest {
 			.andExpect(jsonPath("$.name").value("Dinners")).andExpect(jsonPath("$.visibility").value("PRIVATE"))
 			.andExpect(jsonPath("$.role").value("OWNER")).andExpect(jsonPath("$.description").doesNotExist())
 			.andExpect(jsonPath("$.owner.username").value("mario")).andExpect(jsonPath("$.authors").isEmpty())
-			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").doesNotExist())
+			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").value(org.hamcrest.Matchers.startsWith("http://localhost/c/")))
 			.andExpect(jsonPath("$.cover").doesNotExist()).andReturn();
 		JsonNode n = read(r);
 		UUID id = UUID.fromString(n.get("id").asText());

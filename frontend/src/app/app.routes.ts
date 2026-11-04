@@ -30,6 +30,16 @@ export const routes: Routes = [
         loadComponent: () => import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
       },
       {
+        path: 'c/:token',
+        pathMatch: 'full',
+        loadComponent: () => import('./cookbooks/view/cookbook-view.page').then((m) => m.CookbookViewPage),
+      },
+      {
+        path: 'c/:token/r/:recipeId',
+        data: { via: 'cookbook' },
+        loadComponent: () => import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+      },
+      {
         path: '',
         component: ShellComponent,
         canActivate: [authGuard],

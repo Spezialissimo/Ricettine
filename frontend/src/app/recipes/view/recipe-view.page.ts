@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, Injector, inject, signa
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { openEditorSheet } from '../editor/editor-sheet';
 import { AuthStore } from '../../core/auth.store';
@@ -34,7 +35,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           @if (auth.me()) {
             <a class="btn" routerLink="/recipes">{{ t('nav.recipes') }}</a>
           } @else {
-            <a class="btn primary" routerLink="/login" [queryParams]="{ next: '/r/' + token }">{{ t('auth.login') }}</a>
+            <a class="btn primary" routerLink="/login" [queryParams]="{ next: loginNext }">{{ t('auth.login') }}</a>
           }
         </div>
       </header>
@@ -43,6 +44,9 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           <div class="state">
             <h1>{{ t('recipes.notFound') }}</h1>
             <p>{{ t('recipes.notFoundBody') }}</p>
+            @if (viaCookbook) {
+              <a class="btn" [routerLink]="['/c', token]">{{ t('cookbooks.back') }}</a>
+            }
             <a class="btn primary" routerLink="/">{{ t('recipes.home') }}</a>
           </div>
         } @else if (error(); as e) {
@@ -51,6 +55,9 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             <button type="button" class="btn primary" (click)="load()">{{ t('common.retry') }}</button>
           </div>
         } @else if (recipe(); as r) {
+          @if (viaCookbook) {
+            <a class="back" [routerLink]="['/c', token]">{{ cookbookName() ? t('cookbooks.backTo', { name: cookbookName() }) : t('cookbooks.back') }}</a>
+          }
           @if (cover(r); as src) {
             <!-- decorative here: the title is the h1 right below; the cover is the page's main image (LCP) -->
             <img class="cover" [src]="src" alt="" loading="eager" fetchpriority="high" />
@@ -65,7 +72,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             @if (r.viewerIsAuthor && r.recipeId) {
               <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']">{{ t('recipes.edit') }}</a>
             }
-            @if (auth.me()) {
+            @if (auth.me() && !viaCookbook) {
               <button type="button" class="btn" (click)="addToCookbook()">{{ t('cookbooks.addToCookbook') }}</button>
             }
           </div>
@@ -136,12 +143,19 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 })
 export class RecipeViewPage {
   private readonly api = inject(RecipeApi);
+  private readonly cookbooks = inject(CookbookApi);
   private readonly title = inject(Title);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
   protected readonly auth = inject(AuthStore);
-  protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
+  private readonly snapshot = inject(ActivatedRoute).snapshot;
+  /** Opened through a cookbook link (/c/:token/r/:recipeId) instead of the recipe's own link. */
+  protected readonly viaCookbook = this.snapshot.data?.['via'] === 'cookbook';
+  protected readonly token = this.snapshot.paramMap.get('token') ?? '';
+  private readonly recipeId = this.snapshot.paramMap.get('recipeId') ?? '';
+  protected readonly loginNext = this.viaCookbook ? `/c/${this.token}/r/${this.recipeId}` : `/r/${this.token}`;
+  protected readonly cookbookName = signal<string | null>(null);
   protected readonly recipe = signal<PublicRecipe | null>(null);
   protected readonly notFound = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -159,7 +173,11 @@ export class RecipeViewPage {
     this.error.set(null);
     this.notFound.set(false);
     try {
-      const r = await this.api.byToken(this.token);
+      if (this.viaCookbook) {
+        // the name only labels the Back link: never let its failure hide the recipe
+        void this.cookbooks.byToken(this.token).then((b) => this.cookbookName.set(b.name), () => undefined);
+      }
+      const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
       this.recipe.set(r);
       if (r.title) this.title.setTitle(r.title);
     } catch (e) {
