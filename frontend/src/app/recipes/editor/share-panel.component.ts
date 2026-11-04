@@ -1,5 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../../core/api-error';
@@ -22,6 +22,8 @@ import { openEditorSheet } from './editor-sheet';
     .reset { @include t.touch-target; margin-top: t.$space-2; padding: 0 t.$space-4; border: 1px solid t.$border;
       border-radius: 10px; background: t.$bg; color: t.$ink; font-weight: 600; cursor: pointer; }
     .reset:disabled { opacity: 0.5; cursor: default; }
+    .reset-done { margin: t.$space-2 0 0; color: t.$muted; }
+    .reset-done:empty { margin: 0; }
   `,
   template: `
     <section *transloco="let t" aria-labelledby="share-heading">
@@ -29,7 +31,10 @@ import { openEditorSheet } from './editor-sheet';
       @if (store.server(); as s) {
         @if (s.status === 'PUBLISHED' && s.shareUrl) {
           <app-copy-link [url]="s.shareUrl" />
-          <button type="button" class="reset" [disabled]="busy()" (click)="reset()">{{ t('editor.resetLink') }}</button>
+          <button type="button" class="reset" [disabled]="busy() || conflict()" (click)="reset()"
+            [attr.aria-describedby]="conflict() ? 'reset-conflict-hint' : null">{{ t('editor.resetLink') }}</button>
+          @if (conflict()) { <p class="hint" id="reset-conflict-hint">{{ t('editor.resetLinkLoadLatest') }}</p> }
+          <p class="reset-done" role="status">@if (done()) { {{ t('editor.linkReset') }} }</p>
           @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
         } @else {
           <p class="hint">{{ t('editor.publishToShare') }}</p>
@@ -45,17 +50,22 @@ export class SharePanelComponent {
   private readonly i18n = inject(TranslocoService);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** True after a successful reset, announced through the always-present status line. */
+  protected readonly done = signal(false);
+  /** A conflict blocks the reset: its version would be stale; Load latest first. */
+  protected readonly conflict = computed(() => this.store.status() === 'conflict');
 
   async reset(): Promise<void> {
-    if (this.busy()) return;
+    if (this.busy() || this.conflict()) return;
     this.busy.set(true);
     this.error.set(null);
+    this.done.set(false);
     try {
       const ref = openEditorSheet(this.dialog, this.injector, ConfirmResetLinkDialog, {
         label: this.i18n.translate('editor.resetLinkConfirm.title'),
       });
       if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
-      await this.store.resetLink();
+      this.done.set((await this.store.resetLink()) === 'reset');
     } catch (e) {
       this.error.set(errorKey(toApiError(e)));
     } finally {

@@ -65,9 +65,29 @@ describe('RecipeViewPage', () => {
     expect(steps[1].querySelector('img')).toBeNull();
     const cover = el.querySelector('img.cover')!;
     expect(cover.getAttribute('src')).toBe('/media/c1/DISPLAY.jpg?s=tok');
-    expect(cover.getAttribute('alt')).toBe('Lasagne');
+    expect(cover.getAttribute('alt')).toBe(''); // the title is already the h1
+    expect(cover.getAttribute('loading')).toBe('eager');
+    expect(cover.getAttribute('fetchpriority')).toBe('high');
     expect(el.textContent).toContain('Rest it');
     expect(TestBed.inject(Title).getTitle()).toBe('Lasagne');
+  });
+
+  it('is accessible: hidden chip emoji, explicit list roles, group headings, focusable ingredients box', async () => {
+    const { el } = await mount(vi.fn().mockResolvedValue(pub()));
+    for (const chip of Array.from(el.querySelectorAll('.chips .chip'))) {
+      const emoji = chip.querySelector('[aria-hidden="true"]');
+      expect(emoji?.textContent?.trim()).toMatch(/\p{Extended_Pictographic}/u);
+      expect(chip.textContent!.replace(emoji!.textContent!, '')).not.toMatch(/\p{Extended_Pictographic}/u);
+    }
+    expect(el.querySelector('ol.steps')?.getAttribute('role')).toBe('list');
+    const lists = Array.from(el.querySelectorAll('.ingredients ul'));
+    expect(lists.length).toBe(2);
+    lists.forEach((l) => expect(l.getAttribute('role')).toBe('list'));
+    expect(el.querySelector('.chips')?.getAttribute('role')).toBe('list');
+    expect(Array.from(el.querySelectorAll('.ingredients h3')).map((h) => h.textContent?.trim())).toContain('Ragu');
+    const box = el.querySelector('.ingredients')!;
+    expect(box.getAttribute('tabindex')).toBe('0');
+    expect(el.querySelector('#' + box.getAttribute('aria-labelledby'))?.textContent).toContain(en.editor.ingredients);
   });
 
   it('shows the not-found state with a link home on 404', async () => {

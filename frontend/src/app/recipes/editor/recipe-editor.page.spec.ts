@@ -345,6 +345,23 @@ describe('RecipeEditorPage', () => {
       expect(el.querySelector('.ingredients')!.classList.contains('missing')).toBe(false);
     });
 
+    it('a 409 from Reset link moves the editor into conflict and disables Reset', async () => {
+      const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+      const { f, el } = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })),
+        resetLink,
+      });
+      byText(el, 'button', en.editor.resetLink)!.click();
+      await settle(f);
+      byText(document.querySelector('.cdk-overlay-container')!, 'button', en.editor.resetLinkConfirm.confirm)!.click();
+      await settle(f);
+      expect(resetLink).toHaveBeenCalledWith('r1', 2);
+      expect(el.querySelector('.conflict')).toBeTruthy();
+      expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/OLD');
+      expect((byText(el, 'button', en.editor.resetLink) as HTMLButtonElement).disabled).toBe(true);
+      expect(el.textContent).toContain(en.editor.resetLinkLoadLatest);
+    });
+
     it('a 409 from publish moves the editor into conflict', async () => {
       const publish = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
       const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), publish });

@@ -49,7 +49,8 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           </div>
         } @else if (recipe(); as r) {
           @if (cover(r); as src) {
-            <img class="cover" [src]="src" [alt]="r.title" loading="lazy" />
+            <!-- decorative here: the title is the h1 right below; the cover is the page's main image (LCP) -->
+            <img class="cover" [src]="src" alt="" loading="eager" fetchpriority="high" />
           }
           <div class="author">
             @if (avatar(r); as a) {
@@ -63,30 +64,31 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             }
           </div>
           <h1>{{ r.title }}</h1>
-          <ul class="chips">
-            <li class="chip">🍽 {{ t('editor.chips.serves', { n: r.portions }) }}</li>
+          <ul class="chips" role="list">
+            <li class="chip"><span aria-hidden="true">🍽</span> {{ t('editor.chips.serves', { n: r.portions }) }}</li>
             @if (r.prepMinutes !== null) {
               @let p = duration(r.prepMinutes);
-              <li class="chip">⏱ {{ t('editor.chips.prep', { time: t(p.key, p.params) }) }}</li>
+              <li class="chip"><span aria-hidden="true">⏱</span> {{ t('editor.chips.prep', { time: t(p.key, p.params) }) }}</li>
             }
             @if (r.cookMinutes !== null) {
               @let c = duration(r.cookMinutes);
-              <li class="chip">🔥 {{ t('editor.chips.cook', { time: t(c.key, c.params) }) }}</li>
+              <li class="chip"><span aria-hidden="true">🔥</span> {{ t('editor.chips.cook', { time: t(c.key, c.params) }) }}</li>
             }
             @if (r.source) {
               @if (isWeb(r.source)) {
-                <li><a class="chip" [href]="r.source" rel="noopener noreferrer" target="_blank">🔗 {{ r.source }}</a></li>
+                <li><a class="chip" [href]="r.source" rel="noopener noreferrer" target="_blank"><span aria-hidden="true">🔗</span> {{ r.source }}</a></li>
               } @else {
-                <li class="chip">🔗 {{ r.source }}</li>
+                <li class="chip"><span aria-hidden="true">🔗</span> {{ r.source }}</li>
               }
             }
           </ul>
           <div class="rp">
-            <section class="ingredients" aria-labelledby="ing-h">
+            <!-- tabindex: on desktop this is a scroll box, which keyboard users must be able to scroll -->
+            <section class="ingredients" aria-labelledby="ing-h" tabindex="0">
               <h2 id="ing-h">{{ t('editor.ingredients') }}</h2>
               @for (g of r.groups; track $index) {
-                @if (g.name) { <div class="grp">{{ g.name }}</div> }
-                <ul class="ingr-list">
+                @if (g.name) { <h3 class="grp">{{ g.name }}</h3> }
+                <ul class="ingr-list" role="list">
                   @for (i of g.ingredients; track $index) {
                     <li>
                       @if (i.amount !== null) { <b>{{ amount(i.amount) }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b> }
@@ -98,7 +100,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             </section>
             <section aria-labelledby="steps-h">
               <h2 id="steps-h">{{ t('editor.steps') }}</h2>
-              <ol class="steps">
+              <ol class="steps" role="list">
                 @for (s of r.steps; track $index) {
                   <li>
                     <span class="num" aria-hidden="true">{{ $index + 1 }}</span>
