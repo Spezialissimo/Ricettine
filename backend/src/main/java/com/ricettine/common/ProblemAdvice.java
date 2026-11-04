@@ -25,6 +25,8 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 
 	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ProblemAdvice.class);
 
+	private static final String RECIPE_ENTITY = "com.ricettine.recipe.Recipe";
+
 	@ExceptionHandler(ApiException.class)
 	ResponseEntity<Object> handleApi(ApiException ex) {
 		ProblemDetail pd = ProblemDetail.forStatus(ex.getStatus());
@@ -36,11 +38,16 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 		return ResponseEntity.status(ex.getStatus()).body(pd);
 	}
 
-	/** A concurrent write lost the optimistic-lock race: the client must reload and retry. */
+	/**
+	 * A concurrent write lost the optimistic-lock race: the client must reload and retry. Only the Recipe aggregate
+	 * maps to {@code recipe_conflict}; any other entity gets the generic {@code conflict}.
+	 */
 	@ExceptionHandler({ ObjectOptimisticLockingFailureException.class, OptimisticLockException.class })
 	ResponseEntity<Object> handleOptimisticLock(Exception ex) {
 		ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
-		pd.setProperty("code", "recipe_conflict");
+		boolean recipe = ex instanceof ObjectOptimisticLockingFailureException olf
+				&& RECIPE_ENTITY.equals(olf.getPersistentClassName());
+		pd.setProperty("code", recipe ? "recipe_conflict" : "conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
 	}
 

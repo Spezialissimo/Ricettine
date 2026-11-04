@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ricettine.IntegrationTest;
+import com.ricettine.QuietSqlErrors;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.common.ApiException;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,9 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 
-@TestPropertySource(properties = "logging.level.org.hibernate.orm.jdbc.error=OFF")
 class AccountServiceIT extends IntegrationTest {
 
 	@Autowired AccountService accounts;
@@ -29,6 +28,7 @@ class AccountServiceIT extends IntegrationTest {
 	}
 
 	@Test
+	@QuietSqlErrors
 	void duplicateEmailIgnoringCaseAndWhitespaceIsEmailTaken() {
 		accounts.create(req(" Davide@X.com ", "davide"), false);
 		assertThatThrownBy(() -> accounts.create(req("davide@x.com", "other"), false))
@@ -39,6 +39,7 @@ class AccountServiceIT extends IntegrationTest {
 	}
 
 	@Test
+	@QuietSqlErrors
 	void duplicateUsernameIsUsernameTaken() {
 		accounts.create(req("a@x.com", "davide"), false);
 		assertThatThrownBy(() -> accounts.create(req("b@x.com", "davide"), false))

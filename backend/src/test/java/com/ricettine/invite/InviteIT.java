@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.ricettine.IntegrationTest;
+import com.ricettine.QuietSqlErrors;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.AccountService;
 import com.ricettine.common.Tokens;
@@ -27,10 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 
-@TestPropertySource(properties = "logging.level.org.hibernate.orm.jdbc.error=OFF")
 class InviteIT extends IntegrationTest {
 
 	@Autowired JdbcTemplate jdbc;
@@ -163,6 +162,7 @@ class InviteIT extends IntegrationTest {
 	}
 
 	@Test
+	@QuietSqlErrors
 	void failedRegistrationKeepsInvite() throws Exception {
 		String token = tokenOf(createInvite());
 		assertThat(register(token, "a@x.com", "usera").getResponse().getStatus()).isEqualTo(201);

@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import en from '../../../public/i18n/en.json';
-import { KNOWN_ERROR_CODES, errorKey, toApiError } from './api-error';
+import { KNOWN_ERROR_CODES, KNOWN_FIELD_ERROR_CODES, errorKey, fieldErrorKey, toApiError } from './api-error';
 
 describe('api-error', () => {
   it('maps a ProblemDetail body', () => {
@@ -40,8 +40,20 @@ describe('api-error', () => {
 
   it('en.json has an entry for every known error code', () => {
     for (const code of KNOWN_ERROR_CODES) {
-      expect((en.errors as Record<string, string>)[code], code).toBeTruthy();
+      expect((en.errors as unknown as Record<string, string>)[code], code).toBeTruthy();
     }
     expect(en.errors.unknown).toBeTruthy();
+  });
+});
+
+describe('fieldErrorKey', () => {
+  it('maps a known field code to errors.field.{code}', () => {
+    expect(fieldErrorKey('required')).toBe('errors.field.required');
+  });
+  it('falls back to errors.validation_failed for an unknown code', () => {
+    expect(fieldErrorKey('nope')).toBe('errors.validation_failed');
+  });
+  it('en.json errors.field has exactly the known field codes', () => {
+    expect(Object.keys(en.errors.field).sort()).toEqual([...KNOWN_FIELD_ERROR_CODES].sort());
   });
 });

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { ApiError, errorKey } from '../core/api-error';
+import { ApiError, errorKey, fieldErrorKey } from '../core/api-error';
 
 export type AccountValues = { email: string; username: string; displayName: string; password: string };
 
@@ -41,7 +41,8 @@ const FIELD_OF_CODE: Record<string, 'email' | 'username' | 'password'> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
-    label { display: block; margin-bottom: t.$space-4; font-weight: 600; }
+    .field { margin-bottom: t.$space-4; }
+    label { display: block; font-weight: 600; }
     input { @include t.touch-target; display: block; width: 100%; margin-top: t.$space-1; padding: 0 t.$space-3;
       font: inherit; border: 1px solid t.$border; border-radius: t.$radius; background: t.$surface; color: t.$ink; }
     input.invalid { border-color: #b3261e; }
@@ -55,35 +56,51 @@ const FIELD_OF_CODE: Record<string, 'email' | 'username' | 'password'> = {
   template: `
     <form *transloco="let t" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
       @if (mode() === 'full') {
+        <div class="field">
         <label>
           {{ t('auth.email') }}
-          <input type="email" name="email" formControlName="email" autocomplete="username"
+          <input type="email" name="email" formControlName="email" autocomplete="email"
             autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email"
-            [class.invalid]="!!fieldError('email')" />
-          @if (fieldError('email'); as e) { <span class="error" data-error="email">{{ t(e) }}</span> }
+            [class.invalid]="!!fieldError('email')"
+            [attr.aria-invalid]="fieldError('email') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('email') ? 'err-email' : null" />
         </label>
+        @if (fieldError('email'); as e) { <span class="error" id="err-email" data-error="email">{{ t(e) }}</span> }
+        </div>
+        <div class="field">
         <label>
           {{ t('auth.username') }}
           <input type="text" name="username" formControlName="username" autocomplete="off"
             autocapitalize="none" autocorrect="off" spellcheck="false"
-            [class.invalid]="!!fieldError('username')" />
+            [class.invalid]="!!fieldError('username')"
+            [attr.aria-invalid]="fieldError('username') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('username') ? 'err-username' : null" />
           <span class="hint">{{ t('auth.usernameHint') }}</span>
-          @if (fieldError('username'); as e) { <span class="error" data-error="username">{{ t(e) }}</span> }
         </label>
+        @if (fieldError('username'); as e) { <span class="error" id="err-username" data-error="username">{{ t(e) }}</span> }
+        </div>
+        <div class="field">
         <label>
           {{ t('auth.displayName') }}
           <input type="text" name="displayName" formControlName="displayName" autocomplete="name"
-            [class.invalid]="!!fieldError('displayName')" />
-          @if (fieldError('displayName'); as e) { <span class="error" data-error="displayName">{{ t(e) }}</span> }
+            [class.invalid]="!!fieldError('displayName')"
+            [attr.aria-invalid]="fieldError('displayName') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('displayName') ? 'err-displayName' : null" />
         </label>
+        @if (fieldError('displayName'); as e) { <span class="error" id="err-displayName" data-error="displayName">{{ t(e) }}</span> }
+        </div>
       }
+      <div class="field">
       <label>
         {{ mode() === 'full' ? t('auth.password') : t('auth.newPassword') }}
         <input type="password" name="password" formControlName="password" autocomplete="new-password"
-          [class.invalid]="!!fieldError('password')" />
+          [class.invalid]="!!fieldError('password')"
+            [attr.aria-invalid]="fieldError('password') ? 'true' : null"
+            [attr.aria-describedby]="fieldError('password') ? 'err-password' : null" />
         <span class="hint">{{ t('auth.passwordHint') }}</span>
-        @if (fieldError('password'); as e) { <span class="error" data-error="password">{{ t(e) }}</span> }
       </label>
+      @if (fieldError('password'); as e) { <span class="error" id="err-password" data-error="password">{{ t(e) }}</span> }
+      </div>
       @if (generalError(); as key) {
         <p class="alert" role="alert">{{ t(key) }}</p>
       }
@@ -123,9 +140,14 @@ export class AccountFormComponent {
     return e ? (FIELD_OF_CODE[e.code] ?? null) : null;
   });
 
+  private readonly namedFields = computed(() =>
+    Object.keys(this.error()?.fields ?? {}).filter((k) => k in this.form.controls),
+  );
+
   readonly generalError = computed(() => {
     const e = this.error();
     if (!e) return null;
+    if (this.namedFields().length) return null;
     const f = this.serverField();
     // In password-only mode a password error still belongs under the field.
     return f && (this.mode() === 'full' || f === 'password') ? null : errorKey(e);
@@ -142,6 +164,8 @@ export class AccountFormComponent {
         case 'password': return er['maxlength'] ? 'errors.password_too_long' : 'errors.password_too_short';
       }
     }
+    const code = this.error()?.fields?.[name];
+    if (code) return fieldErrorKey(code);
     const e = this.error();
     return e && this.serverField() === name ? errorKey(e) : null;
   }

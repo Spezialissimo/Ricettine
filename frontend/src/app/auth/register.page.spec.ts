@@ -68,4 +68,35 @@ describe('RegisterPage', () => {
     expect(TestBed.inject(AuthStore).me()).toEqual(me);
     expect(nav).toHaveBeenCalledWith('/');
   });
+
+  it('a validation_failed response with fields shows the message under the named field only', async () => {
+    const f = setup();
+    await settle(f);
+    http.expectOne('/api/invites/tok').flush({ expiresAt: 'x' });
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('input[name=email]')!.getAttribute('autocomplete')).toBe('email');
+    const type = (sel: string, v: string) => {
+      const i = el.querySelector(sel) as HTMLInputElement;
+      i.value = v;
+      i.dispatchEvent(new Event('input'));
+    };
+    type('input[name=email]', 'a@b.co');
+    type('input[name=username]', 'davide');
+    type('input[name=displayName]', 'D');
+    type('input[name=password]', 'longenough1');
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle(f);
+    http
+      .expectOne('/api/invites/tok/register')
+      .flush({ code: 'validation_failed', fields: { displayName: 'validation_failed' } }, { status: 400, statusText: 'x' });
+    await settle(f);
+    const err = el.querySelector('[data-error=displayName]')!;
+    expect(err.textContent).toContain(en.errors.validation_failed);
+    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-invalid')).toBe('true');
+    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-describedby')).toBe(err.id);
+    expect(el.querySelector('[data-error=email]')).toBeNull();
+    expect(el.querySelector('[data-error=username]')).toBeNull();
+    expect(el.querySelector('[role=alert]')).toBeNull();
+  });
 });
