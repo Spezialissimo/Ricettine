@@ -272,6 +272,8 @@
     "publishToShare": "Publish to get a share link",
     "shareTitle": "Share",
     "resetLink": "Reset link",
+    "linkReset": "Link reset. The old link no longer works.",
+    "resetLinkLoadLatest": "Load latest first to reset the link.",
     "resetLinkConfirm": {
       "title": "Reset the share link?",
       "body": "The current link and its photo links stop working for everyone who has them. A new link is created.",

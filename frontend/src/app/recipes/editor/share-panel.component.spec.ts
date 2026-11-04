@@ -9,9 +9,9 @@ import { SharePanelComponent } from './share-panel.component';
 @Component({ imports: [SharePanelComponent], template: '<app-share-panel />' })
 class Host {}
 
-async function mount(initial: Recipe, resetLink = vi.fn()) {
+async function mount(initial: Recipe, resetLink = vi.fn(), status = signal<string>('saved')) {
   const server = signal<Recipe | null>(initial);
-  const store = { server: server.asReadonly(), resetLink: resetLink.mockImplementation(async () => {
+  const store = { server: server.asReadonly(), status: status.asReadonly(), resetLink: resetLink.mockImplementation(async () => {
     server.set({ ...initial, shareUrl: 'https://x.test/r/NEW' });
     return 'reset';
   }) };
@@ -52,6 +52,34 @@ describe('SharePanelComponent', () => {
     await settle(f);
     expect(resetLink).toHaveBeenCalledTimes(1);
     expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/NEW');
+    expect(el.querySelector('.reset-done[role="status"]')?.textContent?.trim()).toBe(en.editor.linkReset);
+  });
+
+  it('announces nothing before a reset, nor after a reset that ended in a conflict', async () => {
+    const { f, el, resetLink } = await mount(serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }));
+    const live = () => el.querySelector('.reset-done[role="status"]');
+    expect(live()).toBeTruthy(); // the live region exists up front, so the later text is announced
+    expect(live()!.textContent?.trim()).toBe('');
+    resetLink.mockImplementation(async () => 'conflict');
+    btn(el, en.editor.resetLink)!.click();
+    await settle(f);
+    btn(overlay(), en.editor.resetLinkConfirm.confirm)!.click();
+    await settle(f);
+    expect(live()!.textContent?.trim()).toBe('');
+    expect(el.querySelector('[role="alert"]')).toBeNull(); // the editor's conflict banner is the message
+  });
+
+  it('disables Reset during a conflict and says to load the latest first', async () => {
+    const status = signal('conflict');
+    const { f, el } = await mount(serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }), vi.fn(), status);
+    const reset = btn(el, en.editor.resetLink) as HTMLButtonElement;
+    expect(reset.disabled).toBe(true);
+    expect(el.textContent).toContain(en.editor.resetLinkLoadLatest);
+    expect(reset.getAttribute('aria-describedby')).toBe('reset-conflict-hint');
+    status.set('saved');
+    await settle(f);
+    expect(reset.disabled).toBe(false);
+    expect(el.textContent).not.toContain(en.editor.resetLinkLoadLatest);
   });
 
   it('shows an error when the reset fails and keeps the old link', async () => {

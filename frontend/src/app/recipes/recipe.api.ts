@@ -19,8 +19,8 @@ export class RecipeApi {
   publish(id: string, version: number): Promise<Recipe> {
     return firstValueFrom(this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/publish`, { version }));
   }
-  resetLink(id: string): Promise<Recipe> {
-    return firstValueFrom(this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/share-link/reset`, null));
+  resetLink(id: string, version: number): Promise<Recipe> {
+    return firstValueFrom(this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/share-link/reset`, { version }));
   }
   byToken(token: string): Promise<PublicRecipe> {
     return firstValueFrom(this.http.get<PublicRecipe>(`/api/r/${encodeURIComponent(token)}`));

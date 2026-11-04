@@ -334,18 +334,38 @@ export class EditorStore {
   }
 
   /**
-   * Replaces the share link. Reset bumps the version, so the returned version and URL are adopted
-   * while whatever is typed stays (autosave is held during the request, then saves at the new version).
+   * Replaces the share link at the version this editor knows (the server refuses a stale one with 409, so
+   * a reset never lets a stale working copy save on top of another device's edits). Pending typing is
+   * saved first; a conflict (from that save or the reset) moves the store into `conflict` and adopts
+   * nothing. On success the server copy replaces the working copy, or, if something was typed while the
+   * request was in flight (autosave is held meanwhile), only its metadata, and those edits then save at
+   * the new version. Other failures are thrown.
    */
-  async resetLink(): Promise<void> {
-    if (!this._id) return;
+  async resetLink(): Promise<'reset' | 'conflict' | 'blocked'> {
+    if (!this._id) return 'blocked';
+    await this.autosave.flush();
+    if (this.status() === 'conflict') return 'conflict';
     this.autosave.suspend();
+    let r: Recipe;
     try {
       await this.autosave.settled();
-      this.adoptMetadata(await this.api.resetLink(this._id));
-    } finally {
+      r = await this.api.resetLink(this._id, this._recipe().version);
+    } catch (e) {
       this.autosave.resume();
+      const err = toApiError(e);
+      if (err.status === 409 || err.code === 'recipe_conflict') {
+        this.autosave.markConflict(err);
+        return 'conflict';
+      }
+      throw e;
     }
+    if (this.autosave.dirty() || this.hasUnsavedInput()) {
+      this.adoptMetadata(r);
+    } else {
+      this.replace(r);
+    }
+    this.autosave.resume();
+    return 'reset';
   }
 
   isUntouchedDraft(): boolean {
