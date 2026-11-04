@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
+import { filter, merge } from 'rxjs';
 
 /**
  * Sets the document title as "{page} · Ricettine" (or "Ricettine" without a page). A route's
@@ -13,15 +14,16 @@ export class AppTitleStrategy extends TitleStrategy {
   private readonly i18n = inject(TranslocoService);
   private key: string | undefined;
   private dynamic: string | null = null;
-  private ready = false;
 
   constructor() {
     super();
-    // emits once translations are loaded, and again when the language or translations change
-    this.i18n.selectTranslate('common.appName').subscribe(() => {
-      this.ready = true;
-      this.render();
-    });
+    // Not selectTranslate: it errors out (and stays dead) if the first load fails, which would leave
+    // the title unset for the rest of the session. These streams survive a failed load and its retry.
+    merge(
+      this.i18n.langChanges$,
+      this.i18n.events$.pipe(filter((e) => e.type === 'translationLoadSuccess')),
+    ).subscribe(() => this.render());
+    this.i18n.load(this.i18n.getActiveLang()).subscribe({ error: () => undefined }); // retried by the templates
   }
 
   override updateTitle(snapshot: RouterStateSnapshot): void {
@@ -36,7 +38,7 @@ export class AppTitleStrategy extends TitleStrategy {
   }
 
   private render(): void {
-    if (!this.ready) return;
+    if (Object.keys(this.i18n.getTranslation(this.i18n.getActiveLang()) ?? {}).length === 0) return; // not loaded yet
     const app = this.i18n.translate('common.appName');
     const page = this.dynamic ?? (this.key ? this.i18n.translate(this.key) : null);
     this.doc.setTitle(page ? `${page} · ${app}` : app);
