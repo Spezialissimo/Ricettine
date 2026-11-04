@@ -13,12 +13,13 @@ public interface CookbookEntryRepository extends JpaRepository<CookbookEntry, Co
 	long countByCookbookId(UUID cookbookId);
 
 	/** An entry joined with its recipe's title and author. */
-	record Row(UUID recipeId, String title, UUID authorId, UUID addedBy, Instant addedAt) {
+	record Row(UUID recipeId, String title, UUID authorId, UUID addedBy, Instant addedAt,
+			String coverMediaId) {
 	}
 
 	@Query("""
 		select new com.ricettine.cookbook.CookbookEntryRepository$Row(e.recipeId, r.title, r.authorId, e.addedBy,
-			e.addedAt)
+			e.addedAt, r.coverMediaId)
 		from CookbookEntry e join Recipe r on r.id = e.recipeId
 		where e.cookbookId = :cookbookId
 		order by e.addedAt desc, e.recipeId asc""")
@@ -26,10 +27,30 @@ public interface CookbookEntryRepository extends JpaRepository<CookbookEntry, Co
 
 	@Query("""
 		select new com.ricettine.cookbook.CookbookEntryRepository$Row(e.recipeId, r.title, r.authorId, e.addedBy,
-			e.addedAt)
+			e.addedAt, r.coverMediaId)
 		from CookbookEntry e join Recipe r on r.id = e.recipeId
 		where e.cookbookId = :cookbookId and e.recipeId = :recipeId""")
 	Optional<Row> row(UUID cookbookId, UUID recipeId);
+
+	/** Entries whose recipe is PUBLISHED: all a cookbook link may show. */
+	@Query("""
+		select new com.ricettine.cookbook.CookbookEntryRepository$Row(e.recipeId, r.title, r.authorId, e.addedBy,
+			e.addedAt, r.coverMediaId)
+		from CookbookEntry e join Recipe r on r.id = e.recipeId
+		where e.cookbookId = :cookbookId and r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED
+		order by e.addedAt desc, e.recipeId asc""")
+	List<Row> publishedRows(UUID cookbookId);
+
+	/**
+	 * The cookbook token that currently opens this recipe: the cookbook has an entry for it and the recipe is
+	 * PUBLISHED. The caller compares it with the presented token in constant time.
+	 */
+	@Query("""
+		select c.shareToken from CookbookEntry e join Cookbook c on c.id = e.cookbookId
+			join Recipe r on r.id = e.recipeId
+		where c.shareToken = :token and e.recipeId = :recipeId
+			and r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED""")
+	Optional<String> grantingToken(String token, UUID recipeId);
 
 	@Modifying
 	@Query("delete from CookbookEntry e where e.cookbookId = :cookbookId and e.recipeId = :recipeId")

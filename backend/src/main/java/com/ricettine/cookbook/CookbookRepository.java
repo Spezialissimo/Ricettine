@@ -16,6 +16,8 @@ public interface CookbookRepository extends JpaRepository<Cookbook, UUID> {
 	@Query("select c from Cookbook c where c.id = :id")
 	Optional<Cookbook> lockById(UUID id);
 
+	Optional<Cookbook> findByShareToken(String shareToken);
+
 	record SummaryRow(UUID id, String name, String visibility, UUID ownerId, long recipeCount, Instant updatedAt) {
 	}
 

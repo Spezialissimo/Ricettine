@@ -155,9 +155,20 @@ public class RecipeService {
 	public PublicRecipe publicByToken(String token, UUID viewerId) {
 		Recipe r = recipes.findByShareTokenAndStatus(token, RecipeStatus.PUBLISHED)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		return publicView(r, "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8), viewerId);
+	}
+
+	/** Reader view of a PUBLISHED recipe reached through a cookbook; the caller has checked the entry. */
+	@Transactional(readOnly = true)
+	public PublicRecipe publishedPublicView(UUID id, String photoQuery, UUID viewerId) {
+		Recipe r = recipes.findById(id).filter(x -> x.getStatus() == RecipeStatus.PUBLISHED)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		return publicView(r, photoQuery, viewerId);
+	}
+
+	private PublicRecipe publicView(Recipe r, String s, UUID viewerId) {
 		User a = users.findById(r.getAuthorId())
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
-		String s = "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
 		AuthorDto author = new AuthorDto(a.getUsername(), a.getDisplayName(),
 				a.getAvatarKey() == null ? null : media.url(a.getAvatarKey(), ImageVariant.AVATAR));
 		List<PublicStepDto> steps = r.getSteps().stream()

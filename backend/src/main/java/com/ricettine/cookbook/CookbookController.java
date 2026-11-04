@@ -60,6 +60,11 @@ public class CookbookController {
 		return ResponseEntity.noContent().build();
 	}
 
+	@PostMapping("/{id}/share-link/reset")
+	CookbookDto resetShareLink(@PathVariable String id) {
+		return cookbooks.resetShareLink(currentUser.id(), parse(id));
+	}
+
 	@PostMapping("/{id}/recipes")
 	ResponseEntity<CookbookEntryDto> addRecipe(@PathVariable String id, @RequestBody RecipeRef ref) {
 		CookbookService.AddResult r = cookbooks.addRecipe(currentUser.id(), parse(id), ref);

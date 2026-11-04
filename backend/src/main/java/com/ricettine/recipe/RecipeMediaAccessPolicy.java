@@ -7,7 +7,9 @@ import com.ricettine.media.MediaKind;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,10 +25,12 @@ public class RecipeMediaAccessPolicy implements MediaAccessPolicy {
 
 	private final CurrentUser currentUser;
 	private final RecipeRepository recipes;
+	private final List<RecipeReadGrant> grants;
 
-	public RecipeMediaAccessPolicy(CurrentUser currentUser, RecipeRepository recipes) {
+	public RecipeMediaAccessPolicy(CurrentUser currentUser, RecipeRepository recipes, List<RecipeReadGrant> grants) {
 		this.currentUser = currentUser;
 		this.recipes = recipes;
+		this.grants = grants;
 	}
 
 	@Override
@@ -39,13 +43,17 @@ public class RecipeMediaAccessPolicy implements MediaAccessPolicy {
 		if (currentUser.optionalId().filter(id -> id.equals(m.getOwnerId())).isPresent()) {
 			return Optional.of(CACHE);
 		}
-		String s = req.getParameter("s");
-		if (s == null || s.isEmpty() || m.getRecipeId() == null) {
+		UUID recipeId = m.getRecipeId();
+		if (recipeId == null) {
 			return Optional.empty();
 		}
-		return recipes.publishedShareToken(m.getRecipeId())
+		String s = req.getParameter("s");
+		if (s != null && !s.isEmpty() && recipes.publishedShareToken(recipeId)
 			.filter(token -> MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8),
 					s.getBytes(StandardCharsets.UTF_8)))
-			.map(token -> TOKEN_CACHE);
+			.isPresent()) {
+			return Optional.of(TOKEN_CACHE);
+		}
+		return grants.stream().anyMatch(g -> g.grants(recipeId, req)) ? Optional.of(TOKEN_CACHE) : Optional.empty();
 	}
 }
