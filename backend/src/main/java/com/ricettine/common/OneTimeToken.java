@@ -21,6 +21,8 @@ public class OneTimeToken {
 	private String tokenHash;
 	@Column(name = "user_id")
 	private UUID userId;
+	@Column(name = "cookbook_id")
+	private UUID cookbookId;
 	@Column(name = "created_by")
 	private UUID createdBy;
 	@Column(name = "expires_at")
@@ -45,10 +47,17 @@ public class OneTimeToken {
 		this.createdAt = Instant.now();
 	}
 
+	/** A cookbook co-author invite: the token belongs to (and is deleted with) that cookbook. */
+	public OneTimeToken(String purpose, String tokenHash, UUID createdBy, Instant expiresAt, UUID cookbookId) {
+		this(purpose, tokenHash, null, createdBy, expiresAt);
+		this.cookbookId = cookbookId;
+	}
+
 	public UUID getId() { return id; }
 	public String getPurpose() { return purpose; }
 	public String getTokenHash() { return tokenHash; }
 	public UUID getUserId() { return userId; }
+	public UUID getCookbookId() { return cookbookId; }
 	public UUID getCreatedBy() { return createdBy; }
 	public Instant getExpiresAt() { return expiresAt; }
 	public Instant getUsedAt() { return usedAt; }

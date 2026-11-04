@@ -12,7 +12,17 @@ public final class CookbookDtos {
 	}
 
 	/** A user as shown in a cookbook; the whole object is null when the person deleted their account. */
-	public record PersonDto(String username, String displayName, String avatarUrl) {
+	public record PersonDto(@JsonInclude(JsonInclude.Include.NON_NULL) UUID id, String username,
+			String displayName, String avatarUrl) {
+	}
+
+	public record CookbookInviteCreated(UUID id, String url, Instant expiresAt) {
+	}
+
+	public record CookbookInviteDto(UUID id, Instant createdAt, Instant expiresAt) {
+	}
+
+	public record CookbookInvitePreview(String cookbookName, PersonDto owner, Instant expiresAt) {
 	}
 
 	public record CookbookSummary(UUID id, String name, String visibility, String role, int recipeCount,

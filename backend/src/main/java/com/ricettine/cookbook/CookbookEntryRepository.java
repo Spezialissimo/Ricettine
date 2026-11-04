@@ -52,6 +52,11 @@ public interface CookbookEntryRepository extends JpaRepository<CookbookEntry, Co
 			and r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED""")
 	Optional<String> grantingToken(String token, UUID recipeId);
 
+	/** Takes one person's entries out of a cookbook; the recipes themselves are untouched. */
+	@Modifying
+	@Query("delete from CookbookEntry e where e.cookbookId = :cookbookId and e.addedBy = :userId")
+	int deleteAddedBy(UUID cookbookId, UUID userId);
+
 	@Modifying
 	@Query("delete from CookbookEntry e where e.cookbookId = :cookbookId and e.recipeId = :recipeId")
 	int deleteEntry(UUID cookbookId, UUID recipeId);
