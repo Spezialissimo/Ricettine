@@ -195,10 +195,11 @@ describe('EditorStore', () => {
     const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3 }));
     const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
     await store.load('r1');
-    const done = store.resetLink();
+    // Attach the rejection handler at once: the request fails while timers advance below.
+    const done = expect(store.resetLink()).rejects.toBeTruthy();
     await vi.advanceTimersByTimeAsync(0);
     store.update((r) => ({ ...r, title: 'Typed' }));
-    await expect(done).rejects.toBeTruthy();
+    await done;
     await vi.advanceTimersByTimeAsync(800);
     expect(save).toHaveBeenCalledTimes(1);
   });
