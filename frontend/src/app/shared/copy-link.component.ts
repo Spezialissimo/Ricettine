@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 /** Shows a one-time link with its expiry, plus Copy and (where supported) Share buttons. */
@@ -36,15 +36,18 @@ import { TranslocoDirective } from '@jsverse/transloco';
 export class CopyLinkComponent {
   readonly url = input.required<string>();
   readonly expiresAt = input<string | null>(null);
-  readonly copied = signal(false);
+  /** The url last copied: "Copied" shows only while that is still the url (a new link starts fresh). */
+  private readonly copiedUrl = signal<string | null>(null);
+  readonly copied = computed(() => this.copiedUrl() !== null && this.copiedUrl() === this.url());
   protected readonly canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   async copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.url());
-      this.copied.set(true);
+      const url = this.url();
+      await navigator.clipboard.writeText(url);
+      this.copiedUrl.set(url);
     } catch {
-      this.copied.set(false); // clipboard unavailable or denied; the URL stays selectable
+      this.copiedUrl.set(null); // clipboard unavailable or denied; the URL stays selectable
     }
   }
 

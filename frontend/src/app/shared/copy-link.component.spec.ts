@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CopyLinkComponent } from './copy-link.component';
 import { en, provideTestTransloco, settle } from '../testing/transloco';
@@ -8,6 +8,11 @@ import { en, provideTestTransloco, settle } from '../testing/transloco';
   template: `<app-copy-link url="https://x/invite/abc" expiresAt="2030-01-01T00:00:00Z" />`,
 })
 class Host {}
+
+@Component({ imports: [CopyLinkComponent], template: `<app-copy-link [url]="url()" />` })
+class ChangingHost {
+  readonly url = signal('https://x/r/OLD');
+}
 
 describe('CopyLinkComponent', () => {
   const nav = navigator as unknown as Record<string, unknown>;
@@ -61,5 +66,20 @@ describe('CopyLinkComponent', () => {
     b.click();
     await settle(f);
     expect(share).toHaveBeenCalled();
+  });
+
+  it('forgets "Copied" when the url changes', async () => {
+    clip(vi.fn().mockResolvedValue(undefined));
+    TestBed.configureTestingModule({ providers: [provideTestTransloco()] });
+    const f = TestBed.createComponent(ChangingHost);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    btn(el, en.common.copy)!.click();
+    await settle(f);
+    expect(el.textContent).toContain(en.common.copied);
+    f.componentInstance.url.set('https://x/r/NEW');
+    await settle(f);
+    expect(el.textContent).toContain('https://x/r/NEW');
+    expect(el.textContent).not.toContain(en.common.copied);
   });
 });

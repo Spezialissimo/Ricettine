@@ -59,6 +59,12 @@ public class RecipeController {
 		return recipes.publish(currentUser.id(), parse(id), request.version());
 	}
 
+	/** Body {@code {"version": n}} is required (a missing body counts as a missing version: 400). */
+	@PostMapping("/{id}/share-link/reset")
+	RecipeDto resetShareLink(@PathVariable String id, @RequestBody(required = false) PublishRequest request) {
+		return recipes.resetShareLink(currentUser.id(), parse(id), request == null ? null : request.version());
+	}
+
 	/** {@code version} is optional for now: when given and stale, 409 {@code recipe_conflict}. */
 	@DeleteMapping("/{id}")
 	ResponseEntity<Void> delete(@PathVariable String id, @RequestParam(required = false) Long version) {

@@ -20,6 +20,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_READ)
 	Optional<Recipe> findForShareByIdAndAuthorId(UUID id, UUID authorId);
 
+	Optional<Recipe> findByShareTokenAndStatus(String shareToken, RecipeStatus status);
+
 	boolean existsByIdAndAuthorId(UUID id, UUID authorId);
 
 	List<Recipe> findByAuthorIdOrderByUpdatedAtDescIdAsc(UUID authorId);

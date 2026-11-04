@@ -43,7 +43,7 @@
 .hint { margin: 0 0 t.$space-2; color: t.$muted; font-size: 0.85rem; }
 .title-field { order: 2; }
 app-detail-chips { order: 3; }
-.visibility { order: 4; }
+.visibility, .share { order: 4; }
 .ingredients { order: 5; }
 .steps { order: 6; }
 .notes { order: 7; }

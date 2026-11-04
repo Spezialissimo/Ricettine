@@ -124,6 +124,86 @@ describe('EditorStore', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('resetLink flushes typing first, sends the current version and adopts the server copy', async () => {
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3, shareUrl: 'https://x.test/r/OLD' }));
+    const resetLink = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 4, shareUrl: 'https://x.test/r/NEW' }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    const epoch = store.epoch();
+    expect(await store.resetLink()).toBe('reset');
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed', version: 2 }));
+    expect(resetLink).toHaveBeenCalledWith('r1', 3);
+    expect(store.server()?.shareUrl).toBe('https://x.test/r/NEW');
+    expect(store.recipe()).toMatchObject({ title: 'Typed', version: 4 });
+    expect(store.epoch()).toBe(epoch + 1); // nothing pending: the server copy replaces the working copy
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('edits typed during the reset request are kept and saved at the new version', async () => {
+    let resolveReset!: (r: Recipe) => void;
+    const resetLink = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolveReset = r)));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 4 }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    await store.load('r1');
+    const epoch = store.epoch();
+    const done = store.resetLink();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(resetLink).toHaveBeenCalledWith('r1', 2);
+    store.update((r) => ({ ...r, title: 'T!' }));
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).not.toHaveBeenCalled(); // held while the reset is in flight
+    resolveReset(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 3, shareUrl: 'https://x.test/r/NEW' }));
+    expect(await done).toBe('reset');
+    expect(store.recipe()).toMatchObject({ title: 'T!', version: 3 });
+    expect(store.server()?.shareUrl).toBe('https://x.test/r/NEW');
+    expect(store.epoch()).toBe(epoch);
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'T!', version: 3 }));
+  });
+
+  it('a reset with a stale version moves the store into conflict and adopts nothing', async () => {
+    const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const save = vi.fn();
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    await store.load('r1');
+    const epoch = store.epoch();
+    expect(await store.resetLink()).toBe('conflict');
+    expect(resetLink).toHaveBeenCalledWith('r1', 2);
+    expect(store.status()).toBe('conflict');
+    expect(store.server()?.shareUrl).toBe('https://x.test/r/OLD');
+    expect(store.recipe()).toMatchObject({ title: 'T', version: 2 });
+    expect(store.epoch()).toBe(epoch);
+    store.update((r) => ({ ...r, title: 'T!' }));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(save).not.toHaveBeenCalled(); // blocked like any conflict until Load latest
+  });
+
+  it('resetLink does not call the server when the flush ends in a conflict', async () => {
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const resetLink = vi.fn();
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    expect(await store.resetLink()).toBe('conflict');
+    expect(resetLink).not.toHaveBeenCalled();
+  });
+
+  it('a failed resetLink resumes autosave and rethrows', async () => {
+    const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 500 }));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3 }));
+    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
+    await store.load('r1');
+    // Attach the rejection handler at once: the request fails while timers advance below.
+    const done = expect(store.resetLink()).rejects.toBeTruthy();
+    await vi.advanceTimersByTimeAsync(0);
+    store.update((r) => ({ ...r, title: 'Typed' }));
+    await done;
+    await vi.advanceTimersByTimeAsync(800);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it('a failed publish resumes autosave for edits typed meanwhile', async () => {
     let rejectPublish!: (e: unknown) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((_, rej) => (rejectPublish = rej)));

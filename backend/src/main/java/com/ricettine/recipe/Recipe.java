@@ -94,6 +94,8 @@ public class Recipe {
 	public void setVisibility(Visibility visibility) { this.visibility = visibility; }
 	public void setCoverMediaId(String coverMediaId) { this.coverMediaId = coverMediaId; }
 
+	public void resetShareToken(String token) { this.shareToken = token; }
+
 	public void publish() {
 		this.status = RecipeStatus.PUBLISHED;
 		if (this.publishedAt == null) {

@@ -1,5 +1,6 @@
 package com.ricettine.recipe;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -26,6 +27,18 @@ public final class RecipeDtos {
 			Integer prepMinutes, Integer cookMinutes, String source, String notes, PhotoDto cover,
 			List<GroupDto> groups, List<StepDto> steps, long version, String shareUrl, Instant createdAt,
 			Instant updatedAt, Instant publishedAt) {
+	}
+
+	public record AuthorDto(String username, String displayName, String avatarUrl) {
+	}
+
+	public record PublicStepDto(String text, PhotoDto photo) {
+	}
+
+	public record PublicRecipe(String title, AuthorDto author, int portions, Integer prepMinutes,
+			Integer cookMinutes, String source, String notes, PhotoDto cover, List<GroupDto> groups,
+			List<PublicStepDto> steps, Instant publishedAt, boolean viewerIsAuthor,
+			@JsonInclude(JsonInclude.Include.NON_NULL) UUID recipeId) {
 	}
 
 	public record StepInput(String text, String photoMediaId) {
