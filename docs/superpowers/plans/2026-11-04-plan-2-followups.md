@@ -76,3 +76,8 @@ Collected from the per-task and per-PR reviews of Plan 2 (SDD ledger). Nothing h
   - A failed takeover write keeps the source entry, so refused text can return after Load latest when storage is full.
   - Malformed backup entries are never pruned.
 - Unsaved-safety e2e: `saved()` right after `goto` can match an idle "Saved ✓" (the reload assertion is the real proof); the conflict spec does not check device 1's text on the server before Load latest; there is no step-photo retry e2e (the retry spec uses the cover photo; step retry is covered by unit specs).
+
+## Still open from Plan 1 follow-ups
+- Scope `logging.level.org.hibernate.orm.jdbc.error=OFF` to the conflict tests only (still class-wide in `InviteIT`, `MeIT`, `AccountServiceIT`).
+- Auth-form accessibility: `aria-invalid` / `aria-describedby`, `autocomplete="email"` on registration, invalid-login feedback, per-field `validation_failed` messages.
+- Image tests for EXIF orientations 5 and 7. ICC profiles are still dropped (slight P3 colour shift).
