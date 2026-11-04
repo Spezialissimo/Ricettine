@@ -5,6 +5,7 @@ import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
 import com.ricettine.common.PublicUrls;
 import com.ricettine.common.Tokens;
+import com.ricettine.cookbook.CookbookDtos.RecipeRef;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaRepository;
@@ -165,6 +166,27 @@ public class RecipeService {
 		return new PublicRecipe(r.getTitle(), author, r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(),
 				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), s), groups(r), steps, r.getPublishedAt(),
 				viewerIsAuthor, viewerIsAuthor ? r.getId() : null);
+	}
+
+	/**
+	 * The recipe a cookbook may take for {@code ref}: PUBLISHED, and reachable by its share token, or by id when the
+	 * viewer is its author or it is PUBLIC. Exactly one ref field must be set (400); anything else, drafts
+	 * included, is 404.
+	 */
+	@Transactional(readOnly = true)
+	public UUID resolveAddable(RecipeRef ref, UUID viewerId) {
+		String token = RecipeValidator.clean(ref.shareToken());
+		if ((ref.recipeId() == null) == (token == null)) {
+			String code = ref.recipeId() == null ? RecipeValidator.REQUIRED : RecipeValidator.INVALID;
+			throw new ApiException(HttpStatus.BAD_REQUEST, "validation_failed",
+					Map.of("recipeId", code, "shareToken", code));
+		}
+		Recipe r = (token != null ? recipes.findByShareTokenAndStatus(token, RecipeStatus.PUBLISHED)
+				: recipes.findById(ref.recipeId())
+					.filter(x -> x.getStatus() == RecipeStatus.PUBLISHED
+							&& (viewerId.equals(x.getAuthorId()) || x.getVisibility() == Visibility.PUBLIC)))
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
+		return r.getId();
 	}
 
 	/** Deletes the recipe and all its photos (blobs after commit). A given {@code version} must be current (409). */
