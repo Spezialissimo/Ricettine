@@ -1,5 +1,6 @@
 import { toInput } from '../recipe.model';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
@@ -325,6 +326,39 @@ describe('EditorStore unsaved backup', () => {
     expect(await TestBed.inject(PendingSaves).flushAll()).toBe(false);
     save.mockResolvedValue(serverRecipe({ title: 'Unsent', version: 2 }));
     expect(await TestBed.inject(PendingSaves).flushAll()).toBe(true);
+  });
+
+  it('a clean logout flush clears the open recipe\'s backup only; a backup of a recipe not open survives', async () => {
+    const other = 'ricettine.unsaved.rB';
+    localStorage.setItem(other, JSON.stringify({ input: emptyInput({ title: 'B text' }), baseVersion: 1, savedAt: Date.now(), userId: 'u1' }));
+    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'A text', version: 2 }));
+    TestBed.configureTestingModule({
+      providers: [EditorStore, { provide: RecipeApi, useValue: { get: vi.fn().mockResolvedValue(serverRecipe()), save } },
+        provideHttpClient(), provideHttpClientTesting()],
+    });
+    const store = TestBed.inject(EditorStore);
+    const auth = TestBed.inject(AuthStore);
+    auth.setMe(me('u1'));
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'A text' }));
+    expect(stored()).not.toBeNull();
+    const out = auth.logout();
+    await vi.advanceTimersByTimeAsync(0);
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    await out;
+    expect(auth.me()).toBeNull();
+    expect(stored()).toBeNull(); // A: saved by this logout's flush
+    expect(JSON.parse(localStorage.getItem(other)!).input.title).toBe('B text'); // B: never restored, kept until it expires
+  });
+
+  it('a clean flush never deletes a backup this editor did not write (e.g. another tab typing offline)', async () => {
+    const save = vi.fn();
+    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'S' })), save });
+    await store.load('r1');
+    putBackup({ title: 'Other tab, offline' }, 1);
+    expect(await TestBed.inject(PendingSaves).flushAll()).toBe(true);
+    expect(stored()?.input.title).toBe('Other tab, offline');
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('a destroyed editor whose leaving flush could not save makes flushAll not clean', async () => {

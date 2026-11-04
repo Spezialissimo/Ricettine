@@ -84,6 +84,8 @@ export class EditorStore {
   private readonly auth = inject(AuthStore);
   /** Whose editor this is (captured at load): the backup is written and read for this user only. */
   private userId: string | null = null;
+  /** True while a backup this editor wrote is not yet known to be saved (never touch another tab's). */
+  private ownsBackup = false;
   private readonly _restored = signal(false);
   private readonly _recipe = signal<RecipeInput>(EMPTY);
   private readonly _server = signal<Recipe | null>(null);
@@ -146,18 +148,20 @@ export class EditorStore {
     // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
     // Rejects when text stayed unsaved, so a logout keeps the local backups.
     const pending = inject(PendingSaves);
-    const unregister = pending.register(() => this.autosave.flush().then(() => this.assertSaved()));
+    const unregister = pending.register(() => this.autosave.flush().then(() => this.savedForLogout()));
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this._uploads().forEach((u) => this.revoke(u.preview));
       this._uploads.set([]);
-      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()).then(() => this.assertSaved()));
+      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()).then(() => this.savedForLogout()));
     });
   }
 
-  private assertSaved(): void {
+  /** After a flush: rejects if text stayed unsaved (its backup stays); otherwise deletes the backup this editor wrote. */
+  private savedForLogout(): void {
     if (this.autosave.dirty() || this.hasUnsavedInput()) throw new Error('unsaved recipe text');
+    if (this.ownsBackup) this.clearBackup();
   }
 
   id(): string | null {
@@ -205,11 +209,15 @@ export class EditorStore {
   }
 
   private writeBackup(): void {
-    if (this._id && this.userId) this.backup.write(this._id, this.userId, this._recipe());
+    if (!this._id || !this.userId) return;
+    this.backup.write(this._id, this.userId, this._recipe());
+    this.ownsBackup = true;
   }
 
   private clearBackup(): void {
-    if (this._id && this.userId) this.backup.clear(this._id, this.userId);
+    if (!this._id || !this.userId) return;
+    this.backup.clear(this._id, this.userId);
+    this.ownsBackup = false;
   }
 
   /** Applies a change to the working copy and schedules an autosave. Ignored before load. */

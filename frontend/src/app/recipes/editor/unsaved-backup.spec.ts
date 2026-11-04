@@ -50,18 +50,6 @@ describe('UnsavedBackup', () => {
     expect(localStorage.getItem('ricettine.unsaved.r1')).toBeNull();
   });
 
-  it("clearAllFor removes every backup of that user and nothing else", () => {
-    backup.write('r1', 'u1', emptyInput());
-    backup.write('r2', 'u1', emptyInput());
-    backup.write('r3', 'u2', emptyInput());
-    localStorage.setItem('other.key', 'keep');
-    backup.clearAllFor('u1');
-    expect(localStorage.getItem('ricettine.unsaved.r1')).toBeNull();
-    expect(localStorage.getItem('ricettine.unsaved.r2')).toBeNull();
-    expect(backup.read('r3', 'u2')).not.toBeNull();
-    expect(localStorage.getItem('other.key')).toBe('keep');
-  });
-
   it('does nothing (and never throws) when storage is unavailable', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('quota', 'QuotaExceededError');
@@ -75,6 +63,5 @@ describe('UnsavedBackup', () => {
     expect(() => backup.write('r1', 'u1', emptyInput())).not.toThrow();
     expect(backup.read('r1', 'u1')).toBeNull();
     expect(() => backup.clear('r1', 'u1')).not.toThrow();
-    expect(() => backup.clearAllFor('u1')).not.toThrow();
   });
 });
