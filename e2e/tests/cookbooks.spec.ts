@@ -59,8 +59,10 @@ test('cookbooks: add own and others recipes, rename, remove entry, delete cookbo
   const pannaRow = pageA.locator('li.entry', { hasText: 'Panna cotta' });
   await expect(pannaRow).toBeVisible();
   await expect(pannaRow).toContainText(b.who.displayName);
-  await expect(pannaRow.getByRole('link')).toHaveCount(0);
-  await expect(tiramisuRow.getByRole('link', { name: 'Tiramisù' })).toHaveAttribute('href', /\/recipes\/[0-9a-f-]{36}\/edit$/);
+  // everyone's titles open the recipe through the cookbook link; only my own recipes also offer Edit
+  await expect(pannaRow.getByRole('link', { name: 'Panna cotta' })).toHaveAttribute('href', /\/c\/[A-Za-z0-9_-]+\/r\/[0-9a-f-]{36}$/);
+  await expect(pannaRow.getByRole('link', { name: /^Edit/ })).toHaveCount(0);
+  await expect(tiramisuRow.getByRole('link', { name: 'Edit Tiramisù' })).toHaveAttribute('href', /\/recipes\/[0-9a-f-]{36}\/edit$/);
 
   // rename
   await pageA.getByRole('button', { name: 'Edit', exact: true }).click();

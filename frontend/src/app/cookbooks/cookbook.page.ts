@@ -7,13 +7,15 @@ import { errorKey, toApiError } from '../core/api-error';
 import { openEditorSheet } from '../recipes/editor/editor-sheet';
 import { ConfirmDeleteCookbookDialog } from './confirm-delete-cookbook.dialog';
 import { CookbookApi } from './cookbook.api';
-import { Cookbook, CookbookInput } from './cookbook.model';
+import { Cookbook, CookbookInput, tokenFromShareUrl } from './cookbook.model';
+import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
+import { mediaUrl } from '../core/media';
 import { CookbookFormDialog } from './cookbook-form.dialog';
 
 /** One cookbook: its recipes, and (owner only) Edit and Delete. Every member can remove entries. */
 @Component({
   selector: 'app-cookbook-page',
-  imports: [RouterLink, TranslocoDirective],
+  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbooks.scss',
   template: `
@@ -36,6 +38,7 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
           <span class="badge" [attr.data-badge]="b.visibility">{{ t('cookbooks.visibility.' + b.visibility) }}</span>
         </div>
         @if (b.description) { <p class="desc">{{ b.description }}</p> }
+        <app-cookbook-share-panel [book]="b" (updated)="book.set($event)" />
         @if (actionError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
         @if (b.recipes.length === 0) {
           <p class="empty">{{ t('cookbooks.noRecipes') }}</p>
@@ -43,15 +46,19 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
           <ul class="entries">
             @for (r of b.recipes; track r.recipeId) {
               <li class="entry">
+                @if (mediaUrl(r.coverThumbUrl); as src) { <img class="thumb" [src]="src" alt="" loading="lazy" /> }
                 <div class="entry-body">
-                  @if (r.mine) {
-                    <a class="entry-title" [routerLink]="['/recipes', r.recipeId, 'edit']">{{ r.title }}</a>
+                  @if (token(b); as tok) {
+                    <a class="entry-title" [routerLink]="['/c', tok, 'r', r.recipeId]">{{ r.title }}</a>
                   } @else {
                     <span class="entry-title">{{ r.title }}</span>
                   }
                   <span class="entry-meta">{{ t('recipes.by', { name: r.author?.displayName ?? t('cookbooks.deletedUser') }) }}</span>
                   <span class="entry-meta">{{ t('cookbooks.addedBy', { name: r.addedBy?.displayName ?? t('cookbooks.deletedUser') }) }}</span>
                 </div>
+                @if (r.mine) {
+                  <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']" [attr.aria-label]="t('cookbooks.editRecipe', { title: r.title })">{{ t('cookbooks.edit') }}</a>
+                }
                 <button type="button" class="btn" [attr.aria-label]="t('cookbooks.removeAria', { title: r.title })"
                   (click)="removeEntry(b, r.recipeId)">{{ t('cookbooks.remove') }}</button>
               </li>
@@ -73,6 +80,8 @@ export class CookbookPage {
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   protected readonly book = signal<Cookbook | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly mediaUrl = mediaUrl;
+  protected readonly token = (b: Cookbook) => tokenFromShareUrl(b.shareUrl);
   protected readonly actionError = signal<string | null>(null);
 
   constructor() {

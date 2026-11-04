@@ -13,7 +13,7 @@ const entry = (over: Partial<CookbookEntry>): CookbookEntry => ({
 });
 const book = (over: Partial<Cookbook> = {}): Cookbook => ({
   id: 'c1', name: 'Desserts', description: 'Sweet', visibility: 'PRIVATE', role: 'OWNER', owner: person('ann'),
-  authors: [], shareUrl: null, cover: null, recipes: [entry({}), entry({ recipeId: 'r2', title: 'Panna cotta', mine: false, author: person('bob'), addedBy: null })],
+  authors: [], shareUrl: 'https://x.test/c/TOK', cover: null, recipes: [entry({}), entry({ recipeId: 'r2', title: 'Panna cotta', mine: false, author: person('bob'), addedBy: null })],
   updatedAt: '2026-11-04T10:00:00Z', ...over,
 });
 
@@ -36,19 +36,28 @@ const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLEl
 describe('CookbookPage', () => {
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
 
-  it('renders name, description, badges and entries; only own recipes link to the editor', async () => {
+  it('renders name, description, badges and entries; every title opens the recipe through the cookbook link, own recipes also have Edit', async () => {
     const { el } = await mount({ get: vi.fn().mockResolvedValue(book()) });
     expect(el.querySelector('h1')?.textContent).toContain('Desserts');
     expect(el.textContent).toContain('Sweet');
     expect(el.textContent).toContain(en.cookbooks.roleOwner);
     const items = Array.from(el.querySelectorAll('li.entry')) as HTMLElement[];
     expect(items).toHaveLength(2);
-    expect(items[0].querySelector('a')?.getAttribute('href')).toBe('/recipes/r1/edit');
+    expect(items[0].querySelector('a.entry-title')?.getAttribute('href')).toBe('/c/TOK/r/r1');
+    expect(items[0].querySelector('a[aria-label="Edit Tiramisu"]')?.getAttribute('href')).toBe('/recipes/r1/edit');
     expect(items[0].textContent).toContain('ANN');
-    expect(items[1].querySelector('a')).toBeNull();
+    expect(items[1].querySelector('a.entry-title')?.getAttribute('href')).toBe('/c/TOK/r/r2');
+    expect(items[1].querySelector('a[aria-label^="Edit"]')).toBeNull();
     expect(items[1].textContent).toContain('Panna cotta');
     expect(items[1].textContent).toContain('BOB');
     expect(items[1].textContent).toContain(en.cookbooks.deletedUser);
+  });
+
+  it('shows the thumbnail when there is one and the share link to every member', async () => {
+    const { el } = await mount({ get: vi.fn().mockResolvedValue(book({ role: 'AUTHOR', recipes: [entry({ coverThumbUrl: '/media/m/THUMB.jpg?c=TOK' })] })) });
+    expect(el.querySelector('li.entry img')?.getAttribute('src')).toBe('/media/m/THUMB.jpg?c=TOK');
+    expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/c/TOK');
+    expect(btn(el, en.cookbooks.resetLink)).toBeUndefined();
   });
 
   it('hides Edit and Delete cookbook for an AUTHOR but keeps Remove', async () => {

@@ -48,3 +48,5 @@ h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; lett
   .rp { grid-template-columns: 320px 1fr; gap: t.$space-6; }
   .ingredients { position: sticky; top: calc(#{t.$topbar-height} + #{t.$space-4}); max-height: calc(100dvh - #{t.$topbar-height} - #{t.$space-8}); overflow: auto; }
 }
+
+.back { @include t.touch-target; display: inline-flex; align-items: center; color: t.$accent; font-weight: 600; margin-bottom: t.$space-2; }

@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { Cookbook, CookbookEntry, CookbookInput, CookbookSummary, RecipeRef } from './cookbook.model';
+import { PublicRecipe } from '../recipes/recipe.model';
+import { Cookbook, CookbookEntry, CookbookInput, CookbookSummary, PublicCookbook, RecipeRef } from './cookbook.model';
 
 @Injectable({ providedIn: 'root' })
 export class CookbookApi {
@@ -32,6 +33,17 @@ export class CookbookApi {
   removeRecipe(id: string, recipeId: string): Promise<void> {
     return firstValueFrom(
       this.http.delete<void>(`/api/cookbooks/${encodeURIComponent(id)}/recipes/${encodeURIComponent(recipeId)}`),
+    );
+  }
+  resetLink(id: string): Promise<Cookbook> {
+    return firstValueFrom(this.http.post<Cookbook>(`/api/cookbooks/${encodeURIComponent(id)}/share-link/reset`, {}));
+  }
+  byToken(token: string): Promise<PublicCookbook> {
+    return firstValueFrom(this.http.get<PublicCookbook>(`/api/c/${encodeURIComponent(token)}`));
+  }
+  recipeByToken(token: string, recipeId: string): Promise<PublicRecipe> {
+    return firstValueFrom(
+      this.http.get<PublicRecipe>(`/api/c/${encodeURIComponent(token)}/recipes/${encodeURIComponent(recipeId)}`),
     );
   }
 }

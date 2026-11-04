@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { signal } from '@angular/core';
 import { AuthStore } from '../../core/auth.store';
 import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { RecipeApi } from '../recipe.api';
 import { PublicRecipe } from '../recipe.model';
 import { RecipeViewPage } from './recipe-view.page';
@@ -150,5 +151,39 @@ describe('RecipeViewPage', () => {
     TestBed.resetTestingModule();
     const user = await mount(vi.fn().mockResolvedValue(pub()), { username: 'x' });
     expect(has(user.el)).toBe(true);
+  });
+});
+
+describe('RecipeViewPage through a cookbook', () => {
+  async function mountVia(recipeByToken: unknown, byToken: unknown, me: unknown = { id: 'u' }) {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]), provideTestTransloco(),
+        { provide: RecipeApi, useValue: { byToken: vi.fn() } },
+        { provide: CookbookApi, useValue: { recipeByToken, byToken } },
+        { provide: AuthStore, useValue: { me: signal(me) } },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 't', recipeId: 'r1' }), data: { via: 'cookbook' } } } },
+      ],
+    });
+    const f = TestBed.createComponent(RecipeViewPage);
+    await settle(f);
+    return { el: f.nativeElement as HTMLElement };
+  }
+
+  it('loads by cookbook token and recipe id, links back to the cookbook and hides Add to cookbook', async () => {
+    const recipeByToken = vi.fn().mockResolvedValue(pub());
+    const { el } = await mountVia(recipeByToken, vi.fn().mockResolvedValue({ name: 'Desserts' }));
+    expect(recipeByToken).toHaveBeenCalledWith('t', 'r1');
+    expect(el.querySelector('h1')?.textContent).toContain('Lasagne');
+    const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Back to Desserts'));
+    expect(back?.getAttribute('href')).toBe('/c/t');
+    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === en.cookbooks.addToCookbook)).toBe(false);
+  });
+
+  it('still shows a Back link when the cookbook name cannot be loaded; 404 shows not found', async () => {
+    const { el } = await mountVia(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')), vi.fn().mockRejectedValue(http(404)));
+    expect(el.textContent).toContain(en.recipes.notFound);
+    const back = Array.from(el.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/c/t');
+    expect(back?.textContent?.trim()).toBe(en.cookbooks.back);
   });
 });
