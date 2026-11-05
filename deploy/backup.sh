@@ -41,7 +41,7 @@ cleanup() {
   local status=$? f
   if [ "$status" -ne 0 ]; then
     rm -f "$OUT/$DUMP.part" "$OUT/$MEDIA.part"
-    for f in "${files[@]}"; do rm -f "$OUT/$f"; done
+    for f in ${files[@]+"${files[@]}"}; do rm -f "$OUT/$f"; done
     echo "backup failed" >&2
   fi
   if [ -n "${BACKUP_S3_URI:-}" ]; then rm -rf "$OUT"; fi

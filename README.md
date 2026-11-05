@@ -72,7 +72,7 @@ docker compose -f compose.yaml -f compose.build.yaml up -d --build
 
 The scripts live in `deploy/`. Run them from the repo root (`deploy/backup.sh`), or copy them next to `compose.yaml` and run them there; they use the compose files and `.env` in the current directory and honour `COMPOSE_FILE`.
 
-`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). A failed run leaves no files behind. `RICETTINE_STORAGE_TYPE`, `BACKUP_S3_URI` and `BACKUP_DIR` are read from the environment or, if unset there, from `.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
+`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). A failed local run leaves no files behind; in S3 mode a failed run may leave a dump without its media partner, so use the newest complete pair. `RICETTINE_STORAGE_TYPE`, `BACKUP_S3_URI` and `BACKUP_DIR` are read from the environment or, if unset there, from `.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
 
 ```sh
 # nightly at 03:15

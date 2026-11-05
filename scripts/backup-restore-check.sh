@@ -10,14 +10,15 @@ BASE="http://localhost:8080"
 TIMEOUT="${SMOKE_TIMEOUT:-180}"
 export COMPOSE_FILE=compose.yaml:compose.build.yaml
 export COMPOSE_PROJECT_NAME="$PROJECT"
-unset RICETTINE_STORAGE_TYPE BACKUP_S3_URI || true
 
 BACKUPS="$(mktemp -d)"
+# set explicitly so a developer .env cannot redirect the drill (backup.sh only reads .env for unset variables)
+export BACKUP_S3_URI='' RICETTINE_STORAGE_TYPE=local BACKUP_DIR="$BACKUPS"
 JAR="$(mktemp)"
 BODY="$(mktemp)"
 cleanup() {
   docker compose down -v >/dev/null 2>&1 || true
-  rm -rf "$BACKUPS" "$JAR" "$BODY"
+  rm -rf "$BACKUPS" "$JAR" "$BODY" "$BODY.before"
 }
 trap cleanup EXIT
 fail() { echo "BACKUP-RESTORE FAIL: $*" >&2; docker compose logs --no-color --tail=40 app >&2 || true; exit 1; }
@@ -65,7 +66,7 @@ before="$(avatar_info)"
 [[ "$before" == "200 image/"* ]] || fail "avatar before backup: $before"
 
 echo "== backup"
-BACKUP_DIR="$BACKUPS" deploy/backup.sh
+"$BASH" deploy/backup.sh
 dump="$(find "$BACKUPS" -name 'ricettine-*.dump' | head -n1)"
 media="$(find "$BACKUPS" -name 'ricettine-*-media.tar.gz' | head -n1)"
 [ -s "$dump" ] || fail "no dump written"
@@ -78,7 +79,7 @@ wait_healthy
 [ "$(setup_required)" = true ] || fail "wiped stack: setupRequired is not true"
 
 echo "== restore"
-deploy/restore.sh "$dump" "$media"
+"$BASH" deploy/restore.sh "$dump" "$media"
 [ "$(setup_required)" = false ] || fail "after restore: setupRequired is not false"
 fresh_jar
 code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password":"correct-horse-battery"}')"
@@ -88,7 +89,7 @@ code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password
 echo "== failed restore must leave the data intact"
 size="$(wc -c <"$dump")"
 head -c $((size / 2)) "$dump" >"$BACKUPS/truncated.dump"
-if deploy/restore.sh "$BACKUPS/truncated.dump" "$media" >"$BACKUPS/failed-restore.log" 2>&1; then fail "restore of a truncated dump succeeded"; fi
+if "$BASH" deploy/restore.sh "$BACKUPS/truncated.dump" "$media" >"$BACKUPS/failed-restore.log" 2>&1; then fail "restore of a truncated dump succeeded"; fi
 grep -q 'restore failed: database unchanged' "$BACKUPS/failed-restore.log" || fail "failed restore printed no recovery message: $(tail -3 "$BACKUPS/failed-restore.log")"
 docker compose up -d --wait app
 wait_healthy
@@ -97,5 +98,14 @@ fresh_jar
 code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password":"correct-horse-battery"}')"
 [ "$code" = 200 ] || fail "login after failed restore returned $code: $(cat "$BODY")"
 [ "$(avatar_info)" = "$before" ] || fail "avatar differs after failed restore"
+
+echo "== failed backup leaves no files"
+docker compose stop db
+find "$BACKUPS" -type f | sort >"$BODY.before"
+if "$BASH" deploy/backup.sh >"$BACKUPS/failed-backup.log" 2>&1; then fail "backup succeeded with db stopped"; fi
+grep -q 'backup failed' "$BACKUPS/failed-backup.log" || fail "failed backup printed no message: $(tail -3 "$BACKUPS/failed-backup.log")"
+rm -f "$BACKUPS/failed-backup.log"
+find "$BACKUPS" -type f | sort | cmp -s - "$BODY.before" || fail "failed backup left files"
+rm -f "$BODY.before"
 
 echo "BACKUP-RESTORE OK"
