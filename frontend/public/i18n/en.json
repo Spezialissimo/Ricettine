@@ -17,6 +17,7 @@
     "login": "Log in",
     "invite": "Create account",
     "reset": "Reset password",
+    "home": "Home",
     "myRecipes": "My recipes",
     "newRecipe": "New recipe",
     "editRecipe": "Edit recipe",
@@ -30,6 +31,7 @@
     "users": "Users"
   },
   "nav": {
+    "home": "Home",
     "recipes": "My recipes",
     "cookbooks": "Cookbooks",
     "settings": "Settings",
@@ -155,6 +157,12 @@
     "submit": "Change password",
     "done": "Your password has been changed.",
     "goToLogin": "Go to log in"
+  },
+  "feed": {
+    "title": "Latest recipes",
+    "loading": "Loading recipes...",
+    "empty": "Nothing here yet. Published public recipes show up here.",
+    "more": "Load more"
   },
   "recipes": {
     "title": "My recipes",
@@ -296,6 +304,8 @@
     "visibility": "Visibility",
     "private": "Private",
     "public": "Public",
+    "privateHint": "Hidden from the home feed and your profile. Anyone with the link can still open it; reset the link to revoke it.",
+    "publicHint": "Listed on the home feed and your profile once published.",
     "ingredients": "Ingredients",
     "steps": "Steps",
     "notes": "Notes",

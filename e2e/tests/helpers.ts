@@ -29,10 +29,10 @@ export function newContext(browser: Browser, testInfo: TestInfo): Promise<Browse
   return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
 }
 
-/** "Landed on home": the My recipes heading and the user's display name in the shell. */
+/** "Landed on home": the feed at `/` and the user's display name in the shell. */
 export async function expectHome(page: Page, displayName: string) {
-  await expect(page).toHaveURL(/\/recipes$/);
-  await expect(page.getByRole('heading', { name: 'My recipes' })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'Latest recipes' })).toBeVisible();
   await expect(page.getByRole('banner').getByText(displayName, { exact: true })).toBeVisible();
 }
 
@@ -143,4 +143,44 @@ export async function publishRecipe(page: Page, data: NewRecipeData): Promise<{ 
   await expect(page.locator('[data-url]')).toBeVisible();
   const shareUrl = (await page.locator('[data-url]').innerText()).trim();
   return { editorUrl, shareUrl };
+}
+
+/**
+ * Creates, fills and publishes a recipe through the API as the logged-in user of `page` (no UI), and returns
+ * its id and share token. Cheap way to put many recipes into the feed.
+ */
+export async function apiPublishRecipe(
+  page: Page,
+  data: { title: string; visibility: 'PRIVATE' | 'PUBLIC' },
+): Promise<{ id: string; shareToken: string }> {
+  const cookies = await page.context().cookies();
+  const xsrf = cookies.find((c) => c.name === 'XSRF-TOKEN')?.value ?? '';
+  const headers = { 'X-XSRF-TOKEN': xsrf };
+  const created = await page.request.post('/api/recipes', { headers });
+  expect(created.ok()).toBe(true);
+  const { id, version } = await created.json();
+  const saved = await page.request.put(`/api/recipes/${id}`, {
+    headers,
+    data: {
+      version,
+      title: data.title,
+      portions: 1,
+      prepMinutes: null,
+      cookMinutes: null,
+      source: null,
+      notes: null,
+      visibility: data.visibility,
+      coverMediaId: null,
+      groups: [{ name: null, ingredients: [{ amount: null, unit: null, name: 'salt', note: null }] }],
+      steps: [{ text: 'Cook', photoMediaId: null }],
+    },
+  });
+  expect(saved.ok()).toBe(true);
+  const published = await page.request.post(`/api/recipes/${id}/publish`, {
+    headers,
+    data: { version: (await saved.json()).version },
+  });
+  expect(published.ok()).toBe(true);
+  const { shareUrl } = await published.json();
+  return { id, shareToken: new URL(shareUrl, 'http://x').pathname.split('/').pop()! };
 }

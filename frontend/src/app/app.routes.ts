@@ -9,6 +9,7 @@ import { UsersPage } from './admin/users.page';
 import { DeleteAccountPage } from './settings/delete-account.page';
 import { PasswordPage } from './settings/password.page';
 import { ProfilePage } from './settings/profile.page';
+import { FeedPage } from './feed/feed.page';
 import { MyRecipesPage } from './recipes/my-recipes.page';
 import { NewRecipePage } from './recipes/new-recipe.page';
 import { ShellComponent } from './shell/shell.component';
@@ -44,7 +45,7 @@ export const routes: Routes = [
         component: ShellComponent,
         canActivate: [authGuard],
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'recipes' },
+          { path: '', pathMatch: 'full', title: 'titles.home', component: FeedPage },
           { path: 'recipes', title: 'titles.myRecipes', component: MyRecipesPage, pathMatch: 'full' },
           { path: 'recipes/new', title: 'titles.newRecipe', component: NewRecipePage },
           {

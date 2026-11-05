@@ -8,12 +8,13 @@ test('responsive shell: the right navigation shows for the viewport', async ({ b
   if (testInfo.project.name === 'desktop') {
     await expect(main).toBeVisible();
     await expect(main.getByRole('link', { name: '+ New recipe' })).toBeVisible();
-    await expect(main.getByRole('link', { name: 'My recipes' })).toHaveAttribute('aria-current', 'page');
+    await expect(main.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(main.getByRole('link', { name: 'My recipes' })).not.toHaveAttribute('aria-current', 'page');
     await expect(main.getByRole('link', { name: 'Settings' })).not.toHaveAttribute('aria-current', 'page');
     await expect(bottom).toBeHidden();
   } else {
     await expect(bottom).toBeVisible();
-    await expect(bottom.getByRole('link', { name: 'My recipes' })).toHaveAttribute('aria-current', 'page');
+    await expect(bottom.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(main).toBeHidden();
     await expect(page.getByRole('link', { name: 'New recipe' })).toBeVisible();
   }
@@ -23,6 +24,7 @@ test('responsive shell: the right navigation shows for the viewport', async ({ b
 
 test('a new recipe opens the editor route and is listed as a draft', async ({ browser }, testInfo) => {
   const { page, context } = await newUserPage(browser, testInfo, 'draft');
+  await page.getByRole('link', { name: 'My recipes' }).click();
   await expect(page.getByText('You have no recipes yet.')).toBeVisible();
 
   const newLink =

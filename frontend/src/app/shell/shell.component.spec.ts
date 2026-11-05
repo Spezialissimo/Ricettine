@@ -59,6 +59,16 @@ describe('ShellComponent', () => {
     expect(el.querySelector('header button.logout')?.textContent).toContain('Log out');
   });
 
+  it('renders Home first in both navs and the logo links home', async () => {
+    const el = await navFor(false);
+    for (const nav of ['Main', 'Sections']) {
+      const first = el.querySelector(`nav[aria-label="${nav}"] a`) as HTMLAnchorElement;
+      expect(first.getAttribute('href'), nav).toBe('/');
+      expect(first.textContent, nav).toContain('Home');
+    }
+    expect(el.querySelector('header a.logo')?.getAttribute('href')).toBe('/');
+  });
+
   it('logs out to /login', async () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
