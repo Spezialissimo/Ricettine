@@ -14,9 +14,10 @@ unset RICETTINE_STORAGE_TYPE BACKUP_S3_URI || true
 
 BACKUPS="$(mktemp -d)"
 JAR="$(mktemp)"
+BODY="$(mktemp)"
 cleanup() {
   docker compose down -v >/dev/null 2>&1 || true
-  rm -rf "$BACKUPS" "$JAR"
+  rm -rf "$BACKUPS" "$JAR" "$BODY"
 }
 trap cleanup EXIT
 fail() { echo "BACKUP-RESTORE FAIL: $*" >&2; docker compose logs --no-color --tail=40 app >&2 || true; exit 1; }
@@ -31,7 +32,6 @@ wait_healthy() {
 xsrf() { awk '$6 == "XSRF-TOKEN" { t = $7 } END { print t }' "$JAR"; }
 fresh_jar() { : >"$JAR"; curl -fsS -o /dev/null -c "$JAR" "$BASE/api/setup/status"; [ -n "$(xsrf)" ] || fail "no XSRF-TOKEN cookie"; }
 # json_post <url> <json>: prints the HTTP status, body goes to $BODY
-BODY="$(mktemp)"
 json_post() {
   curl -sS -o "$BODY" -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST -H 'Content-Type: application/json' \
     -H "X-XSRF-TOKEN: $(xsrf)" -d "$2" "$1"
@@ -53,7 +53,16 @@ code="$(curl -sS -o "$BODY" -w '%{http_code}' -b "$JAR" -c "$JAR" -X PUT -H "X-X
 avatar="$(grep -o '"avatarUrl":"[^"]*"' "$BODY" | cut -d'"' -f4)"
 [ -n "$avatar" ] || fail "no avatarUrl in $(cat "$BODY")"
 case "$avatar" in http*) ;; *) avatar="$BASE$avatar" ;; esac
-[ "$(curl -sS -o /dev/null -w '%{http_code}' -b "$JAR" "$avatar")" = 200 ] || fail "avatar not served before backup"
+# avatar_info: "<status> <content-type> <sha256>" of the avatar download
+avatar_info() {
+  local out ct
+  out="$(mktemp)"
+  ct="$(curl -sS -o "$out" -w '%{http_code} %{content_type}' -b "$JAR" "$avatar")"
+  echo "$ct $(shasum -a 256 <"$out" | cut -d' ' -f1)"
+  rm -f "$out"
+}
+before="$(avatar_info)"
+[[ "$before" == "200 image/"* ]] || fail "avatar before backup: $before"
 
 echo "== backup"
 BACKUP_DIR="$BACKUPS" deploy/backup.sh
@@ -74,7 +83,19 @@ deploy/restore.sh "$dump" "$media"
 fresh_jar
 code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password":"correct-horse-battery"}')"
 [ "$code" = 200 ] || fail "login after restore returned $code: $(cat "$BODY")"
-[ "$(curl -sS -o /dev/null -w '%{http_code}' -b "$JAR" "$avatar")" = 200 ] || fail "avatar not served after restore"
-rm -f "$BODY"
+[ "$(avatar_info)" = "$before" ] || fail "avatar differs after restore: $(avatar_info) vs $before"
+
+echo "== failed restore must leave the data intact"
+size="$(wc -c <"$dump")"
+head -c $((size / 2)) "$dump" >"$BACKUPS/truncated.dump"
+if deploy/restore.sh "$BACKUPS/truncated.dump" "$media" >"$BACKUPS/failed-restore.log" 2>&1; then fail "restore of a truncated dump succeeded"; fi
+grep -q 'restore failed: database unchanged' "$BACKUPS/failed-restore.log" || fail "failed restore printed no recovery message: $(tail -3 "$BACKUPS/failed-restore.log")"
+docker compose up -d --wait app
+wait_healthy
+[ "$(setup_required)" = false ] || fail "after failed restore: setupRequired is not false"
+fresh_jar
+code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password":"correct-horse-battery"}')"
+[ "$code" = 200 ] || fail "login after failed restore returned $code: $(cat "$BODY")"
+[ "$(avatar_info)" = "$before" ] || fail "avatar differs after failed restore"
 
 echo "BACKUP-RESTORE OK"

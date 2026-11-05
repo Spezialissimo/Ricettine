@@ -14,11 +14,22 @@ MEDIA=""
 [ -s "$DUMP" ] || { echo "dump not found or empty: $1" >&2; exit 1; }
 [ -z "$MEDIA" ] || [ -s "$MEDIA" ] || { echo "media archive not found or empty: $2" >&2; exit 1; }
 
-docker compose up -d db
+on_error() {
+  echo "restore failed: database unchanged, app left stopped; start it with: docker compose up -d app" >&2
+}
+trap on_error ERR
+
+docker compose up -d --wait db
 docker compose stop app
-docker compose exec -T db pg_restore -U ricettine -d ricettine --clean --if-exists --no-owner <"$DUMP"
+# one transaction: a bad dump rolls back instead of leaving a half-dropped database
+docker compose exec -T db pg_restore -U ricettine -d ricettine --clean --if-exists --no-owner \
+  --single-transaction --exit-on-error <"$DUMP"
+trap - ERR
 if [ -n "$MEDIA" ]; then
-  docker compose run --rm --no-deps -T --entrypoint tar app -C /data -xzf - <"$MEDIA"
+  # replace, not merge: photos deleted after the backup must not come back
+  docker compose run --rm --no-deps -T --entrypoint sh app -c \
+    'find /data/media -mindepth 1 -delete 2>/dev/null; tar -C /data -xzf -' <"$MEDIA" \
+    || { echo "media restore failed: database was restored, media is incomplete; app left stopped" >&2; exit 1; }
 fi
 docker compose up -d app
 
