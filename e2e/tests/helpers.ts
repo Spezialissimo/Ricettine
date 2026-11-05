@@ -86,10 +86,12 @@ export async function newUserPage(browser: Browser, testInfo: TestInfo, tag: str
 
 export type NewRecipeData = {
   title: string;
-  /** Ingredient names (one group, no amounts). */
-  ingredients?: string[];
+  /** Ingredients (one group): a bare name, or a name with an amount and a unit (the unit's select value, e.g. 'cup'). */
+  ingredients?: Array<string | { name: string; amount?: string; unit?: string }>;
   /** Step texts. */
   steps?: string[];
+  /** Portions the recipe serves (a new recipe starts at 1). */
+  portions?: number;
 };
 
 /**
@@ -100,10 +102,20 @@ export async function createRecipe(page: Page, data: NewRecipeData): Promise<str
   await page.goto('/recipes/new');
   await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
   await page.getByLabel('Title').fill(data.title);
-  for (const [i, name] of (data.ingredients ?? []).entries()) {
+  if (data.portions !== undefined && data.portions > 1) {
+    await page.getByRole('button', { name: /^Serves/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'How many does it serve?' });
+    for (let i = 1; i < data.portions; i++) await dialog.getByRole('button', { name: 'More portions' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: `Serves ${data.portions}` })).toBeVisible();
+  }
+  for (const [i, entry] of (data.ingredients ?? []).entries()) {
+    const { name, amount, unit } = typeof entry === 'string' ? { name: entry, amount: undefined, unit: undefined } : entry;
     if (i === 0) await page.getByRole('button', { name: '+ Ingredient' }).click();
     else await page.getByRole('button', { name: '+ Ingredient' }).last().click();
     await page.getByLabel('Ingredient', { exact: true }).nth(i).fill(name);
+    if (amount) await page.getByLabel('Amount', { exact: true }).nth(i).fill(amount);
+    if (unit) await page.getByLabel('Unit', { exact: true }).nth(i).selectOption(unit);
   }
   for (const [i, text] of (data.steps ?? []).entries()) {
     await page.getByRole('button', { name: '+ Add step' }).or(page.getByRole('button', { name: '+ Next step' })).filter({ visible: true }).click();

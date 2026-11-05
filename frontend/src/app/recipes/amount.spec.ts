@@ -1,4 +1,4 @@
-import { formatAmount, parseAmount } from './amount';
+import { displayAmount, formatAmount, parseAmount, scaleAmount } from './amount';
 
 describe('parseAmount', () => {
   it.each([
@@ -28,5 +28,52 @@ describe('formatAmount', () => {
     expect(formatAmount(0.5)).toBe('0.5');
     expect(formatAmount(500)).toBe('500');
     expect(formatAmount(null)).toBe('');
+  });
+});
+
+describe('displayAmount', () => {
+  const sc = { scaled: true, locale: 'en' };
+  const raw = { scaled: false, locale: 'en' };
+  it.each([
+    [1 / 3, 'cup', '⅓'],
+    [333.33, 'g', '335'],
+    [1.5, 'tsp', '1½'],
+    [0.04, 'g', '0.1'],
+    [0.01, 'tsp', '⅛'],
+    [2.678, 'kg', '2.68'],
+    [22.4, 'piece', '22'],
+    [1_000_000 * 100, 'g', '100,000,000'],
+    [4 / 3, 'cup', '1⅓'],
+    [3, 'cup', '3'],
+    [2.96, 'tsp', '3'],
+    [7.25, 'g', '7.3'],
+    [42.4, 'ml', '42'],
+    [1234, 'ml', '1,230'],
+    [1.5, null, '1½'],
+  ] as const)('scaled %j %s -> %s', (n, unit, expected) => {
+    expect(displayAmount(n, unit, sc)).toBe(expected);
+  });
+  it.each([
+    [333, 'g', '333'],
+    [0.5, 'cup', '½'],
+    [0.3, 'cup', '0.3'],
+    [0.333, 'cup', '⅓'],
+    [2, 'piece', '2'],
+    [22.4, 'piece', '22.4'],
+  ] as const)('unscaled %j %s -> %s', (n, unit, expected) => {
+    expect(displayAmount(n, unit, raw)).toBe(expected);
+  });
+  it('null is empty', () => {
+    expect(displayAmount(null, 'g', sc)).toBe('');
+  });
+  it('uses the locale for decimals', () => {
+    expect(displayAmount(2.678, 'kg', { scaled: true, locale: 'it' })).toBe('2,68');
+  });
+});
+
+describe('scaleAmount', () => {
+  it('scales and keeps null', () => {
+    expect(scaleAmount(200, 4, 6)).toBe(300);
+    expect(scaleAmount(null, 4, 6)).toBeNull();
   });
 });

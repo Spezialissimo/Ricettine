@@ -19,6 +19,8 @@ main { max-width: t.$content-max-width; margin: 0 auto; padding: t.$space-4; }
 
 .cover { display: block; width: 100%; max-height: 420px; object-fit: cover; border-radius: t.$radius; background: t.$bg; }
 .author { display: flex; align-items: center; gap: 10px; margin: t.$space-3 0 t.$space-1; color: t.$muted; }
+.author { flex-wrap: wrap; }
+.keep { margin-left: auto; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: t.$border; flex: none; }
 h1 { margin: 0 0 t.$space-2; font-size: 1.8rem; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 t.$space-4; padding: 0; list-style: none; }
@@ -30,6 +32,8 @@ a.chip { text-decoration: underline; }
 h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
 .ingredients { background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; padding: t.$space-4; align-self: start; }
 .ingredients:focus-visible { outline: 2px solid t.$accent; outline-offset: 2px; }
+.ing-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: t.$space-2; margin-bottom: t.$space-2; }
+.ing-head h2 { margin: 0; }
 .grp { margin: t.$space-3 0 t.$space-1; font-size: 1rem; font-weight: 600; }
 .ingr-list { list-style: none; margin: 0; padding: 0; }
 .ingr-list li { padding: 4px 0; }
