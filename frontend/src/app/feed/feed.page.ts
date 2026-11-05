@@ -25,7 +25,7 @@ import { FeedItem } from './feed.model';
         } @else {
           <ul class="grid feed">
             @for (r of list; track r.id) {
-              <li>
+              <li class="card">
                 <a class="recipe" [routerLink]="['/r', r.shareToken]">
                   @if (thumb(r); as src) {
                     <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title })" />
@@ -34,10 +34,10 @@ import { FeedItem } from './feed.model';
                   }
                   <span class="body">
                     <span class="name">{{ r.title }}</span>
-                    <span class="meta">{{ t('recipes.by', { name: r.author.displayName }) }}</span>
                     <span class="meta">{{ r.publishedAt | appDate }}</span>
                   </span>
                 </a>
+                <a class="author" [routerLink]="['/u', r.author.username]">{{ t('recipes.by', { name: r.author.displayName }) }}</a>
               </li>
             }
           </ul>

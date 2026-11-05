@@ -35,6 +35,7 @@
     "recipes": "My recipes",
     "cookbooks": "Cookbooks",
     "settings": "Settings",
+    "profile": "Your profile",
     "admin": "Admin",
     "newRecipe": "+ New recipe",
     "newRecipeShort": "New recipe",
@@ -137,6 +138,7 @@
     "recipe_conflict": "This recipe was changed somewhere else. Reload it to see the latest version.",
     "recipe_incomplete": "A published recipe needs a title, at least one ingredient and at least one step.",
     "recipe_not_found": "This recipe could not be found.",
+    "user_not_found": "This person could not be found.",
     "reset_invalid": "This password reset link is invalid, used or expired.",
     "setup_already_done": "Setup has already been completed.",
     "unsupported_image": "Unsupported image. Use a JPEG, PNG or WebP file.",
@@ -163,6 +165,14 @@
     "loading": "Loading recipes...",
     "empty": "Nothing here yet. Published public recipes show up here.",
     "more": "Load more"
+  },
+  "profile": {
+    "recipes": "Recipes",
+    "cookbooks": "Cookbooks",
+    "noRecipes": "No public recipes yet.",
+    "loading": "Loading profile...",
+    "notFound": "This person is not here",
+    "notFoundBody": "The profile does not exist."
   },
   "recipes": {
     "title": "My recipes",

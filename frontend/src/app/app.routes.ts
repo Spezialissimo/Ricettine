@@ -46,6 +46,11 @@ export const routes: Routes = [
         canActivate: [authGuard],
         children: [
           { path: '', pathMatch: 'full', title: 'titles.home', component: FeedPage },
+          {
+            path: 'u/:username',
+            title: 'titles.profile',
+            loadComponent: () => import('./profile/profile.page').then((m) => m.UserProfilePage),
+          },
           { path: 'recipes', title: 'titles.myRecipes', component: MyRecipesPage, pathMatch: 'full' },
           { path: 'recipes/new', title: 'titles.newRecipe', component: NewRecipePage },
           {

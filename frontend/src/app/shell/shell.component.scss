@@ -58,6 +58,10 @@
   gap: t.$space-2;
   min-width: 0;
   .who {
+    @include t.touch-target;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
     color: t.$muted;
     font-size: 0.9rem;
     overflow: hidden;

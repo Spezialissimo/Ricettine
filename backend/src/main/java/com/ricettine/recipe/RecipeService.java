@@ -15,6 +15,7 @@ import com.ricettine.recipe.RecipeDtos.GroupDto;
 import com.ricettine.recipe.RecipeDtos.IngredientDto;
 import com.ricettine.recipe.RecipeDtos.PhotoDto;
 import com.ricettine.recipe.RecipeDtos.AuthorDto;
+import com.ricettine.recipe.RecipeDtos.ProfileRecipe;
 import com.ricettine.recipe.RecipeDtos.PublicRecipe;
 import com.ricettine.recipe.RecipeDtos.PublicStepDto;
 import com.ricettine.recipe.RecipeDtos.RecipeDto;
@@ -71,6 +72,24 @@ public class RecipeService {
 					r.getCoverMediaId() == null ? null : media.url(r.getCoverMediaId(), ImageVariant.THUMB),
 					r.getUpdatedAt()))
 			.toList();
+	}
+
+	/**
+	 * A person's recipes for their profile. Without {@code includeUnlisted} only the listing rule applies (PUBLISHED
+	 * and PUBLIC); with it, every recipe of the author. Thumbs carry the share grant only for published recipes.
+	 */
+	@Transactional(readOnly = true)
+	public List<ProfileRecipe> listedByAuthor(UUID authorId, boolean includeUnlisted) {
+		List<Recipe> rows = includeUnlisted ? recipes.findByAuthorIdOrderByUpdatedAtDescIdAsc(authorId)
+				: recipes.listedByAuthor(authorId);
+		return rows.stream().map(r -> {
+			boolean published = r.getStatus() == RecipeStatus.PUBLISHED;
+			String token = published ? r.getShareToken() : null;
+			String cover = r.getCoverMediaId() == null ? null : media.url(r.getCoverMediaId(), ImageVariant.THUMB)
+					+ (token == null ? "" : "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8));
+			return new ProfileRecipe(r.getId(), r.getTitle(), r.getStatus().name(), r.getVisibility().name(), token,
+					cover, r.getPublishedAt(), r.getUpdatedAt());
+		}).toList();
 	}
 
 	/** Cheap author-scoped check, run before an upload is processed so a non-owner can't use processing slots. */

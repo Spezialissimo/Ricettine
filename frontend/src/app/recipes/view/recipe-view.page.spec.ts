@@ -181,6 +181,15 @@ describe('RecipeViewPage', () => {
     expect(edit?.textContent?.trim()).toBe(en.recipes.edit);
   });
 
+  it('links the author to their profile only when logged in', async () => {
+    const anon = await mount(vi.fn().mockResolvedValue(pub()), null);
+    expect(anon.el.querySelector('.author a[href="/u/giulia"]')).toBeNull();
+    expect(anon.el.querySelector('.author')!.textContent).toContain('by Giulia');
+    TestBed.resetTestingModule();
+    const user = await mount(vi.fn().mockResolvedValue(pub()), { username: 'x' });
+    expect(user.el.querySelector('.author a[href="/u/giulia"]')?.textContent).toContain('by Giulia');
+  });
+
   it('offers Add to cookbook to a logged-in visitor only', async () => {
     const text = en.cookbooks.addToCookbook;
     const has = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === text);

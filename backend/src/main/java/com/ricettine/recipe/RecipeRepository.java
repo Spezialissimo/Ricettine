@@ -26,6 +26,14 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
 
 	List<Recipe> findByAuthorIdOrderByUpdatedAtDescIdAsc(UUID authorId);
 
+	/** The listing rule: only PUBLISHED + PUBLIC recipes, newest publication first. */
+	@Query("""
+		select r from Recipe r
+		where r.authorId = :authorId and r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED
+			and r.visibility = com.ricettine.recipe.Visibility.PUBLIC and r.publishedAt is not null
+		order by r.publishedAt desc, r.id desc""")
+	List<Recipe> listedByAuthor(UUID authorId);
+
 	@Query("select r.shareToken from Recipe r where r.id = :id and r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED")
 	Optional<String> publishedShareToken(UUID id);
 }

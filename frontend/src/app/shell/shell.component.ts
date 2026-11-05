@@ -35,7 +35,9 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
           </nav>
           <a class="new-icon" routerLink="/recipes/new" [attr.aria-label]="t('nav.newRecipeShort')">+</a>
           <div class="user">
-            @if (auth.me(); as me) { <span class="who">{{ me.displayName }}</span> }
+            @if (auth.me(); as me) {
+              <a class="who" [routerLink]="['/u', me.username]" [attr.aria-label]="t('nav.profile')">{{ me.displayName }}</a>
+            }
             <button type="button" class="logout" (click)="logout()">{{ t('auth.logout') }}</button>
           </div>
         </div>

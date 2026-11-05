@@ -22,6 +22,23 @@ public interface CookbookRepository extends JpaRepository<Cookbook, UUID> {
 			String coverMediaId) {
 	}
 
+	/**
+	 * Cookbooks the user owns (not co-authored). Without {@code includeUnlisted} only PUBLIC ones, and the count
+	 * covers only PUBLISHED recipes, which is all a cookbook link shows.
+	 */
+	@Query("""
+		select new com.ricettine.cookbook.CookbookRepository$SummaryRow(c.id, c.name, str(c.visibility), c.ownerId,
+			count(case when e.recipeId is not null
+				and (:includeUnlisted = true or r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED) then 1 end),
+			c.updatedAt, c.coverMediaId)
+		from Cookbook c left join CookbookEntry e on e.cookbookId = c.id
+			left join Recipe r on r.id = e.recipeId
+		where c.ownerId = :ownerId
+			and (:includeUnlisted = true or c.visibility = com.ricettine.recipe.Visibility.PUBLIC)
+		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId
+		order by c.updatedAt desc, c.id asc""")
+	List<SummaryRow> ownedSummaries(UUID ownerId, boolean includeUnlisted);
+
 	/** Cookbooks the user owns or co-authors, with the entry count computed in SQL. */
 	@Query("""
 		select new com.ricettine.cookbook.CookbookRepository$SummaryRow(c.id, c.name, str(c.visibility), c.ownerId,

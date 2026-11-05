@@ -35,6 +35,7 @@ export const KNOWN_ERROR_CODES: readonly string[] = [
   'recipe_conflict',
   'recipe_incomplete',
   'recipe_not_found',
+  'user_not_found',
   'reset_invalid',
   'setup_already_done',
   'unsupported_image',
