@@ -1,4 +1,6 @@
 # AWS origin overlay: Caddy behind CloudFront (see infra/). Values come from `.env` next to this file.
+# Required: RICETTINE_DOMAIN (public domain, for links), ORIGIN_DOMAIN (origin.<domain>), ORIGIN_SECRET (alphanumeric).
+# Optional: RICETTINE_STORAGE_TYPE, RICETTINE_STORAGE_S3_BUCKET, RICETTINE_STORAGE_S3_REGION, RICETTINE_DATA_DIR.
 #   docker compose -f compose.yaml -f compose.aws.yaml up -d
 services:
   caddy:

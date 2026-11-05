@@ -48,7 +48,7 @@ RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.h
 
 (or put `RICETTINE_DOMAIN` in `.env`). Caddy terminates TLS, redirects HTTP to HTTPS, sets HSTS, and the app is no longer published on `:8080`; invite and reset links use `https://<domain>`.
 
-Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them.
+Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
 
 If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, and disable access logs for the same reason.
 

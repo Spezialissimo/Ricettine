@@ -23,8 +23,6 @@ cleanup() {
     rm -rf "$DATA_DIR" || true
   fi
 }
-trap cleanup EXIT
-
 fail() {
   echo "HTTPS SMOKE FAIL: $*" >&2
   dc logs --no-color --tail=40 app caddy >&2 || true
@@ -64,6 +62,18 @@ first_429() {
     [ "$code" != 403 ] || fail "request $i was rejected with 403"
   done
   echo 0
+}
+
+# With the app down Caddy logs a 502 error; that log must not carry the request URI (tokens) or headers.
+check_error_log() { # extra curl args...
+  local token2 code logs
+  dc stop app >/dev/null
+  token2="$(openssl rand -hex 24)"
+  code="$(post_status "https://localhost/api/password-resets/$token2" "$RESET_BODY" "$@")"
+  [ "$code" = 502 ] || [ "$code" = 503 ] || fail "app stopped: expected 502/503, got $code"
+  logs="$(dc logs --no-color caddy 2>&1)"
+  [[ "$logs" != *"$token2"* ]] || fail "caddy error log contains a request token"
+  [[ "$logs" != *'"uri"'* ]] || fail "caddy error log contains a request uri"
 }
 
 # ---------------------------------------------------------------- round 1: self-host HTTPS
@@ -111,6 +121,7 @@ token="$(openssl rand -hex 24)"
 post_status "https://localhost/api/password-resets/$token" "$RESET_BODY" >/dev/null
 logs="$(dc logs --no-color caddy 2>&1)"
 [[ "$logs" != *"$token"* ]] || fail "caddy logs contain a request token"
+check_error_log
 echo "round 1 ok"
 
 # ---------------------------------------------------------------- round 2: AWS origin
@@ -155,6 +166,7 @@ token="$(openssl rand -hex 24)"
 post_status "https://localhost/api/password-resets/$token" "$RESET_BODY" -H "$SECRET_H" -H "CloudFront-Viewer-Address: 203.0.113.99:1" >/dev/null
 logs="$(dc logs --no-color caddy 2>&1)"
 [[ "$logs" != *"$token"* ]] || fail "caddy logs contain a request token"
+check_error_log -H "$SECRET_H" -H "CloudFront-Viewer-Address: 203.0.113.98:1"
 echo "round 2 ok"
 
 echo "HTTPS SMOKE OK"

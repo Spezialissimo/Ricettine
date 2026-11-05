@@ -1,3 +1,15 @@
+# Caddy's default error log (e.g. a 502 while the app restarts) would include the request URI and headers:
+# tokens in paths, and cookies. Drop both fields from every log line.
+{
+	log {
+		format filter {
+			wrap console
+			request>uri delete
+			request>headers delete
+		}
+	}
+}
+
 # HTTPS for self-hosting. Caddy gets and renews a certificate for the domain by itself.
 # No `log` directive on purpose: invite, reset and share tokens are in URL paths.
 # Caddy replaces any client-sent X-Forwarded-For with the peer address, which the app uses for rate limits.
