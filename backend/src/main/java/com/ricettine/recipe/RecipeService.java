@@ -100,6 +100,17 @@ public class RecipeService {
 		}
 	}
 
+	/** Most media rows (orphans included) one recipe may hold; checked before an upload is decoded or stored. */
+	static final int MAX_PHOTOS = 150;
+
+	/** Run before an upload is processed: a recipe already at the cap answers 409 {@code too_many_photos}. */
+	@Transactional(readOnly = true)
+	public void requirePhotoRoom(UUID id) {
+		if (mediaRows.countByRecipeId(id) >= MAX_PHOTOS) {
+			throw new ApiException(HttpStatus.CONFLICT, "too_many_photos");
+		}
+	}
+
 	/**
 	 * Registers an already processed photo for the author's recipe. The recipe is share-locked so a concurrent
 	 * delete either sees this photo (and deletes it) or has already removed the recipe (404). The photo is not

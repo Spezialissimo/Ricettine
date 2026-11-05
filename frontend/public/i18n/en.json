@@ -104,6 +104,8 @@
   "errors": {
     "bad_credentials": "Wrong email or password.",
     "bad_request": "The request could not be understood.",
+    "too_many_attempts": "Too many attempts. Please wait a few minutes and try again.",
+    "too_many_photos": "This recipe has too many photos. Remove some before adding more.",
     "busy": "The server is busy right now. Please try again in a moment.",
     "conflict": "This was changed somewhere else. Reload to see the latest version.",
     "field": {

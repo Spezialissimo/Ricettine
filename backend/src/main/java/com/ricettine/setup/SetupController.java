@@ -4,6 +4,7 @@ import com.ricettine.account.AccountDtos.MeDto;
 import com.ricettine.account.MeMapper;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.auth.AuthSessions;
+import com.ricettine.common.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -21,8 +22,10 @@ public class SetupController {
 	private final SetupService setup;
 	private final AuthSessions authSessions;
 	private final MeMapper me;
+	private final RateLimits limits;
 
-	public SetupController(SetupService setup, AuthSessions authSessions, MeMapper me) {
+	public SetupController(SetupService setup, AuthSessions authSessions, MeMapper me, RateLimits limits) {
+		this.limits = limits;
 		this.me = me;
 		this.setup = setup;
 		this.authSessions = authSessions;
@@ -37,6 +40,7 @@ public class SetupController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public MeDto createAdmin(@Valid @RequestBody NewAccountRequest req, HttpServletRequest request,
 			HttpServletResponse response) {
+		limits.anonymousAuth(request.getRemoteAddr());
 		var admin = setup.createAdmin(req);
 		authSessions.login(admin, request, response);
 		return me.toDto(admin);

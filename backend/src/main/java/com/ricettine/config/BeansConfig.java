@@ -2,6 +2,8 @@ package com.ricettine.config;
 
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import java.time.Clock;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.util.HashMap;
@@ -16,6 +18,7 @@ import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 
 @Configuration
+@EnableConfigurationProperties(LimitsConfig.class)
 public class BeansConfig {
 
 	/**
@@ -30,6 +33,11 @@ public class BeansConfig {
 		serializer.setSameSite("Lax");
 		serializer.setCookieMaxAge((int) java.time.Duration.ofDays(30).toSeconds());
 		return serializer;
+	}
+
+	@Bean
+	Clock clock() {
+		return Clock.systemUTC();
 	}
 
 	/** How long a request waits for a hashing slot before it gets 503 {@code busy}. */
