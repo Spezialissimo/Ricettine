@@ -6,6 +6,7 @@ import com.ricettine.account.AccountDtos.PasswordRequest;
 import com.ricettine.account.AccountDtos.ProfilePatch;
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -28,8 +29,10 @@ public class MeController {
 	private final AccountService accounts;
 	private final CurrentUser currentUser;
 	private final MeMapper mapper;
+	private final RateLimits limits;
 
-	public MeController(AccountService accounts, CurrentUser currentUser, MeMapper mapper) {
+	public MeController(AccountService accounts, CurrentUser currentUser, MeMapper mapper, RateLimits limits) {
+		this.limits = limits;
 		this.accounts = accounts;
 		this.currentUser = currentUser;
 		this.mapper = mapper;
@@ -50,6 +53,7 @@ public class MeController {
 
 	@PutMapping("/api/me/avatar")
 	public MeDto putAvatar(@RequestPart("file") MultipartFile file) {
+		limits.upload(currentUser.id());
 		byte[] bytes;
 		try {
 			bytes = file.getBytes();

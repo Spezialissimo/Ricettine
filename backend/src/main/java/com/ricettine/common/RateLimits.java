@@ -18,6 +18,9 @@ public class RateLimits {
 	/** Bound on tracked keys per limiter, so key churn cannot exhaust memory. */
 	static final int MAX_KEYS = 50_000;
 
+	/** Longest limiter key kept; longer ones (a huge login email) are cut so they cannot become huge map keys. */
+	static final int MAX_KEY_LENGTH = 320;
+
 	private final RateLimiter loginAccount;
 	private final RateLimiter loginIp;
 	private final RateLimiter anonymousAuth;
@@ -38,24 +41,24 @@ public class RateLimits {
 
 	/** Rejects when either the account (normalized email, known or not) or the IP is at its failure limit. */
 	public void checkLogin(String ip, String email) {
-		Optional<Duration> a = loginAccount.check(email);
-		Optional<Duration> i = loginIp.check(ip);
+		Optional<Duration> a = loginAccount.check(bound(email));
+		Optional<Duration> i = loginIp.check(bound(ip));
 		if (a.isPresent() || i.isPresent()) {
 			throw tooMany(a.orElse(Duration.ZERO).compareTo(i.orElse(Duration.ZERO)) >= 0 ? a.get() : i.get());
 		}
 	}
 
 	public void loginFailed(String ip, String email) {
-		loginAccount.hit(email);
-		loginIp.hit(ip);
+		loginAccount.hit(bound(email));
+		loginIp.hit(bound(ip));
 	}
 
 	public void loginSucceeded(String email) {
-		loginAccount.clear(email);
+		loginAccount.clear(bound(email));
 	}
 
 	public void anonymousAuth(String ip) {
-		checkThenHit(anonymousAuth, ip);
+		checkThenHit(anonymousAuth, bound(ip));
 	}
 
 	public void upload(UUID userId) {
@@ -64,6 +67,10 @@ public class RateLimits {
 
 	public void profile(UUID userId) {
 		checkThenHit(profile, userId.toString());
+	}
+
+	private static String bound(String key) {
+		return key.length() > MAX_KEY_LENGTH ? key.substring(0, MAX_KEY_LENGTH) : key;
 	}
 
 	private static void checkThenHit(RateLimiter limiter, String key) {

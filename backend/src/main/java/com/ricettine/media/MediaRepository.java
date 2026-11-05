@@ -24,6 +24,9 @@ public interface MediaRepository extends JpaRepository<Media, String> {
 	@Query("select m.id from Media m where m.kind = com.ricettine.media.MediaKind.RECIPE and m.recipeId = :recipeId")
 	List<String> recipeMediaIds(UUID recipeId);
 
+	/** Every media row attached to the recipe, orphans included. */
+	long countByRecipeId(UUID recipeId);
+
 	/** Which of {@code ids} are RECIPE media attached to {@code recipeId}. */
 	@Query("select m.id from Media m where m.kind = com.ricettine.media.MediaKind.RECIPE and m.recipeId = :recipeId "
 			+ "and m.id in :ids")

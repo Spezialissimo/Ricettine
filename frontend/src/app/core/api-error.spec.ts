@@ -33,6 +33,12 @@ describe('api-error', () => {
     expect(errorKey(toApiError(e))).toBe('errors.busy');
   });
 
+  it('maps too_many_attempts and too_many_photos', () => {
+    for (const code of ['too_many_attempts', 'too_many_photos']) {
+      expect(errorKey({ status: 429, code })).toBe(`errors.${code}`);
+    }
+  });
+
   it('errorKey falls back to errors.unknown', () => {
     expect(errorKey({ status: 409, code: 'email_taken' })).toBe('errors.email_taken');
     expect(errorKey({ status: 418, code: 'teapot' })).toBe('errors.unknown');
