@@ -1,0 +1,20 @@
+# Origin behind CloudFront. Port 443 is open to the CloudFront prefix list, which other people's
+# distributions share, so every request must carry the secret header CloudFront adds.
+# No `log` directive on purpose: invite, reset and share tokens are in URL paths.
+{$ORIGIN_DOMAIN} {
+	encode zstd gzip
+
+	@secret header X-Origin-Verify {$ORIGIN_SECRET}
+	# CloudFront-Viewer-Address is "ip:port" (IPv4 or [bracket-free] IPv6); the greedy match drops only the last :port
+	@viewer header_regexp viewer CloudFront-Viewer-Address ^(.+):[0-9]+$
+
+	handle @secret {
+		handle @viewer {
+			reverse_proxy app:8080 {
+				header_up X-Forwarded-For {http.regexp.viewer.1}
+				header_up -X-Origin-Verify
+			}
+		}
+	}
+	respond 403
+}

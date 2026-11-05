@@ -1,0 +1,43 @@
+# AWS origin overlay: Caddy behind CloudFront (see infra/). Values come from `.env` next to this file.
+#   docker compose -f compose.yaml -f compose.aws.yaml up -d
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ORIGIN_DOMAIN: ${ORIGIN_DOMAIN:?Set ORIGIN_DOMAIN}
+      ORIGIN_SECRET: ${ORIGIN_SECRET:?Set ORIGIN_SECRET}
+    volumes:
+      - ./deploy/aws/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  app:
+    ports: !reset []
+    environment:
+      RICETTINE_BASE_URL: https://${RICETTINE_DOMAIN:?Set RICETTINE_DOMAIN}
+      RICETTINE_STORAGE_TYPE: ${RICETTINE_STORAGE_TYPE:-local}
+      RICETTINE_STORAGE_S3_BUCKET: ${RICETTINE_STORAGE_S3_BUCKET:-}
+      RICETTINE_STORAGE_S3_REGION: ${RICETTINE_STORAGE_S3_REGION:-}
+
+# data on the instance's EBS volume, kept in a known place (backups read it)
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${RICETTINE_DATA_DIR:-/srv/ricettine}/db
+  caddy-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${RICETTINE_DATA_DIR:-/srv/ricettine}/caddy
+  caddy-config:
