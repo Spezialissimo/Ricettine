@@ -12,7 +12,8 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 16MB
-      # Uploads stream straight to disk (never held in heap) in a dedicated directory, created at startup.
+      # Uploads stream straight to disk (never held in heap) in a dedicated directory; UploadDirectoryConfig creates it
+      # at startup and re-creates it before each multipart request.
       file-size-threshold: 0
       location: ${java.io.tmpdir}/ricettine-uploads
   jpa:

@@ -35,8 +35,28 @@ class UploadTooLargeIT extends IntegrationTest {
 		return c.substring(name.length() + 1, c.indexOf(';'));
 	}
 
+	@org.springframework.beans.factory.annotation.Value("${spring.servlet.multipart.location}")
+	String uploadDir;
+
+	@Test
+	void uploadStillWorksAfterTheSpoolDirectoryIsDeleted() throws Exception {
+		java.nio.file.Path dir = java.nio.file.Path.of(uploadDir);
+		try (var files = java.nio.file.Files.walk(dir)) {
+			files.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+		}
+		assertThat(dir).doesNotExist();
+		String status = upload(new byte[1000]);
+		// reaches the avatar handler (not a container error): 415 "unsupported image", not 5xx/413
+		assertThat(status).doesNotStartWith("5").doesNotStartWith("413").doesNotStartWith("403");
+		assertThat(dir).isDirectory();
+	}
+
 	@Test
 	void oversizeUploadIs413() {
+		assertThat(upload(new byte[16 * 1024 * 1024 + 1])).startsWith("413").contains("file_too_large");
+	}
+
+	private String upload(byte[] bytes) {
 		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 		accounts.create(new NewAccountRequest("big@x.com", Sessions.PASSWORD, "bigupload", "Big"), false);
 		RestClient client = RestClient.builder().baseUrl("http://localhost:" + port).build();
@@ -50,7 +70,7 @@ class UploadTooLargeIT extends IntegrationTest {
 		String session = cookieValue(loginCookies, "SESSION");
 
 		LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-		body.add("file", new ByteArrayResource(new byte[16 * 1024 * 1024 + 1]) {
+		body.add("file", new ByteArrayResource(bytes) {
 			@Override
 			public String getFilename() {
 				return "big.jpg";
@@ -60,6 +80,6 @@ class UploadTooLargeIT extends IntegrationTest {
 			.header(HttpHeaders.COOKIE, "SESSION=" + session + "; XSRF-TOKEN=" + xsrf).header("X-XSRF-TOKEN", xsrf)
 			.body(body)
 			.exchange((req, res) -> res.getStatusCode().value() + " " + new String(res.getBody().readAllBytes()));
-		assertThat(result).startsWith("413").contains("file_too_large");
+		return result;
 	}
 }
