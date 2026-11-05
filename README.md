@@ -68,6 +68,17 @@ Database migrations run automatically on startup. Your data stays in the `db-dat
 docker compose -f compose.yaml -f compose.build.yaml up -d --build
 ```
 
+## Backups
+
+`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). Run it from the directory that holds `compose.yaml`; it honours `COMPOSE_FILE` and reads `./.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
+
+```sh
+# nightly at 03:15
+15 3 * * * cd /opt/ricettine && ./backup.sh >>backup.log 2>&1
+```
+
+To restore into a running stack, replacing its data: `./restore.sh backups/ricettine-<UTC>.dump [backups/ricettine-<UTC>-media.tar.gz]`. `scripts/backup-restore-check.sh` runs a full backup, wipe and restore drill.
+
 ## Development
 
 - Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
