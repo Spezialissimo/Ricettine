@@ -47,8 +47,10 @@ public class MeController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void changePassword(@Valid @RequestBody ChangePasswordRequest body, HttpServletRequest req) {
 		HttpSession session = req.getSession(false);
-		accounts.changePassword(currentUser.id(), body.currentPassword(), body.newPassword(),
-				session == null ? null : session.getId());
+		User user = currentUser.require();
+		// Same limiters as login: a hijacked session must not brute-force the current password.
+		limits.reserveLogin(req.getRemoteAddr(), Identity.normalizeEmail(user.getEmail())).run(() -> accounts.changePassword(user.getId(),
+				body.currentPassword(), body.newPassword(), session == null ? null : session.getId()));
 	}
 
 	@PutMapping("/api/me/avatar")
@@ -73,7 +75,8 @@ public class MeController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void deleteAccount(@Valid @RequestBody PasswordRequest body, HttpServletRequest req) {
 		User user = currentUser.require();
-		accounts.requirePassword(user, body.password());
+		limits.reserveLogin(req.getRemoteAddr(), Identity.normalizeEmail(user.getEmail()))
+			.run(() -> accounts.requirePassword(user, body.password()));
 		accounts.delete(user.getId());
 		// The account and its sessions are gone: don't let the response re-save the request's session.
 		SecurityContextHolder.clearContext();

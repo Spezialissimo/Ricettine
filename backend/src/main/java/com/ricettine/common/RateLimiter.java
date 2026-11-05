@@ -53,6 +53,33 @@ public final class RateLimiter {
 		}
 	}
 
+	/** Atomically counts a hit unless {@code key} is at its limit; then returns the wait and does not count. */
+	public Optional<Duration> tryHit(String key) {
+		synchronized (windows) {
+			long now = clock.millis();
+			Window w = windows.get(key);
+			if (w == null || expired(w, now)) {
+				w = new Window(now);
+				windows.put(key, w);
+			}
+			if (w.count >= limit) {
+				return Optional.of(Duration.ofMillis(w.startMillis + windowMillis - now));
+			}
+			w.count++;
+			return Optional.empty();
+		}
+	}
+
+	/** Gives back one hit in the current window; never goes below zero. */
+	public void refund(String key) {
+		synchronized (windows) {
+			Window w = windows.get(key);
+			if (w != null && !expired(w, clock.millis()) && w.count > 0) {
+				w.count--;
+			}
+		}
+	}
+
 	public void hit(String key) {
 		synchronized (windows) {
 			long now = clock.millis();

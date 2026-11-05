@@ -39,45 +39,114 @@ public class RateLimits {
 		return new RateLimiter(e.getLimit(), e.getWindow(), MAX_KEYS, clock);
 	}
 
-	/** Rejects when either the account (normalized email, known or not) or the IP is at its failure limit. */
-	public void checkLogin(String ip, String email) {
-		Optional<Duration> a = loginAccount.check(bound(email));
-		Optional<Duration> i = loginIp.check(bound(ip));
+	/**
+	 * Reserves one login attempt on both the account (normalized email, known or not) and the IP limiter before any
+	 * hash, so parallel requests cannot all pass the check. Rejects with 429 when either is at its limit. The
+	 * reservation is the failure count: keep it on bad credentials ({@link LoginAttempt#failed}), give it back
+	 * otherwise.
+	 */
+	public LoginAttempt reserveLogin(String ip, String email) {
+		String accountKey = bound(email);
+		String ipKey = bound(ipKey(ip));
+		Optional<Duration> a = loginAccount.tryHit(accountKey);
+		Optional<Duration> i = loginIp.tryHit(ipKey);
 		if (a.isPresent() || i.isPresent()) {
+			if (a.isEmpty()) {
+				loginAccount.refund(accountKey);
+			}
+			if (i.isEmpty()) {
+				loginIp.refund(ipKey);
+			}
 			throw tooMany(a.orElse(Duration.ZERO).compareTo(i.orElse(Duration.ZERO)) >= 0 ? a.get() : i.get());
+		}
+		return new LoginAttempt(accountKey, ipKey);
+	}
+
+	public final class LoginAttempt {
+
+		private final String accountKey;
+		private final String ipKey;
+
+		private LoginAttempt(String accountKey, String ipKey) {
+			this.accountKey = accountKey;
+			this.ipKey = ipKey;
+		}
+
+		/** Correct password: the account counter resets and the IP is not charged. */
+		public void succeeded() {
+			loginAccount.clear(accountKey);
+			loginIp.refund(ipKey);
+		}
+
+		/** Wrong password: both reservations stay as the failure count. */
+		public void failed() {
+		}
+
+		/** The check did not complete (e.g. 503 busy): both reservations are given back. */
+		public void abandoned() {
+			loginAccount.refund(accountKey);
+			loginIp.refund(ipKey);
+		}
+
+		/** Runs a password check: bad credentials keep the reservation, success clears it, anything else refunds. */
+		public void run(Runnable passwordCheck) {
+			try {
+				passwordCheck.run();
+			}
+			catch (ApiException e) {
+				if ("bad_credentials".equals(e.getCode())) {
+					failed();
+				}
+				else {
+					abandoned();
+				}
+				throw e;
+			}
+			catch (RuntimeException e) {
+				abandoned();
+				throw e;
+			}
+			succeeded();
 		}
 	}
 
-	public void loginFailed(String ip, String email) {
-		loginAccount.hit(bound(email));
-		loginIp.hit(bound(ip));
-	}
-
-	public void loginSucceeded(String email) {
-		loginAccount.clear(bound(email));
-	}
-
 	public void anonymousAuth(String ip) {
-		checkThenHit(anonymousAuth, bound(ip));
+		hitOrReject(anonymousAuth, bound(ipKey(ip)));
 	}
 
 	public void upload(UUID userId) {
-		checkThenHit(uploads, userId.toString());
+		hitOrReject(uploads, userId.toString());
 	}
 
 	public void profile(UUID userId) {
-		checkThenHit(profile, userId.toString());
+		hitOrReject(profile, userId.toString());
+	}
+
+	/** IPv6 clients are keyed by their /64 (one subscriber holds a whole /64); IPv4 and unparsable values as is. */
+	static String ipKey(String ip) {
+		if (ip == null || ip.indexOf(':') < 0 || !ip.matches("[0-9a-fA-F:.]+")) {
+			return ip;
+		}
+		try {
+			byte[] b = java.net.InetAddress.getByName(ip).getAddress();
+			if (b.length != 16) {
+				return ip;
+			}
+			return java.util.HexFormat.of().formatHex(b, 0, 8) + "::/64";
+		}
+		catch (java.net.UnknownHostException e) {
+			return ip;
+		}
 	}
 
 	private static String bound(String key) {
 		return key.length() > MAX_KEY_LENGTH ? key.substring(0, MAX_KEY_LENGTH) : key;
 	}
 
-	private static void checkThenHit(RateLimiter limiter, String key) {
-		limiter.check(key).ifPresent(d -> {
+	private static void hitOrReject(RateLimiter limiter, String key) {
+		limiter.tryHit(key).ifPresent(d -> {
 			throw tooMany(d);
 		});
-		limiter.hit(key);
 	}
 
 	private static ApiException tooMany(Duration retryAfter) {

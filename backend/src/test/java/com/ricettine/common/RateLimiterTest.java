@@ -83,4 +83,49 @@ class RateLimiterTest {
 		}
 		assertThat(l.count("k")).isEqualTo(8000);
 	}
+
+	@Test
+	void tryHitIsAtomicUnderConcurrency() throws Exception {
+		RateLimiter l = new RateLimiter(10, Duration.ofMinutes(15), 100, clock);
+		var pool = java.util.concurrent.Executors.newFixedThreadPool(32);
+		var start = new java.util.concurrent.CountDownLatch(1);
+		List<java.util.concurrent.Future<Boolean>> results = new ArrayList<>();
+		for (int i = 0; i < 32; i++) {
+			results.add(pool.submit(() -> {
+				start.await();
+				return l.tryHit("k").isEmpty();
+			}));
+		}
+		start.countDown();
+		int allowed = 0;
+		for (var f : results) {
+			if (f.get()) {
+				allowed++;
+			}
+		}
+		pool.shutdown();
+		assertThat(allowed).isEqualTo(10);
+		assertThat(l.count("k")).isEqualTo(10);
+	}
+
+	@Test
+	void tryHitAtLimitReportsWaitAndDoesNotCount() {
+		RateLimiter l = new RateLimiter(1, Duration.ofMinutes(15), 100, clock);
+		assertThat(l.tryHit("k")).isEmpty();
+		assertThat(l.tryHit("k")).isPresent();
+		assertThat(l.count("k")).isEqualTo(1);
+	}
+
+	@Test
+	void refundNeverGoesBelowZero() {
+		RateLimiter l = new RateLimiter(3, Duration.ofMinutes(15), 100, clock);
+		l.refund("missing");
+		assertThat(l.count("missing")).isZero();
+		l.hit("k");
+		l.refund("k");
+		l.refund("k");
+		assertThat(l.count("k")).isZero();
+		assertThat(l.tryHit("k")).isEmpty();
+		assertThat(l.count("k")).isEqualTo(1);
+	}
 }
