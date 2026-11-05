@@ -1,12 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, inject, signal } from '@angular/core';
-import { Title } from '@angular/platform-browser';
+import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { openEditorSheet } from '../editor/editor-sheet';
 import { AuthStore } from '../../core/auth.store';
+import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
 import { formatAmount } from '../amount';
@@ -56,7 +56,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           </div>
         } @else if (recipe(); as r) {
           @if (viaCookbook) {
-            <a class="back" [routerLink]="['/c', token]">{{ cookbookName() ? t('cookbooks.backTo', { name: cookbookName() }) : t('cookbooks.back') }}</a>
+            <a class="back" [routerLink]="['/c', token]">{{ r.cookbookName ? t('cookbooks.backTo', { name: r.cookbookName }) : t('cookbooks.back') }}</a>
           }
           @if (cover(r); as src) {
             <!-- decorative here: the title is the h1 right below; the cover is the page's main image (LCP) -->
@@ -144,7 +144,7 @@ export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 export class RecipeViewPage {
   private readonly api = inject(RecipeApi);
   private readonly cookbooks = inject(CookbookApi);
-  private readonly title = inject(Title);
+  private readonly title = inject(PageTitle);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
@@ -155,7 +155,6 @@ export class RecipeViewPage {
   protected readonly token = this.snapshot.paramMap.get('token') ?? '';
   private readonly recipeId = this.snapshot.paramMap.get('recipeId') ?? '';
   protected readonly loginNext = this.viaCookbook ? `/c/${this.token}/r/${this.recipeId}` : `/r/${this.token}`;
-  protected readonly cookbookName = signal<string | null>(null);
   protected readonly recipe = signal<PublicRecipe | null>(null);
   protected readonly notFound = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -164,8 +163,6 @@ export class RecipeViewPage {
   protected readonly amount = formatAmount;
 
   constructor() {
-    const previous = this.title.getTitle();
-    inject(DestroyRef).onDestroy(() => this.title.setTitle(previous));
     void this.load();
   }
 
@@ -173,13 +170,9 @@ export class RecipeViewPage {
     this.error.set(null);
     this.notFound.set(false);
     try {
-      if (this.viaCookbook) {
-        // the name only labels the Back link: never let its failure hide the recipe
-        void this.cookbooks.byToken(this.token).then((b) => this.cookbookName.set(b.name), () => undefined);
-      }
       const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
       this.recipe.set(r);
-      if (r.title) this.title.setTitle(r.title);
+      if (r.title) this.title.set(r.title);
     } catch (e) {
       const err = toApiError(e);
       if (err.status === 404) this.notFound.set(true);

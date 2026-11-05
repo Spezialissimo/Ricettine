@@ -38,7 +38,8 @@ public final class RecipeDtos {
 	public record PublicRecipe(String title, AuthorDto author, int portions, Integer prepMinutes,
 			Integer cookMinutes, String source, String notes, PhotoDto cover, List<GroupDto> groups,
 			List<PublicStepDto> steps, Instant publishedAt, boolean viewerIsAuthor,
-			@JsonInclude(JsonInclude.Include.NON_NULL) UUID recipeId) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) UUID recipeId,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String cookbookName) {
 	}
 
 	public record StepInput(String text, String photoMediaId) {

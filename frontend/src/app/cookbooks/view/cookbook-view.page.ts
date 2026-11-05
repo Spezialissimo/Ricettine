@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { Title } from '@angular/platform-browser';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKey, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
+import { PageTitle } from '../../core/page-title';
 import { mediaUrl } from '../../core/media';
 import { CookbookApi } from '../cookbook.api';
 import { PublicCookbook } from '../cookbook.model';
@@ -79,7 +79,7 @@ import { PublicCookbook } from '../cookbook.model';
 })
 export class CookbookViewPage {
   private readonly api = inject(CookbookApi);
-  private readonly title = inject(Title);
+  private readonly title = inject(PageTitle);
   protected readonly auth = inject(AuthStore);
   protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
   protected readonly book = signal<PublicCookbook | null>(null);
@@ -87,8 +87,6 @@ export class CookbookViewPage {
   protected readonly error = signal<string | null>(null);
 
   constructor() {
-    const previous = this.title.getTitle();
-    inject(DestroyRef).onDestroy(() => this.title.setTitle(previous));
     void this.load();
   }
 
@@ -98,7 +96,7 @@ export class CookbookViewPage {
     try {
       const b = await this.api.byToken(this.token);
       this.book.set(b);
-      this.title.setTitle(b.name);
+      this.title.set(b.name);
     } catch (e) {
       const err = toApiError(e);
       if (err.status === 404) this.notFound.set(true);

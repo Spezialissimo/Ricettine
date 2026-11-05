@@ -70,7 +70,7 @@ describe('RecipeViewPage', () => {
     expect(cover.getAttribute('loading')).toBe('eager');
     expect(cover.getAttribute('fetchpriority')).toBe('high');
     expect(el.textContent).toContain('Rest it');
-    expect(TestBed.inject(Title).getTitle()).toBe('Lasagne');
+    expect(TestBed.inject(Title).getTitle()).toBe('Lasagne · Ricettine');
   });
 
   it('is accessible: hidden chip emoji, explicit list roles, group headings, focusable ingredients box', async () => {
@@ -155,12 +155,14 @@ describe('RecipeViewPage', () => {
 });
 
 describe('RecipeViewPage through a cookbook', () => {
-  async function mountVia(recipeByToken: unknown, byToken: unknown, me: unknown = { id: 'u' }) {
+  const cookbookByToken = vi.fn();
+  async function mountVia(recipeByToken: unknown, me: unknown = { id: 'u' }) {
+    cookbookByToken.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]), provideTestTransloco(),
         { provide: RecipeApi, useValue: { byToken: vi.fn() } },
-        { provide: CookbookApi, useValue: { recipeByToken, byToken } },
+        { provide: CookbookApi, useValue: { recipeByToken, byToken: cookbookByToken } },
         { provide: AuthStore, useValue: { me: signal(me) } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 't', recipeId: 'r1' }), data: { via: 'cookbook' } } } },
       ],
@@ -171,17 +173,19 @@ describe('RecipeViewPage through a cookbook', () => {
   }
 
   it('loads by cookbook token and recipe id, links back to the cookbook and hides Add to cookbook', async () => {
-    const recipeByToken = vi.fn().mockResolvedValue(pub());
-    const { el } = await mountVia(recipeByToken, vi.fn().mockResolvedValue({ name: 'Desserts' }));
+    const recipeByToken = vi.fn().mockResolvedValue(pub({ cookbookName: 'Desserts' }));
+    const { el } = await mountVia(recipeByToken);
+    expect(recipeByToken).toHaveBeenCalledTimes(1);
     expect(recipeByToken).toHaveBeenCalledWith('t', 'r1');
+    expect(cookbookByToken).not.toHaveBeenCalled();
     expect(el.querySelector('h1')?.textContent).toContain('Lasagne');
     const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Back to Desserts'));
     expect(back?.getAttribute('href')).toBe('/c/t');
     expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === en.cookbooks.addToCookbook)).toBe(false);
   });
 
-  it('still shows a Back link when the cookbook name cannot be loaded; 404 shows not found', async () => {
-    const { el } = await mountVia(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')), vi.fn().mockRejectedValue(http(404)));
+  it('on 404 shows not found with a generic Back link', async () => {
+    const { el } = await mountVia(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')));
     expect(el.textContent).toContain(en.recipes.notFound);
     const back = Array.from(el.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/c/t');
     expect(back?.textContent?.trim()).toBe(en.cookbooks.back);

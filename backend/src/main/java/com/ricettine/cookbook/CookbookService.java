@@ -248,7 +248,7 @@ public class CookbookService {
 		if (!entries.existsById(new CookbookEntry.Key(c.getId(), rid))) {
 			throw new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found");
 		}
-		return recipes.publishedPublicView(rid, query(c.getShareToken()), viewerId);
+		return recipes.publishedPublicView(rid, query(c.getShareToken()), viewerId, c.getName());
 	}
 
 	private Cookbook byToken(String token) {

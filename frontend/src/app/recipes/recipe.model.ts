@@ -97,4 +97,6 @@ export type PublicRecipe = {
   publishedAt: string;
   viewerIsAuthor: boolean;
   recipeId?: string;
+  /** Present only when opened through a cookbook link (GET /api/c/{token}/recipes/{id}). */
+  cookbookName?: string;
 };

@@ -155,18 +155,18 @@ public class RecipeService {
 	public PublicRecipe publicByToken(String token, UUID viewerId) {
 		Recipe r = recipes.findByShareTokenAndStatus(token, RecipeStatus.PUBLISHED)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
-		return publicView(r, "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8), viewerId);
+		return publicView(r, "?s=" + URLEncoder.encode(token, StandardCharsets.UTF_8), viewerId, null);
 	}
 
-	/** Reader view of a PUBLISHED recipe reached through a cookbook; the caller has checked the entry. */
+	/** Reader view of a PUBLISHED recipe reached through a cookbook (whose name labels the Back link); the caller has checked the entry. */
 	@Transactional(readOnly = true)
-	public PublicRecipe publishedPublicView(UUID id, String photoQuery, UUID viewerId) {
+	public PublicRecipe publishedPublicView(UUID id, String photoQuery, UUID viewerId, String cookbookName) {
 		Recipe r = recipes.findById(id).filter(x -> x.getStatus() == RecipeStatus.PUBLISHED)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
-		return publicView(r, photoQuery, viewerId);
+		return publicView(r, photoQuery, viewerId, cookbookName);
 	}
 
-	private PublicRecipe publicView(Recipe r, String s, UUID viewerId) {
+	private PublicRecipe publicView(Recipe r, String s, UUID viewerId, String cookbookName) {
 		User a = users.findById(r.getAuthorId())
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
 		AuthorDto author = new AuthorDto(a.getUsername(), a.getDisplayName(),
@@ -176,7 +176,7 @@ public class RecipeService {
 		boolean viewerIsAuthor = viewerId != null && viewerId.equals(r.getAuthorId());
 		return new PublicRecipe(r.getTitle(), author, r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(),
 				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), s), groups(r), steps, r.getPublishedAt(),
-				viewerIsAuthor, viewerIsAuthor ? r.getId() : null);
+				viewerIsAuthor, viewerIsAuthor ? r.getId() : null, cookbookName);
 	}
 
 	/**

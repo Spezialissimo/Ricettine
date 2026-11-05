@@ -1,10 +1,10 @@
-import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
+import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 
 type Invite = { id: string; createdAt: string; expiresAt: string };
@@ -12,7 +12,7 @@ type Created = { id: string; url: string; expiresAt: string };
 
 @Component({
   selector: 'app-invites-page',
-  imports: [TranslocoDirective, CopyLinkComponent, DatePipe, RouterLink, RouterLinkActive],
+  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe, RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../settings/settings-page.scss',
   template: `
@@ -37,7 +37,7 @@ type Created = { id: string; url: string; expiresAt: string };
         <ul class="list">
           @for (i of invites(); track i.id) {
             <li [attr.data-invite]="i.id">
-              <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | date: 'medium') }) }}</span>
+              <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') }) }}</span>
               <button type="button" class="btn" (click)="revoke(i.id)">{{ t('admin.revoke') }}</button>
             </li>
           }
