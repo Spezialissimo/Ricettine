@@ -63,6 +63,6 @@ public final class BoundedPasswordEncoder implements PasswordEncoder {
 	}
 
 	private static ApiException busy() {
-		return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "busy");
+		return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "busy").retryAfter(Duration.ofSeconds(10));
 	}
 }

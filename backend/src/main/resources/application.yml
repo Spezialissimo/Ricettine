@@ -43,6 +43,13 @@ ricettine:
     # Recipe photos uploaded but never saved into a recipe are deleted once older than orphan-min-age.
     orphan-cleanup-interval: PT1H
     orphan-min-age: PT24H
+  limits:
+    # count per fixed window, in memory per instance. Override e.g. RICETTINE_LIMITS_LOGINIP_LIMIT=100.
+    login-account: { limit: 10, window: PT15M }
+    login-ip: { limit: 30, window: PT15M }
+    anonymous-auth: { limit: 30, window: PT15M }
+    uploads: { limit: 60, window: PT10M }
+    profile: { limit: 120, window: PT1M }
   security:
     # argon2 needs ~16 MB per hash; more concurrent hashes wait (up to 10 s, then 503 busy).
     max-concurrent-hashes: 4
