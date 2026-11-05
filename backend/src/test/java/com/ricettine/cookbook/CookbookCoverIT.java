@@ -90,7 +90,7 @@ class CookbookCoverIT extends IntegrationTest {
 		for (String url : new String[] { thumb, display }) {
 			for (Cookie member : new Cookie[] { owner, author }) {
 				mvc.perform(get(url).cookie(member)).andExpect(status().isOk())
-					.andExpect(header().string("Cache-Control", "private, max-age=3600"));
+					.andExpect(header().string("Cache-Control", "private, no-cache"));
 			}
 			mvc.perform(get(url).cookie(stranger)).andExpect(status().isNotFound());
 			mvc.perform(get(url)).andExpect(status().isNotFound());
@@ -176,5 +176,17 @@ class CookbookCoverIT extends IntegrationTest {
 			.andExpect(jsonPath("$.code").value("unsupported_image"));
 		assertThat(blobExists(id)).isTrue();
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isEqualTo(1);
+	}
+
+	@Test
+	void removedCoAuthorLosesTheCoverAtOnce() throws Exception {
+		String thumb = setCover(owner).get("cover").get("thumbUrl").asText();
+		String etag = mvc.perform(get(thumb).cookie(author)).andExpect(status().isOk())
+			.andExpect(header().string("Cache-Control", "private, no-cache")).andReturn().getResponse()
+			.getHeader("ETag");
+		mvc.perform(get(thumb).cookie(author).header("If-None-Match", etag)).andExpect(status().isNotModified());
+		jdbc.update("delete from cookbook_author where cookbook_id = ?::uuid", cb);
+		mvc.perform(get(thumb).cookie(author).header("If-None-Match", etag)).andExpect(status().isNotFound());
+		mvc.perform(get(thumb).cookie(author)).andExpect(status().isNotFound());
 	}
 }

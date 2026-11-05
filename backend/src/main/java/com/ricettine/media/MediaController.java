@@ -58,9 +58,30 @@ public class MediaController {
 		if (cache == null) {
 			throw new ApiException(HttpStatus.NOT_FOUND, "not_found");
 		}
+		// Blobs are immutable per media id (a new upload is a new id), so the id and variant identify the bytes.
+		// The access check above has already passed, so a revoked grant never gets a 304.
+		String etag = "\"" + mediaId + "." + v.name().toLowerCase(Locale.ROOT) + "\"";
+		if (matches(request.getHeader("If-None-Match"), etag)) {
+			return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).header("Cache-Control", cache).build();
+		}
 		byte[] data = media.load(mediaId, v).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "not_found"));
 		return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+				.eTag(etag)
 				.header("Cache-Control", cache)
 				.body(data);
+	}
+
+	/** True when an If-None-Match list contains {@code etag} (weak comparison, or {@code *}). */
+	private static boolean matches(String header, String etag) {
+		if (header == null) {
+			return false;
+		}
+		for (String candidate : header.split(",")) {
+			String c = candidate.trim();
+			if (c.equals("*") || (c.startsWith("W/") ? c.substring(2) : c).equals(etag)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }
