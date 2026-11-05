@@ -45,9 +45,8 @@ class UploadTooLargeIT extends IntegrationTest {
 			files.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
 		}
 		assertThat(dir).doesNotExist();
-		String status = upload(new byte[1000]);
-		// reaches the avatar handler (not a container error): 415 "unsupported image", not 5xx/413
-		assertThat(status).doesNotStartWith("5").doesNotStartWith("413").doesNotStartWith("403");
+		String result = upload(TestImages.plainJpeg(50, 50));
+		assertThat(result).as(result).startsWith("2");
 		assertThat(dir).isDirectory();
 	}
 
@@ -73,7 +72,7 @@ class UploadTooLargeIT extends IntegrationTest {
 		body.add("file", new ByteArrayResource(bytes) {
 			@Override
 			public String getFilename() {
-				return "big.jpg";
+				return "photo.jpg";
 			}
 		});
 		String result = client.put().uri("/api/me/avatar").contentType(MediaType.MULTIPART_FORM_DATA)
