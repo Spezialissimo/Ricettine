@@ -35,6 +35,23 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | `RICETTINE_SECURITY_MAX_CONCURRENT_HASHES` | `4` | Password hashes (login, sign-up, password change) computed at once; each needs ~16 MB. Extra requests wait up to 10 s, then get "busy, try again". |
 | `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=75` | JVM options. The default sizes the heap to 75% of the container memory limit. |
 
+## HTTPS
+
+To serve the app on your own domain with a certificate from Let's Encrypt:
+
+1. Point a DNS A record for the domain at the server and open ports 80 and 443 (443/udp for HTTP/3).
+2. Run one command:
+
+```sh
+RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.https.yaml up -d
+```
+
+(or put `RICETTINE_DOMAIN` in `.env`). Caddy terminates TLS, redirects HTTP to HTTPS, sets HSTS, and the app is no longer published on `:8080`; invite and reset links use `https://<domain>`.
+
+Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
+
+If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, and disable access logs for the same reason.
+
 ## Upgrading
 
 Images are published by CI to `ghcr.io/spezialissimo/ricettine` on every push to `main` (`latest`, `sha-...`) and on `v*` tags (semver), for amd64 and arm64. To upgrade:
@@ -56,6 +73,7 @@ docker compose -f compose.yaml -f compose.build.yaml up -d --build
 - Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
 - Frontend: `cd frontend && npm ci && npx ng serve` (proxies `/api` to `localhost:8080`).
 - Multi-arch check: `scripts/multiarch-check.sh` (builds amd64 + arm64, smoke-tests both; amd64 runs under QEMU on an arm64 host).
+- HTTPS smoke test: `scripts/https-smoke.sh` (needs ports 80 and 443 free; checks both Caddy overlays). Lint: `scripts/infra-check.sh`.
 - Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`).
 
 ## Tests

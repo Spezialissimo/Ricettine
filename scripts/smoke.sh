@@ -19,9 +19,10 @@ fail() { echo "SMOKE FAIL: $*" >&2; docker compose logs --tail=50 app >&2 || tru
 
 # compose.yaml alone must be image-only and pull the published image
 plain="$(docker compose -f compose.yaml config)"
-echo "$plain" | grep -q '^ *build:' && fail "compose.yaml has a build: key"
+[[ "$plain" != *$'\n'*" build:"* ]] || fail "compose.yaml has a build: key"
 [ "$(docker compose -f compose.yaml config --volumes | sort | tr '\n' ' ')" = 'app-data db-data ' ] || fail "compose.yaml volumes are not app-data, db-data"
-docker compose -f compose.yaml config --images | grep -qx 'ghcr.io/spezialissimo/ricettine:latest' \
+images="$(docker compose -f compose.yaml config --images)"
+[[ $'\n'"$images"$'\n' == *$'\nghcr.io/spezialissimo/ricettine:latest\n'* ]] \
   || fail "compose.yaml does not use ghcr.io/spezialissimo/ricettine:latest"
 
 # a cached postgres image may lack the requested platform; fetch it explicitly
@@ -41,7 +42,7 @@ status="$(curl -fsS "$BASE/api/setup/status")"
 curl -fsS "$BASE/r/anything" | grep -q '<app-root' || fail "/r/anything is not index HTML"
 
 heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxRAMPercentage || true)"
-echo "$heap" | grep -q '= 75' || fail "JVM MaxRAMPercentage is not 75: $heap"
+[[ "$heap" == *"= 75"* ]] || fail "JVM MaxRAMPercentage is not 75: $heap"
 
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
