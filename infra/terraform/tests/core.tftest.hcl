@@ -63,6 +63,55 @@ override_resource {
   }
 }
 
+# The certificate's validation options are only known after apply; give the mock one so the records exist at plan.
+override_resource {
+  target          = aws_acm_certificate.main
+  override_during = plan
+  values = {
+    arn = "arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+    domain_validation_options = [
+      {
+        domain_name           = "recipes.example.com"
+        resource_record_name  = "_abc.recipes.example.com."
+        resource_record_type  = "CNAME"
+        resource_record_value = "_def.acm-validations.aws."
+      }
+    ]
+  }
+}
+
+override_resource {
+  target          = aws_cloudfront_cache_policy.media
+  override_during = plan
+  values = {
+    id = "33333333-3333-3333-3333-333333333333"
+  }
+}
+
+override_resource {
+  target          = aws_cloudfront_origin_request_policy.app
+  override_during = plan
+  values = {
+    id = "44444444-4444-4444-4444-444444444444"
+  }
+}
+
+override_resource {
+  target          = aws_route53_zone.main
+  override_during = plan
+  values = {
+    zone_id = "Z0123456789ABCDEFGHIJ"
+  }
+}
+
+override_resource {
+  target          = aws_cloudfront_distribution.main
+  override_during = plan
+  values = {
+    domain_name = "d111111abcdef8.cloudfront.net"
+  }
+}
+
 variables {
   domain_name = "recipes.example.com"
   alert_email = "owner@example.com"
