@@ -45,6 +45,12 @@ resource "aws_iam_role_policy" "instance" {
         Resource = "${local.backups_bucket_arn}/db/*"
       },
       {
+        Sid      = "BackupFailureAlert"
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = aws_sns_topic.alerts.arn
+      },
+      {
         Sid      = "ReadOwnSecrets"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters"]

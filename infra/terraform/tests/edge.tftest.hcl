@@ -110,6 +110,14 @@ override_resource {
   }
 }
 
+override_resource {
+  target          = aws_sns_topic.alerts
+  override_during = plan
+  values = {
+    arn = "arn:aws:sns:eu-west-1:123456789012:ricettine-alerts"
+  }
+}
+
 variables {
   domain_name = "recipes.example.com"
   alert_email = "owner@example.com"

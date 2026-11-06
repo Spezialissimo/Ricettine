@@ -2,6 +2,7 @@
 Description=Ricettine database backup to S3
 Requires=docker.service
 After=docker.service ricettine.service
+OnFailure=ricettine-backup-failed.service
 
 [Service]
 Type=oneshot

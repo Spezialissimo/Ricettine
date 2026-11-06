@@ -57,5 +57,5 @@ variable "alert_email" {
 variable "monthly_budget_usd" {
   description = "Monthly spend limit that triggers the budget alerts, in USD."
   type        = number
-  default     = 10
+  default     = 25
 }

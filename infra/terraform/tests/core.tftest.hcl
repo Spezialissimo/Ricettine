@@ -112,6 +112,14 @@ override_resource {
   }
 }
 
+override_resource {
+  target          = aws_sns_topic.alerts
+  override_during = plan
+  values = {
+    arn = "arn:aws:sns:eu-west-1:123456789012:ricettine-alerts"
+  }
+}
+
 variables {
   domain_name = "recipes.example.com"
   alert_email = "owner@example.com"
@@ -371,8 +379,9 @@ run "secrets_live_in_ssm_securestrings" {
 run "budget_alarm" {
   command = plan
 
-  variables {
-    monthly_budget_usd = 25
+  assert {
+    condition     = var.monthly_budget_usd == 25
+    error_message = "the budget default is 25 USD"
   }
 
   assert {
@@ -392,11 +401,11 @@ run "budget_alarm" {
 
   assert {
     condition = alltrue([
-      anytrue([for n in aws_budgets_budget.monthly.notification : n.threshold == 80 && n.notification_type == "ACTUAL"]),
+      anytrue([for n in aws_budgets_budget.monthly.notification : n.threshold == 100 && n.notification_type == "ACTUAL"]),
       anytrue([for n in aws_budgets_budget.monthly.notification : n.threshold == 100 && n.notification_type == "FORECASTED"]),
       alltrue([for n in aws_budgets_budget.monthly.notification : contains(n.subscriber_email_addresses, "owner@example.com")]),
     ])
-    error_message = "80 % ACTUAL and 100 % FORECASTED to var.alert_email"
+    error_message = "100 % ACTUAL and 100 % FORECASTED to var.alert_email"
   }
 }
 
@@ -440,6 +449,8 @@ run "cloud_init_is_valid_yaml_with_exact_file_contents" {
         "/opt/ricettine/deploy/aws/mount-data.sh"                  = file("../../deploy/aws/mount-data.sh")
         "/opt/ricettine/deploy/aws/start.sh"                       = file("../../deploy/aws/start.sh")
         "/etc/systemd/system/ricettine.service"                    = file("../../deploy/aws/ricettine.service")
+        "/opt/ricettine/deploy/aws/backup-failed.sh"               = file("../../deploy/aws/backup-failed.sh")
+        "/etc/systemd/system/ricettine-backup-failed.service"      = file("../../deploy/aws/ricettine-backup-failed.service")
         "/etc/systemd/system/ricettine-backup.timer"               = file("../../deploy/aws/ricettine-backup.timer")
         "/etc/systemd/system/ricettine-backup.service"             = replace(replace(file("../../deploy/aws/ricettine-backup.service"), "__BACKUPS_BUCKET__", "ricettine-backups-123456789012"), "__REGION__", "eu-west-1")
         "/etc/systemd/system/docker.service.d/ricettine-data.conf" = f.content
@@ -498,5 +509,32 @@ run "instance_cpu_credits_are_standard" {
   assert {
     condition     = aws_instance.main.credit_specification[0].cpu_credits == "standard"
     error_message = "burstable CPU credits default to standard"
+  }
+}
+
+run "backup_failure_alert" {
+  command = plan
+
+  assert {
+    condition     = aws_sns_topic.alerts.name == "ricettine-alerts" && aws_sns_topic_subscription.alert_email.protocol == "email" && aws_sns_topic_subscription.alert_email.endpoint == "owner@example.com"
+    error_message = "an SNS topic with an email subscription to var.alert_email"
+  }
+
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_role_policy.instance.policy).Statement :
+      flatten([s.Action]) == ["sns:Publish"] && flatten([s.Resource]) == [aws_sns_topic.alerts.arn]
+    ])
+    error_message = "the instance may sns:Publish on the alerts topic only"
+  }
+
+  assert {
+    condition     = !anytrue([for s in jsondecode(aws_iam_role_policy.instance.policy).Statement : anytrue([for a in flatten([s.Action]) : startswith(a, "sns:") && a != "sns:Publish"]) || (contains(flatten([s.Action]), "sns:Publish") && contains(flatten([s.Resource]), "*"))])
+    error_message = "no broader SNS permission"
+  }
+
+  assert {
+    condition     = strcontains(local.cloud_init, "OnFailure=ricettine-backup-failed.service") && strcontains(local.cloud_init, "ALERT_TOPIC_ARN=${aws_sns_topic.alerts.arn}")
+    error_message = "the backup unit must trigger the failure unit and config.env must carry the topic ARN"
   }
 }

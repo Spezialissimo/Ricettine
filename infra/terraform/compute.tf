@@ -32,6 +32,10 @@ locals {
       "__BACKUPS_BUCKET__", local.backups_bucket_name),
     "__REGION__", var.region)
     backup_timer = file("${path.module}/../../deploy/aws/ricettine-backup.timer")
+
+    alert_topic_arn    = aws_sns_topic.alerts.arn
+    backup_failed_sh   = file("${path.module}/../../deploy/aws/backup-failed.sh")
+    backup_failed_unit = file("${path.module}/../../deploy/aws/ricettine-backup-failed.service")
   })
 }
 

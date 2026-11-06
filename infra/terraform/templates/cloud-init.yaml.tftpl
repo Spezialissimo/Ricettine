@@ -9,6 +9,7 @@ write_files:
       ORIGIN_DOMAIN=${origin_domain}
       MEDIA_BUCKET=${media_bucket}
       IMAGE_TAG=${image_tag}
+      ALERT_TOPIC_ARN=${alert_topic_arn}
   - path: /opt/ricettine/compose.yaml
     permissions: "0644"
     content: |
@@ -33,6 +34,14 @@ write_files:
     permissions: "0755"
     content: |
       ${indent(6, start_sh)}
+  - path: /opt/ricettine/deploy/aws/backup-failed.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, backup_failed_sh)}
+  - path: /etc/systemd/system/ricettine-backup-failed.service
+    permissions: "0644"
+    content: |
+      ${indent(6, backup_failed_unit)}
   - path: /etc/docker/daemon.json
     permissions: "0644"
     content: |

@@ -1,4 +1,5 @@
-# Spend alarm. include_credit = false shows gross spend, so free credits do not hide a runaway bill.
+# Spend alarm: ACTUAL and FORECASTED at 100 % of the limit (the $25 default sits above the normal $18-21).
+# include_credit = false shows gross spend, so free credits do not hide a runaway bill.
 # The first two budgets in an account are free.
 resource "aws_budgets_budget" "monthly" {
   name         = "ricettine-monthly"
@@ -13,7 +14,7 @@ resource "aws_budgets_budget" "monthly" {
 
   notification {
     comparison_operator        = "GREATER_THAN"
-    threshold                  = 80
+    threshold                  = 100
     threshold_type             = "PERCENTAGE"
     notification_type          = "ACTUAL"
     subscriber_email_addresses = [var.alert_email]

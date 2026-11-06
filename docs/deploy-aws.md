@@ -42,7 +42,7 @@ A budget alarm (`budget.tf`) emails `alert_email`. See "Cost and budget" below f
 - **Edge:** a Route 53 zone for the domain, a us-east-1 ACM certificate (DNS-validated) and one CloudFront distribution with the domain as alias and `origin.<domain>` (the instance's Elastic IP) as origin.
   - CloudFront talks to the origin over HTTPS only and adds the secret header `X-Origin-Verify`; Caddy answers 403 without it. The client IP reaches the app through `CloudFront-Viewer-Address`.
   - Everything is uncached except `/media/*`, which follows the app's `Cache-Control` (recipe and cookbook photos are `private`, so never stored; avatars are cached for at most one day). Standard logging is off on purpose: invite, reset and share tokens are in URL paths.
-- **Backups:** `ricettine-backup.timer` runs `deploy/backup.sh` daily at 03:00 UTC (`Persistent=true`) and uploads the dump to `s3://<backups>/db/`. Photos already live in S3, so only the dump is uploaded.
+- **Backups:** `ricettine-backup.timer` runs `deploy/backup.sh` daily at 03:00 UTC (`Persistent=true`) and uploads the dump to `s3://<backups>/db/`. Photos already live in S3, so only the dump is uploaded. If the backup service fails, `ricettine-backup-failed.service` publishes the last 20 journal lines to the `ricettine-alerts` SNS topic, which emails `alert_email` (the instance role may only `sns:Publish` to that topic).
 
 ## Day-to-day on the host
 
@@ -90,9 +90,10 @@ terraform output name_servers
    ```
    terraform apply -var-file=terraform.tfvars
    ```
-4. Wait for first boot (Docker, volume, images, Let's Encrypt certificate for `origin.<domain>`). It can take tens of minutes: Let's Encrypt validation backs off after a failure, and CloudFront answers 502 until the origin certificate exists. Then open `https://<domain>` and finish the first-run setup in the browser.
-5. Confirm the deployment with `scripts/aws-verify.sh <domain>` (read-only; needs your AWS credentials). Set `VERIFY_TOKEN_PHOTO_URL` to the URL of a private photo to also check it is not cached. The backup check warns on the first day: the timer runs at 03:00 UTC.
-6. Copy `terraform.tfstate` somewhere safe.
+4. After the full apply AWS emails `alert_email` a subscription confirmation for the `ricettine-alerts` topic. Click the link once, or backup-failure alerts are never delivered (the budget emails need no confirmation).
+5. Wait for first boot (Docker, volume, images, Let's Encrypt certificate for `origin.<domain>`). It can take tens of minutes: Let's Encrypt validation backs off after a failure, and CloudFront answers 502 until the origin certificate exists. Then open `https://<domain>` and finish the first-run setup in the browser.
+6. Confirm the deployment with `scripts/aws-verify.sh <domain>` (read-only; needs your AWS credentials). Set `VERIFY_TOKEN_PHOTO_URL` to the URL of a private photo to also check it is not cached. The backup check warns on the first day: the timer runs at 03:00 UTC.
+7. Copy `terraform.tfstate` somewhere safe.
 
 Until step 3 finishes `origin.<domain>` does not exist, so the origin certificate cannot be issued earlier. That is expected: the host retries.
 
@@ -169,17 +170,16 @@ The Postgres password must never be rotated this way: Postgres reads it only whe
 
 ## Cost and budget
 
-See the cost table above: about $18-21 per month on-demand, so credits cover the first 4-10 months. `budget.tf` emails `alert_email` when actual gross spend passes 80 % of `monthly_budget_usd` and when the forecast passes 100 %. Credits are excluded on purpose, so you see real spend while credits hide the bill.
+See the cost table above: about $18-21 per month on-demand, so credits cover the first 4-10 months. `budget.tf` emails `alert_email` when actual gross spend passes 100 % of `monthly_budget_usd` and when the forecast passes 100 %. The default is $25, above the expected $18-21, so an alert means something is off. The budget counts gross spend before credits on purpose, so you see real spend while credits hide the bill.
 
-The trade-off is the limit. The default is $10, below the expected cost, so with the default the alarm fires every month and soon means nothing. Set `monthly_budget_usd` to about $25 so that it fires only when something is off. FORECASTED alerts need some spend history (a few days) before AWS can forecast, so they do not fire in the first days. Check the Billing console monthly, and again the day after teardown.
+The forecast alert needs some spend history (a few days) before AWS can forecast, so it does not fire in the first days. Check the Billing console monthly, and again the day after teardown.
 
 ## Next steps
 
 Not built yet, in rough order of value:
 
 - A CloudWatch alarms stack: instance status checks, CPU credit balance, disk usage.
-- An alert when the nightly backup fails (today `systemctl list-timers` and `aws-verify.sh` are the only checks).
-- Scheduled EBS snapshots of the data volume, as a second safety net next to the dumps.
+- Optional idea: scheduled EBS snapshots of the data volume, as a second safety net next to the dumps.
 
 ## Teardown
 
