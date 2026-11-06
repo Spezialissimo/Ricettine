@@ -62,7 +62,7 @@ resource "aws_security_group" "origin" {
 
 resource "aws_vpc_security_group_ingress_rule" "http_v4" {
   security_group_id = aws_security_group.origin.id
-  description       = "HTTP for Let's Encrypt HTTP-01 and the redirect"
+  description       = "HTTP for ACME (Lets Encrypt) HTTP-01 and the redirect"
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80
@@ -71,7 +71,7 @@ resource "aws_vpc_security_group_ingress_rule" "http_v4" {
 
 resource "aws_vpc_security_group_ingress_rule" "http_v6" {
   security_group_id = aws_security_group.origin.id
-  description       = "HTTP for Let's Encrypt HTTP-01 and the redirect"
+  description       = "HTTP for ACME (Lets Encrypt) HTTP-01 and the redirect"
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80
@@ -89,7 +89,7 @@ resource "aws_vpc_security_group_ingress_rule" "https" {
 
 resource "aws_vpc_security_group_egress_rule" "all" {
   security_group_id = aws_security_group.origin.id
-  description       = "All outbound (image pulls, Let's Encrypt, S3, SSM)"
+  description       = "All outbound (image pulls, Lets Encrypt, S3, SSM)"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 }

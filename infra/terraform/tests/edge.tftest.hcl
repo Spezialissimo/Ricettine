@@ -119,6 +119,11 @@ run "origin_is_https_only_with_secret_header" {
   command = plan
 
   assert {
+    condition     = length(aws_cloudfront_distribution.main.origin) == 1 && length(one(aws_cloudfront_distribution.main.origin).custom_origin_config) == 1 && length(one(aws_cloudfront_distribution.main.origin).custom_header) == 1
+    error_message = "exactly one origin with one custom_origin_config and one custom header (the checks below must not pass vacuously)"
+  }
+
+  assert {
     condition     = alltrue([for o in aws_cloudfront_distribution.main.origin : alltrue([for c in o.custom_origin_config : c.origin_protocol_policy == "https-only" && contains(c.origin_ssl_protocols, "TLSv1.2") && !contains(c.origin_ssl_protocols, "TLSv1")])])
     error_message = "the origin must be https-only with TLSv1.2"
   }
@@ -145,6 +150,11 @@ run "viewers_are_redirected_to_https" {
   assert {
     condition     = aws_cloudfront_distribution.main.default_cache_behavior[0].viewer_protocol_policy == "redirect-to-https"
     error_message = "the default behaviour must redirect to https"
+  }
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.main.ordered_cache_behavior) == 1
+    error_message = "exactly one ordered behaviour (/media/*)"
   }
 
   assert {
@@ -206,6 +216,11 @@ run "media_cache_policy_is_short_and_cookieless" {
   }
 
   assert {
+    condition     = length(aws_cloudfront_distribution.main.ordered_cache_behavior) == 1
+    error_message = "exactly one ordered behaviour (/media/*)"
+  }
+
+  assert {
     condition     = alltrue([for b in aws_cloudfront_distribution.main.ordered_cache_behavior : b.path_pattern == "/media/*" && b.cache_policy_id == aws_cloudfront_cache_policy.media.id && length(b.allowed_methods) == 2])
     error_message = "/media/* must be GET/HEAD with the media cache policy"
   }
@@ -231,6 +246,11 @@ run "origin_request_forwards_what_the_app_needs" {
   assert {
     condition     = alltrue([for q in aws_cloudfront_origin_request_policy.app.query_strings_config : q.query_string_behavior == "all"])
     error_message = "all query strings must be forwarded to the origin"
+  }
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.main.ordered_cache_behavior) == 1
+    error_message = "exactly one ordered behaviour (/media/*)"
   }
 
   assert {
@@ -315,12 +335,29 @@ run "outputs_exist_and_hide_the_secret" {
   command = plan
 
   assert {
-    condition     = length(output.name_servers) >= 0 && output.distribution_domain_name != null
+    condition     = output.name_servers != null && output.distribution_domain_name != null
     error_message = "name_servers and distribution_domain_name outputs must exist"
   }
 
   assert {
     condition     = !strcontains(jsonencode([output.name_servers, output.origin_ip, output.distribution_domain_name]), random_password.origin_secret.result)
     error_message = "no output may contain the origin secret"
+  }
+}
+
+run "origin_errors_are_not_cached" {
+  command = plan
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.main.custom_error_response) == 6
+    error_message = "one custom_error_response per origin error code"
+  }
+
+  assert {
+    condition = alltrue([
+      toset([for r in aws_cloudfront_distribution.main.custom_error_response : r.error_code]) == toset([403, 404, 500, 502, 503, 504]),
+      alltrue([for r in aws_cloudfront_distribution.main.custom_error_response : r.error_caching_min_ttl == 0 && r.response_page_path == null]),
+    ])
+    error_message = "403, 404, 500, 502, 503 and 504 must have error_caching_min_ttl 0 and no custom page"
   }
 }

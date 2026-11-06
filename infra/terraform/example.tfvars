@@ -1,4 +1,7 @@
 # Copy to terraform.tfvars (gitignored) and edit. Run: terraform apply -var-file=terraform.tfvars
+# Pick ONE (see "Account setup" and "First deploy" in docs/deploy-aws.md):
+#  - apex domain:  domain_name = "example.com"          -> set custom nameservers at the registrar
+#  - subdomain:    domain_name = "recipes.example.com"  -> add NS records for "recipes" at the parent's DNS host
 domain_name = "recipes.example.com"
 alert_email = "you@example.com"
 

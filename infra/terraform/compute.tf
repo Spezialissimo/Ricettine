@@ -7,16 +7,9 @@ locals {
   # Pinned and checksummed (docker-compose-linux-aarch64 from the GitHub release's checksums.txt).
   compose_version = "v5.7.0"
   compose_sha256  = "15861535d14e26555736b49376c95e14bfd94285366c8446bfac7156a972e76f"
-}
 
-resource "aws_instance" "main" {
-  ami                    = data.aws_ssm_parameter.al2023_arm64.value
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.origin.id]
-  iam_instance_profile   = aws_iam_instance_profile.instance.name
-
-  user_data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
+  # Rendered once and gzipped: the raw text is close to EC2's 16,384-byte user-data limit, the gzip is far below it.
+  cloud_init = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
     region          = var.region
     domain_name     = var.domain_name
     origin_domain   = local.origin_domain
@@ -40,6 +33,21 @@ resource "aws_instance" "main" {
     "__REGION__", var.region)
     backup_timer = file("${path.module}/../../deploy/aws/ricettine-backup.timer")
   })
+}
+
+resource "aws_instance" "main" {
+  ami                    = data.aws_ssm_parameter.al2023_arm64.value
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.origin.id]
+  iam_instance_profile   = aws_iam_instance_profile.instance.name
+
+  # Burstable CPU stays capped at the baseline (no surprise credit charges); set "unlimited" to trade cost for headroom.
+  credit_specification {
+    cpu_credits = "standard"
+  }
+
+  user_data_base64 = base64gzip(local.cloud_init)
 
   metadata_options {
     http_endpoint = "enabled"
@@ -59,10 +67,10 @@ resource "aws_instance" "main" {
 
   lifecycle {
     # A new AMI release or a template tweak must never replace the host (and its running data) by surprise.
-    ignore_changes = [ami, user_data]
+    ignore_changes = [ami, user_data_base64]
   }
 
-  depends_on = [aws_internet_gateway.main]
+  depends_on = [aws_internet_gateway.main, aws_route_table_association.public]
 }
 
 resource "aws_eip" "origin" {

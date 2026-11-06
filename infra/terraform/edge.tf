@@ -128,6 +128,15 @@ resource "aws_cloudfront_distribution" "main" {
     response_headers_policy_id = local.security_headers_policy_id
   }
 
+  # Do not let CloudFront remember origin errors (a 502 while the host boots must clear the moment it is up).
+  dynamic "custom_error_response" {
+    for_each = [403, 404, 500, 502, 503, 504]
+    content {
+      error_code            = custom_error_response.value
+      error_caching_min_ttl = 0
+    }
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"

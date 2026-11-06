@@ -29,13 +29,16 @@ bash deploy/aws/mount-data.test.sh
 
 echo "terraform guards..."
 TF=infra/terraform
-if grep -rnE 'resource[[:space:]]+"aws_(db_instance|rds_|lb|alb|ecs_|nat_gateway)' "$TF" --include='*.tf'; then
-  echo "forbidden resource type (RDS, ELB/ALB, ECS or NAT gateway) found" >&2
+if grep -rnE 'resource[[:space:]]+"aws_(db_instance|rds_|lb|alb|ecs_|nat_gateway|vpc_endpoint)' "$TF" --include='*.tf'; then
+  echo "forbidden resource type (RDS, ELB/ALB, ECS, NAT gateway or VPC endpoint) found" >&2
   exit 1
 fi
 # tftest cannot read lifecycle: assert prevent_destroy on the data volume here
 awk '/resource "aws_ebs_volume" "data"/{f=1} f&&/prevent_destroy[[:space:]]*=[[:space:]]*true/{ok=1} f&&/^}/{exit} END{exit !ok}' "$TF/compute.tf" \
   || { echo "aws_ebs_volume.data must set lifecycle { prevent_destroy = true }" >&2; exit 1; }
+# CloudFront only accepts a us-east-1 certificate: the ACM certificate must use the aliased provider
+awk '/resource "aws_acm_certificate" "main"/{f=1} f&&/provider[[:space:]]*=[[:space:]]*aws\.us_east_1/{ok=1} f&&/^}/{exit} END{exit !ok}' "$TF/edge.tf" \
+  || { echo "aws_acm_certificate.main must set provider = aws.us_east_1" >&2; exit 1; }
 
 echo "terraform fmt/validate/test..."
 # `terraform init` only downloads providers; validate and test use mock providers, never real credentials.

@@ -20,17 +20,25 @@ fstab_once() { [ "$(grep -c '^LABEL=ricettine-data ' "$T/fstab")" -eq 1 ]; }
 new_env() {
   T="$(mktemp -d)"
   mkdir -p "$T/bin"
-  : >"$T/calls"; : >"$T/fstab"; : >"$T/device"
+  : >"$T/calls"; : >"$T/fstab"
+  dd if=/dev/zero of="$T/device" bs=1048576 count=1 2>/dev/null # a blank volume reads as zeros
   printf '%s' "$1" >"$T/fstype"
   cat >"$T/bin/blkid" <<'STUB'
 #!/usr/bin/env bash
 echo "blkid $*" >>"$SANDBOX/calls"
 fs="$(cat "$SANDBOX/fstype")"
+if [ "$1" = "-p" ]; then exit "$(cat "$SANDBOX/probe_status" 2>/dev/null || echo 2)"; fi # low-level probe
 [ "$fs" != "__ERROR__" ] || exit 1 # a real blkid failure (not "no filesystem")
 [ -n "$fs" ] || exit 2
 echo "$fs"
 STUB
-  for tool in mkfs.ext4 mount e2label; do
+  # mkfs flips the stubbed filesystem type, as the real one would
+  cat >"$T/bin/mkfs.ext4" <<'STUB'
+#!/usr/bin/env bash
+echo "mkfs.ext4 $*" >>"$SANDBOX/calls"
+printf ext4 >"$SANDBOX/fstype"
+STUB
+  for tool in mount e2label; do
     # shellcheck disable=SC2016 # the stub must expand $* and $SANDBOX when it runs, not now
     printf '#!/usr/bin/env bash\necho "%s $*" >>"$SANDBOX/calls"\n' "$tool" >"$T/bin/$tool"
   done
@@ -65,6 +73,10 @@ check "runs on a blank volume" run
 check "blank volume: mkfs called once" mkfs_once
 check "blank volume: mkfs uses -L ricettine-data" grep -q -- '^mkfs.ext4 .*-L ricettine-data' "$T/calls"
 
+# 2b. a second run sees the filesystem the first one made: mkfs stays at exactly one call
+check "second run on the now-formatted volume succeeds" run
+check "mkfs ran exactly once across two runs" mkfs_once
+
 # 3. idempotent: twice leaves one fstab line, nofail, by LABEL
 check "second run succeeds" run
 check "fstab line appears once after two runs" fstab_once
@@ -77,6 +89,18 @@ check "creates the caddy subdirectory" test -d "$T/mnt/caddy"
 new_env "__ERROR__"
 check "blkid error: script exits non-zero" not run
 check "blkid error: mkfs is never called" no_mkfs
+
+# 4b. blkid says "nothing found" but the first MiB holds data (it may just be unreadable): never format
+new_env ""
+printf 'not zeros' | dd of="$T/device" conv=notrunc 2>/dev/null
+check "non-zero first MiB: script exits non-zero" not run
+check "non-zero first MiB: mkfs is never called" no_mkfs
+
+# 4c. the low-level probe cannot confirm "empty" (exit other than 2): never format
+new_env ""
+printf '1' >"$T/probe_status"
+check "probe cannot confirm empty: script exits non-zero" not run
+check "probe cannot confirm empty: mkfs is never called" no_mkfs
 
 # 5. device never appears: exit non-zero, never format
 new_env ext4

@@ -319,27 +319,27 @@ run "user_data_has_timer_and_no_secret" {
   command = plan
 
   assert {
-    condition     = strcontains(aws_instance.main.user_data, "ricettine-backup.timer")
+    condition     = strcontains(local.cloud_init, "ricettine-backup.timer")
     error_message = "user-data must install the backup timer"
   }
 
   assert {
-    condition     = !strcontains(aws_instance.main.user_data, random_password.postgres.result) && !strcontains(aws_instance.main.user_data, random_password.origin_secret.result)
+    condition     = !strcontains(local.cloud_init, random_password.postgres.result) && !strcontains(local.cloud_init, random_password.origin_secret.result)
     error_message = "user-data must not contain the secrets"
   }
 
   assert {
-    condition     = strcontains(aws_instance.main.user_data, "VOLUME_ID=vol-0123456789abcdef0") && strcontains(aws_instance.main.user_data, "RequiresMountsFor=/srv/ricettine")
+    condition     = strcontains(local.cloud_init, "VOLUME_ID=vol-0123456789abcdef0") && strcontains(local.cloud_init, "RequiresMountsFor=/srv/ricettine")
     error_message = "user-data must pass the volume id to mount-data.sh and order docker after the mount"
   }
 
   assert {
-    condition     = strcontains(aws_instance.main.user_data, "set -euo pipefail")
+    condition     = strcontains(local.cloud_init, "set -euo pipefail")
     error_message = "the bootstrap script must stop at the first failure"
   }
 
   assert {
-    condition     = strcontains(aws_instance.main.user_data, "BACKUP_S3_URI=s3://ricettine-backups-123456789012/db/")
+    condition     = strcontains(local.cloud_init, "BACKUP_S3_URI=s3://ricettine-backups-123456789012/db/")
     error_message = "backup unit must target the backups bucket"
   }
 }
@@ -418,4 +418,85 @@ run "instance_must_be_graviton_t4g" {
   }
 
   expect_failures = [var.instance_type]
+}
+
+# The rendered cloud-init must be valid YAML and carry every source file byte for byte.
+run "cloud_init_is_valid_yaml_with_exact_file_contents" {
+  command = plan
+
+  assert {
+    condition     = can(yamldecode(local.cloud_init))
+    error_message = "the rendered cloud-init must be valid YAML"
+  }
+
+  assert {
+    condition = alltrue([
+      for f in yamldecode(local.cloud_init).write_files :
+      f.content == lookup({
+        "/opt/ricettine/compose.yaml"                              = file("../../compose.yaml")
+        "/opt/ricettine/compose.aws.yaml"                          = file("../../compose.aws.yaml")
+        "/opt/ricettine/deploy/aws/Caddyfile"                      = file("../../deploy/aws/Caddyfile")
+        "/opt/ricettine/deploy/backup.sh"                          = file("../../deploy/backup.sh")
+        "/opt/ricettine/deploy/aws/mount-data.sh"                  = file("../../deploy/aws/mount-data.sh")
+        "/opt/ricettine/deploy/aws/start.sh"                       = file("../../deploy/aws/start.sh")
+        "/etc/systemd/system/ricettine.service"                    = file("../../deploy/aws/ricettine.service")
+        "/etc/systemd/system/ricettine-backup.timer"               = file("../../deploy/aws/ricettine-backup.timer")
+        "/etc/systemd/system/ricettine-backup.service"             = replace(replace(file("../../deploy/aws/ricettine-backup.service"), "__BACKUPS_BUCKET__", "ricettine-backups-123456789012"), "__REGION__", "eu-west-1")
+        "/etc/systemd/system/docker.service.d/ricettine-data.conf" = f.content
+        "/opt/ricettine/config.env"                                = f.content
+        "/etc/docker/daemon.json"                                  = f.content
+      }, f.path, "__missing__")
+    ])
+    error_message = "every write_files entry must equal its source file exactly"
+  }
+
+  assert {
+    condition     = length(yamldecode(local.cloud_init).write_files) >= 11 && length(yamldecode(local.cloud_init).runcmd) == 1
+    error_message = "expected the 9 embedded files plus config.env and the docker drop-in, and one runcmd script"
+  }
+}
+
+run "user_data_fits_the_ec2_limit" {
+  command = plan
+
+  assert {
+    condition     = length(base64gzip(local.cloud_init)) < 12000
+    error_message = "gzipped user-data must stay well under EC2's 16384-byte limit"
+  }
+
+  assert {
+    condition     = length(local.cloud_init) < 65536
+    error_message = "raw cloud-init must stay under 64 KiB"
+  }
+
+  assert {
+    condition     = strcontains(local.cloud_init, "max-size") && strcontains(local.cloud_init, "/etc/docker/daemon.json") && strcontains(local.cloud_init, "--retry 5 --retry-all-errors") && strcontains(local.cloud_init, "sha256sum -c -")
+    error_message = "docker log rotation, curl retries and the sha256 check must be in cloud-init"
+  }
+}
+
+run "security_group_descriptions_are_ec2_safe" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for d in [
+        aws_security_group.origin.description,
+        aws_vpc_security_group_ingress_rule.http_v4.description,
+        aws_vpc_security_group_ingress_rule.http_v6.description,
+        aws_vpc_security_group_ingress_rule.https.description,
+        aws_vpc_security_group_egress_rule.all.description,
+      ] : can(regex("^[a-zA-Z0-9 ._\\-:/()#,@\\[\\]+=&;{}!$*]*$", d))
+    ])
+    error_message = "EC2 rejects security group descriptions with characters outside its allowed set (for example an apostrophe)"
+  }
+}
+
+run "instance_cpu_credits_are_standard" {
+  command = plan
+
+  assert {
+    condition     = aws_instance.main.credit_specification[0].cpu_credits == "standard"
+    error_message = "burstable CPU credits default to standard"
+  }
 }

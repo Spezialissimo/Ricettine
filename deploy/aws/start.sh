@@ -53,3 +53,5 @@ if ! docker compose pull; then
   echo "start: warning: docker compose pull failed, continuing with local images" >&2
 fi
 docker compose up -d
+# Drop superseded image layers so the root volume does not fill up over many upgrades; never fatal
+docker image prune -f || true

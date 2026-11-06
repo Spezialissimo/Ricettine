@@ -10,7 +10,7 @@ variable "region" {
 }
 
 variable "domain_name" {
-  description = "Public domain of the site, for example recipes.example.com."
+  description = "Public domain of the site: an apex (example.com; set the registrar nameservers to the name_servers output) or a subdomain (recipes.example.com; add NS records for it at the parent zone DNS host). Terraform creates a Route 53 zone with this name; a zone created automatically by buying the domain in Route 53 must be deleted or imported."
   type        = string
 }
 
