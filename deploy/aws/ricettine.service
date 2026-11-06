@@ -1,0 +1,18 @@
+[Unit]
+Description=Ricettine (Docker Compose stack)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# Never start Postgres on the root disk if the data volume failed to mount
+RequiresMountsFor=/srv/ricettine
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ricettine
+ExecStart=/opt/ricettine/deploy/aws/start.sh
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
