@@ -1,0 +1,89 @@
+#cloud-config
+# First-boot setup. No secrets here: start.sh reads them from SSM Parameter Store.
+write_files:
+  - path: /opt/ricettine/config.env
+    permissions: "0644"
+    content: |
+      REGION=${region}
+      DOMAIN_NAME=${domain_name}
+      ORIGIN_DOMAIN=${origin_domain}
+      MEDIA_BUCKET=${media_bucket}
+      IMAGE_TAG=${image_tag}
+      ALERT_TOPIC_ARN=${alert_topic_arn}
+  - path: /opt/ricettine/compose.yaml
+    permissions: "0644"
+    content: |
+      ${indent(6, compose_yaml)}
+  - path: /opt/ricettine/compose.aws.yaml
+    permissions: "0644"
+    content: |
+      ${indent(6, compose_aws_yaml)}
+  - path: /opt/ricettine/deploy/aws/Caddyfile
+    permissions: "0644"
+    content: |
+      ${indent(6, caddyfile)}
+  - path: /opt/ricettine/deploy/backup.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, backup_sh)}
+  - path: /opt/ricettine/deploy/aws/mount-data.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, mount_data_sh)}
+  - path: /opt/ricettine/deploy/aws/start.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, start_sh)}
+  - path: /opt/ricettine/deploy/aws/backup-failed.sh
+    permissions: "0755"
+    content: |
+      ${indent(6, backup_failed_sh)}
+  - path: /etc/systemd/system/ricettine-backup-failed.service
+    permissions: "0644"
+    content: |
+      ${indent(6, backup_failed_unit)}
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "3" }
+      }
+  - path: /etc/systemd/system/docker.service.d/ricettine-data.conf
+    permissions: "0644"
+    content: |
+      [Unit]
+      # Containers must never start before the data volume is mounted
+      RequiresMountsFor=/srv/ricettine
+  - path: /etc/systemd/system/ricettine.service
+    permissions: "0644"
+    content: |
+      ${indent(6, service_unit)}
+  - path: /etc/systemd/system/ricettine-backup.service
+    permissions: "0644"
+    content: |
+      ${indent(6, backup_service)}
+  - path: /etc/systemd/system/ricettine-backup.timer
+    permissions: "0644"
+    content: |
+      ${indent(6, backup_timer)}
+
+runcmd:
+  # One script with `set -e`: if any step fails (docker, checksum, volume mount) nothing after it runs,
+  # ricettine.service is never enabled, and the failure shows in /var/log/cloud-init-output.log.
+  - - /bin/bash
+    - -c
+    - |
+      set -euo pipefail
+      dnf install -y docker
+      systemctl enable --now docker
+      # Compose plugin: pinned version, verified against its published sha256 before it is installed
+      mkdir -p /usr/local/lib/docker/cli-plugins
+      curl -fsSL --retry 5 --retry-all-errors -o /tmp/docker-compose https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-aarch64
+      echo "${compose_sha256}  /tmp/docker-compose" | sha256sum -c -
+      install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+      rm -f /tmp/docker-compose
+      VOLUME_ID=${data_volume_id} /opt/ricettine/deploy/aws/mount-data.sh
+      systemctl daemon-reload
+      systemctl enable --now ricettine-backup.timer
+      systemctl enable --now ricettine.service
