@@ -32,7 +32,7 @@ A budget alarm (`budget.tf`) emails `alert_email` at 80 % of actual spend and 10
 - **Network:** a /16 VPC with one public subnet and an internet gateway. No NAT gateway.
 - **Firewall:** port 80 open to the world (Let's Encrypt HTTP-01 and the redirect). Port 443 only from the CloudFront origin-facing prefix list. No port 22.
 - **Instance:** Amazon Linux 2023 on `t4g.small` (arm64), encrypted 8 GiB root, IMDSv2 required, an Elastic IP.
-  - The instance profile has a hop limit of 2 on purpose, so the app container can reach it for S3 credentials. Host processes would work with 1.
+  - The instance metadata options set a hop limit of 2 on purpose, so the app container can reach the instance profile for its S3 credentials. Host processes would work with 1. The consequence: code running inside the app container can use the whole instance role, including reading the SSM parameters under `/ricettine/*` (the origin secret and the database password) and deleting media. The app is trusted with those; treat a compromise of the app container as a compromise of those secrets.
   - `ami` and `user_data` are ignored after creation: a new AMI release never replaces the host by surprise. Changing the cloud-init template only affects a new instance.
 - **Data volume:** a separate encrypted 20 GiB gp3 volume (`prevent_destroy`), mounted at `/srv/ricettine`, labelled `ricettine-data`. Postgres lives on it, so replacing the host keeps the data. It is formatted only when it has no filesystem.
 - **Buckets:** `ricettine-media-<account>` (photos, no versioning) and `ricettine-backups-<account>` (database dumps, expiring after `backup_retention_days`). Both block all public access, enforce bucket-owner ownership, use SSE-S3 and deny non-TLS requests.

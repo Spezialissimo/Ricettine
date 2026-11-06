@@ -33,6 +33,12 @@ ${indent(6, mount_data_sh)}
     permissions: "0755"
     content: |
 ${indent(6, start_sh)}
+  - path: /etc/systemd/system/docker.service.d/ricettine-data.conf
+    permissions: "0644"
+    content: |
+      [Unit]
+      # Containers must never start before the data volume is mounted
+      RequiresMountsFor=/srv/ricettine
   - path: /etc/systemd/system/ricettine.service
     permissions: "0644"
     content: |
@@ -47,15 +53,21 @@ ${indent(6, backup_service)}
 ${indent(6, backup_timer)}
 
 runcmd:
-  - dnf install -y docker
-  - systemctl enable --now docker
-  # Compose plugin: pinned version, verified against its published sha256 before it is installed
-  - mkdir -p /usr/local/lib/docker/cli-plugins
-  - curl -fsSL -o /tmp/docker-compose https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-aarch64
-  - echo "${compose_sha256}  /tmp/docker-compose" | sha256sum -c -
-  - install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
-  - rm -f /tmp/docker-compose
-  - /opt/ricettine/deploy/aws/mount-data.sh
-  - systemctl daemon-reload
-  - systemctl enable --now ricettine.service
-  - systemctl enable --now ricettine-backup.timer
+  # One script with `set -e`: if any step fails (docker, checksum, volume mount) nothing after it runs,
+  # ricettine.service is never enabled, and the failure shows in /var/log/cloud-init-output.log.
+  - - /bin/bash
+    - -c
+    - |
+      set -euo pipefail
+      dnf install -y docker
+      systemctl enable --now docker
+      # Compose plugin: pinned version, verified against its published sha256 before it is installed
+      mkdir -p /usr/local/lib/docker/cli-plugins
+      curl -fsSL -o /tmp/docker-compose https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-aarch64
+      echo "${compose_sha256}  /tmp/docker-compose" | sha256sum -c -
+      install -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+      rm -f /tmp/docker-compose
+      VOLUME_ID=${data_volume_id} /opt/ricettine/deploy/aws/mount-data.sh
+      systemctl daemon-reload
+      systemctl enable --now ricettine-backup.timer
+      systemctl enable --now ricettine.service

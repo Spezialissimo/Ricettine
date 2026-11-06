@@ -10,11 +10,11 @@ cd /opt/ricettine
 
 get_param() {
   local attempt=0
-  while [ "$attempt" -lt 6 ]; do
+  while [ "$attempt" -lt 12 ]; do
     attempt=$((attempt + 1))
     aws ssm get-parameter --with-decryption --region "$REGION" --name "$1" \
       --query Parameter.Value --output text && return 0
-    sleep 5
+    sleep 10
   done
   echo "start: could not read SSM parameter $1" >&2
   return 1
@@ -40,5 +40,16 @@ RICETTINE_DATA_DIR=/srv/ricettine
 ENV
 mv "$tmp" .env
 
-docker compose pull
+if ! docker compose pull; then
+  # A registry or network hiccup must not take the site down at boot when the images are already here
+  missing=0
+  while IFS= read -r image; do
+    docker image inspect "$image" >/dev/null 2>&1 || missing=1
+  done < <(docker compose config --images)
+  if [ "$missing" -ne 0 ]; then
+    echo "start: docker compose pull failed and images are missing" >&2
+    exit 1
+  fi
+  echo "start: warning: docker compose pull failed, continuing with local images" >&2
+fi
 docker compose up -d

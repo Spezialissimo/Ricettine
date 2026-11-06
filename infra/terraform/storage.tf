@@ -104,8 +104,18 @@ resource "aws_s3_bucket_policy" "backups" {
   })
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "backups" {
+# Versioned so a compromised host cannot silently overwrite a known key: the old version stays until it expires.
+resource "aws_s3_bucket_versioning" "backups" {
   bucket = aws_s3_bucket.backups.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "backups" {
+  bucket     = aws_s3_bucket.backups.id
+  depends_on = [aws_s3_bucket_versioning.backups]
 
   rule {
     id     = "expire-old-dumps"
@@ -115,6 +125,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
 
     expiration {
       days = var.backup_retention_days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.backup_retention_days
     }
 
     abort_incomplete_multipart_upload {

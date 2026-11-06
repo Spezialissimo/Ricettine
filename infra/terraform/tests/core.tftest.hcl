@@ -55,6 +55,14 @@ override_resource {
   }
 }
 
+override_resource {
+  target          = aws_ebs_volume.data
+  override_during = plan
+  values = {
+    id = "vol-0123456789abcdef0"
+  }
+}
+
 variables {
   domain_name = "recipes.example.com"
   alert_email = "owner@example.com"
@@ -228,6 +236,36 @@ run "backup_role_cannot_delete_backups" {
   }
 }
 
+run "media_bucket_listing_allowed" {
+  command = plan
+
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_role_policy.instance.policy).Statement :
+      contains(flatten([s.Action]), "s3:ListBucket") && flatten([s.Resource]) == ["arn:aws:s3:::ricettine-media-123456789012"]
+    ])
+    error_message = "ListBucket on the media bucket is needed so a missing key is 404 (NoSuchKey), not 403"
+  }
+}
+
+run "backups_are_versioned_and_old_versions_expire" {
+  command = plan
+
+  variables {
+    backup_retention_days = 45
+  }
+
+  assert {
+    condition     = aws_s3_bucket_versioning.backups.versioning_configuration[0].status == "Enabled"
+    error_message = "backups bucket must be versioned"
+  }
+
+  assert {
+    condition     = one(flatten([for r in aws_s3_bucket_lifecycle_configuration.backups.rule : [for n in r.noncurrent_version_expiration : n.noncurrent_days]])) == 45
+    error_message = "noncurrent backup versions must expire after var.backup_retention_days"
+  }
+}
+
 run "user_data_has_timer_and_no_secret" {
   command = plan
 
@@ -239,6 +277,16 @@ run "user_data_has_timer_and_no_secret" {
   assert {
     condition     = !strcontains(aws_instance.main.user_data, random_password.postgres.result) && !strcontains(aws_instance.main.user_data, random_password.origin_secret.result)
     error_message = "user-data must not contain the secrets"
+  }
+
+  assert {
+    condition     = strcontains(aws_instance.main.user_data, "VOLUME_ID=vol-0123456789abcdef0") && strcontains(aws_instance.main.user_data, "RequiresMountsFor=/srv/ricettine")
+    error_message = "user-data must pass the volume id to mount-data.sh and order docker after the mount"
+  }
+
+  assert {
+    condition     = strcontains(aws_instance.main.user_data, "set -euo pipefail")
+    error_message = "the bootstrap script must stop at the first failure"
   }
 
   assert {

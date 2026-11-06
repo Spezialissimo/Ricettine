@@ -31,6 +31,13 @@ resource "aws_iam_role_policy" "instance" {
         Resource = "${local.media_bucket_arn}/*"
       },
       {
+        # Without ListBucket, S3 answers 403 (not NoSuchKey) for a missing key, and the app would turn a 404 into a 500.
+        Sid      = "MediaList"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = local.media_bucket_arn
+      },
+      {
         # Put only, and only under db/: a compromised host cannot delete or overwrite-by-delete backups.
         Sid      = "BackupUploads"
         Effect   = "Allow"

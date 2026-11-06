@@ -25,6 +25,7 @@ resource "aws_instance" "main" {
     backups_bucket  = local.backups_bucket_name
     compose_version = local.compose_version
     compose_sha256  = local.compose_sha256
+    data_volume_id  = aws_ebs_volume.data.id
 
     compose_yaml     = file("${path.module}/../../compose.yaml")
     compose_aws_yaml = file("${path.module}/../../compose.aws.yaml")

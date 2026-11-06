@@ -29,6 +29,11 @@ resource "aws_subnet" "public" {
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = { Name = "ricettine-public" }
+
+  lifecycle {
+    # A change in the AZ list order must not replace the subnet (and cascade to the instance).
+    ignore_changes = [availability_zone]
+  }
 }
 
 resource "aws_route_table" "public" {

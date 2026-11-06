@@ -5,6 +5,9 @@ After=docker.service network-online.target
 Wants=network-online.target
 # Never start Postgres on the root disk if the data volume failed to mount
 RequiresMountsFor=/srv/ricettine
+# First boot can hit transient SSM/IAM errors (instance profile not ready yet): keep retrying for about 30 minutes
+StartLimitIntervalSec=3600
+StartLimitBurst=60
 
 [Service]
 Type=oneshot
@@ -13,6 +16,8 @@ WorkingDirectory=/opt/ricettine
 ExecStart=/opt/ricettine/deploy/aws/start.sh
 ExecStop=/usr/bin/docker compose stop
 TimeoutStartSec=900
+Restart=on-failure
+RestartSec=30
 
 [Install]
 WantedBy=multi-user.target
