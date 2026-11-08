@@ -10,16 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
+import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -139,63 +137,20 @@ class RecipeApiIT extends IntegrationTest {
 		data.putRecipe(me, id, full(0, "x".repeat(201), 1)).andExpect(status().isConflict());
 	}
 
-	@Test
-	void concurrentSavesNeverProduce500() throws Exception {
-		ExecutorService pool = Executors.newFixedThreadPool(2);
-		try {
-			for (int round = 0; round < 5; round++) {
-				String id = data.draft(me);
-				CountDownLatch go = new CountDownLatch(1);
-				List<Future<Integer>> calls = new ArrayList<>();
-				for (int t = 0; t < 2; t++) {
-					String body = full(0, "T" + t, 5 + t);
-					calls.add(pool.submit(() -> {
-						go.await();
-						return data.putRecipe(me, id, body).andReturn().getResponse().getStatus();
-					}));
-				}
-				go.countDown();
-				List<Integer> codes = new ArrayList<>();
-				for (Future<Integer> f : calls) {
-					codes.add(f.get());
-				}
-				assertThat(codes).containsExactlyInAnyOrder(200, 409);
-				assertThat(fetch(me, id).get("version").asLong()).isEqualTo(1);
+	/** Two saves racing on the same version: exactly one wins, the loser gets 409 and never a 500. */
+	@ParameterizedTest(name = "after {0} earlier saves")
+	@ValueSource(ints = { 0, 2 })
+	void concurrentSavesGiveOne200AndOne409(int priorSaves) throws Exception {
+		for (int round = 0; round < 5; round++) {
+			String id = data.draft(me);
+			for (int version = 0; version < priorSaves; version++) {
+				data.putRecipe(me, id, full(version, "Base" + version, 3 + version)).andExpect(status().isOk());
 			}
-		}
-		finally {
-			pool.shutdownNow();
-		}
-	}
-
-	@Test
-	void concurrentSavesOfPopulatedRecipeGiveOne200AndOne409() throws Exception {
-		ExecutorService pool = Executors.newFixedThreadPool(2);
-		try {
-			for (int round = 0; round < 5; round++) {
-				String id = data.draft(me);
-				data.putRecipe(me, id, full(0, "Base", 3)).andExpect(status().isOk());
-				data.putRecipe(me, id, full(1, "Base2", 4)).andExpect(status().isOk());
-				CountDownLatch go = new CountDownLatch(1);
-				List<Future<Integer>> calls = new ArrayList<>();
-				for (int t = 0; t < 2; t++) {
-					String body = full(2, "R" + t, 2 + t);
-					calls.add(pool.submit(() -> {
-						go.await();
-						return data.putRecipe(me, id, body).andReturn().getResponse().getStatus();
-					}));
-				}
-				go.countDown();
-				List<Integer> codes = new ArrayList<>();
-				for (Future<Integer> f : calls) {
-					codes.add(f.get());
-				}
-				assertThat(codes).containsExactlyInAnyOrder(200, 409);
-				assertThat(fetch(me, id).get("version").asLong()).isEqualTo(3);
-			}
-		}
-		finally {
-			pool.shutdownNow();
+			int version = priorSaves;
+			List<Integer> codes = Concurrently.run(2, t -> () -> data
+				.putRecipe(me, id, full(version, "T" + t, 2 + t)).andReturn().getResponse().getStatus());
+			assertThat(codes).containsExactlyInAnyOrder(200, 409);
+			assertThat(fetch(me, id).get("version").asLong()).isEqualTo(priorSaves + 1);
 		}
 	}
 

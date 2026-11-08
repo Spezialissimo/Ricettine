@@ -12,13 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos;
 import com.ricettine.common.Tokens;
-import java.util.ArrayList;
+import com.ricettine.testsupport.Concurrently;
+import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import tools.jackson.databind.JsonNode;
@@ -61,26 +58,10 @@ class CookbookInviteIT extends CookbookIT {
 	void inviteIsSingleUseUnderConcurrency() throws Exception {
 		String id = data.createCookbook(owner);
 		String token = invite(owner, id)[1];
-		CountDownLatch gate = new CountDownLatch(1);
-		ExecutorService pool = Executors.newFixedThreadPool(2);
-		try {
-			List<Future<Integer>> results = new ArrayList<>();
-			for (var who : List.of(bea, carl)) {
-				results.add(pool.submit(() -> {
-					gate.await();
-					return accept(who, token).andReturn().getResponse().getStatus();
-				}));
-			}
-			gate.countDown();
-			List<Integer> codes = new ArrayList<>();
-			for (Future<Integer> f : results) {
-				codes.add(f.get());
-			}
-			assertThat(codes).containsExactlyInAnyOrder(200, 404);
-		}
-		finally {
-			pool.shutdownNow();
-		}
+		List<Cookie> joiners = List.of(bea, carl);
+		List<Integer> codes = Concurrently.run(2,
+				i -> () -> accept(joiners.get(i), token).andReturn().getResponse().getStatus());
+		assertThat(codes).containsExactlyInAnyOrder(200, 404);
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_author", Integer.class)).isEqualTo(1);
 	}
 
