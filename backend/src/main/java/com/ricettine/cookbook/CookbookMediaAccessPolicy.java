@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
 @Component
 class CookbookMediaAccessPolicy implements MediaAccessPolicy {
 
-	static final String CACHE = "private, max-age=3600";
+	/** Members revalidate too: a removed co-author must lose the cover at once, and the 304 is cheap. */
+	static final String CACHE = "private, no-cache";
 	/** Token holders must revalidate, so a link reset takes effect at once. */
 	static final String TOKEN_CACHE = "private, no-cache";
 
