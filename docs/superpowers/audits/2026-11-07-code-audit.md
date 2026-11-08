@@ -570,7 +570,7 @@
 - **Fix:** Either run `prettier --write` once, add `format:check` to package.json and the CI frontend job, or remove prettier and .prettierrc. (The infra-check script is the natural home for the check.)
 - **Evidence:** npx prettier --check "src/**/*.{ts,scss,html}" -> 122 files with issues; grep of .github, scripts, CLAUDE.md shows no use.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Small cleanups / app.routes.ts has a long single-line entry
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR I) · [ ] skip · [ ] later
 
 ### DEP-2: Base and service images use mutable tags; the AWS host defaults to `latest`
 
