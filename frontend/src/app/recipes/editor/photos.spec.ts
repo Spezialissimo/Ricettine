@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { RecipeApi } from '../recipe.api';
 import { Photo } from '../recipe.model';
 import { EditorStore } from './editor-store';

@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { btn, clearOverlays, overlay, settle } from '../../testing/spec-helpers';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore } from './editor-store';
@@ -21,12 +22,9 @@ async function mount(initial: Recipe, resetLink = vi.fn(), status = signal<strin
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, resetLink };
 }
-const btn = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text) as HTMLElement | undefined;
-const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
 
 describe('SharePanelComponent', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('on a draft only says to publish to share', async () => {
     const { el } = await mount(serverRecipe());

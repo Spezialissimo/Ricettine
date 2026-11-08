@@ -1,7 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { clearOverlays, settle } from '../testing/spec-helpers';
 import { CookbookFormDialog, CookbookFormData } from './cookbook-form.dialog';
 
 async function open(data: CookbookFormData) {
@@ -18,7 +19,7 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, v: string) => {
 };
 
 describe('CookbookFormDialog', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('blocks a blank name client-side and does not submit', async () => {
     const submit = vi.fn();

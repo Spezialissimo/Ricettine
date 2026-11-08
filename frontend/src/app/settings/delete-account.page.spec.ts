@@ -4,7 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SetupStatus } from '../core/auth.guards';
 import { AuthStore } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle, submitForm, typeInto } from '../testing/spec-helpers';
 import { DeleteAccountPage } from './delete-account.page';
 
 describe('DeleteAccountPage', () => {
@@ -27,10 +28,8 @@ describe('DeleteAccountPage', () => {
     else mineReq.flush(mine);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    const i = el.querySelector('input[type=password]') as HTMLInputElement;
-    i.value = 'mypassword12';
-    i.dispatchEvent(new Event('input'));
-    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    typeInto(el, 'input[type=password]', 'mypassword12');
+    submitForm(el);
     await settle(f);
     const req = http.expectOne('/api/me');
     expect(req.request.method).toBe('DELETE');

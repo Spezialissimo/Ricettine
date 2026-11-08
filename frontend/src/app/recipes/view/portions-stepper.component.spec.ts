@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideTestTransloco, settle } from '../../testing/transloco';
+import { provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { PortionsStepperComponent } from './portions-stepper.component';
 
 @Component({

@@ -3,12 +3,12 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthStore } from '../../core/auth.store';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { person, settle } from '../../testing/spec-helpers';
 import { CookbookApi } from '../cookbook.api';
 import { PublicCookbook } from '../cookbook.model';
 import { CookbookViewPage } from './cookbook-view.page';
 
-const person = (n: string) => ({ username: n, displayName: n.toUpperCase(), avatarUrl: null });
 const pub = (over: Partial<PublicCookbook> = {}): PublicCookbook => ({
   name: 'Desserts', description: 'Sweet', owner: person('ann'), authors: [person('bob')], cover: null,
   recipes: [

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { provideTestTransloco, settle } from '../../testing/transloco';
+import { provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { KeepScreenOnComponent } from './keep-screen-on.component';
 
 class FakeSentinel extends EventTarget {

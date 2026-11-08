@@ -2,11 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { fillForm, settle } from '../testing/spec-helpers';
 import { AuthStore } from '../core/auth.store';
 import { RegisterPage } from './register.page';
 
 const me = { id: '1', email: 'a@b.co', username: 'davide', displayName: 'D', avatarUrl: null, admin: false };
+
+const ACCOUNT = { email: 'a@b.co', username: 'davide', displayName: 'D', password: 'longenough1' };
 
 describe('RegisterPage', () => {
   let http: HttpTestingController;
@@ -40,17 +43,8 @@ describe('RegisterPage', () => {
     http.expectOne('/api/invites/tok').flush({ expiresAt: 'x' });
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    const type = (sel: string, v: string) => {
-      const i = el.querySelector(sel) as HTMLInputElement;
-      i.value = v;
-      i.dispatchEvent(new Event('input'));
-    };
     const fill = async () => {
-      type('input[name=email]', 'a@b.co');
-      type('input[name=username]', 'davide');
-      type('input[name=displayName]', 'D');
-      type('input[name=password]', 'longenough1');
-      el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      fillForm(el, ACCOUNT);
       await settle(f);
     };
     await fill();
@@ -76,16 +70,7 @@ describe('RegisterPage', () => {
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('input[name=email]')!.getAttribute('autocomplete')).toBe('email');
-    const type = (sel: string, v: string) => {
-      const i = el.querySelector(sel) as HTMLInputElement;
-      i.value = v;
-      i.dispatchEvent(new Event('input'));
-    };
-    type('input[name=email]', 'a@b.co');
-    type('input[name=username]', 'davide');
-    type('input[name=displayName]', 'D');
-    type('input[name=password]', 'longenough1');
-    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    fillForm(el, ACCOUNT);
     await settle(f);
     http
       .expectOne('/api/invites/tok/register')

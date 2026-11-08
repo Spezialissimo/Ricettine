@@ -3,7 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthStore, Me } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { UsersPage } from './users.page';
 
 const me: Me = { id: 'u1', email: 'a@x.y', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: true };

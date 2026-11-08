@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { clearOverlays, settle } from '../../testing/spec-helpers';
 import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
@@ -24,7 +25,7 @@ const chips = (el: HTMLElement) => Array.from(el.querySelectorAll('button.chip')
 
 describe('DetailChipsComponent', () => {
   afterEach(() => {
-    document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = ''));
+    clearOverlays();
     delete (window as unknown as Record<string, unknown>)['matchMedia'];
   });
 

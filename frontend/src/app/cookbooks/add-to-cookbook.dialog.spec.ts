@@ -1,7 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { clearOverlays, settle } from '../testing/spec-helpers';
 import { AddToCookbookDialog } from './add-to-cookbook.dialog';
 import { CookbookApi } from './cookbook.api';
 import { CookbookSummary } from './cookbook.model';
@@ -21,7 +22,7 @@ const add = (ov: HTMLElement, name: string) =>
   ov.querySelector<HTMLButtonElement>(`button[aria-label="${en.cookbooks.addTo.replace('{{name}}', name)}"]`)!;
 
 describe('AddToCookbookDialog', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('shows "Added" on 201 and "Already in this cookbook" on 200', async () => {
     const addRecipe = vi.fn()

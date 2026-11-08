@@ -1,7 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { CopyLinkComponent } from './copy-link.component';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 
 @Component({
   imports: [CopyLinkComponent],
