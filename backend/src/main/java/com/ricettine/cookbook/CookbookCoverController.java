@@ -1,6 +1,7 @@
 package com.ricettine.cookbook;
 
 import com.ricettine.auth.CurrentUser;
+import com.ricettine.common.RateLimits;
 import com.ricettine.cookbook.CookbookDtos.CookbookDto;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
@@ -30,8 +31,11 @@ class CookbookCoverController {
 	private final CookbookService cookbooks;
 	private final MediaService media;
 	private final CurrentUser currentUser;
+	private final RateLimits limits;
 
-	CookbookCoverController(CookbookService cookbooks, MediaService media, CurrentUser currentUser) {
+	CookbookCoverController(CookbookService cookbooks, MediaService media, CurrentUser currentUser,
+			RateLimits limits) {
+		this.limits = limits;
 		this.cookbooks = cookbooks;
 		this.media = media;
 		this.currentUser = currentUser;
@@ -42,6 +46,7 @@ class CookbookCoverController {
 		UUID userId = currentUser.id();
 		UUID cookbookId = CookbookController.parse(id);
 		cookbooks.requireOwner(cookbookId, userId);
+		limits.upload(userId);
 		ProcessedUpload upload = media.process(() -> {
 			try {
 				return file.getBytes();

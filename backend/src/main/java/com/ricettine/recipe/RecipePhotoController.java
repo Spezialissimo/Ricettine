@@ -1,6 +1,7 @@
 package com.ricettine.recipe;
 
 import com.ricettine.auth.CurrentUser;
+import com.ricettine.common.RateLimits;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
 import com.ricettine.media.ProcessedUpload;
@@ -30,8 +31,11 @@ public class RecipePhotoController {
 	private final RecipeService recipes;
 	private final MediaService media;
 	private final CurrentUser currentUser;
+	private final RateLimits limits;
 
-	public RecipePhotoController(RecipeService recipes, MediaService media, CurrentUser currentUser) {
+	public RecipePhotoController(RecipeService recipes, MediaService media, CurrentUser currentUser,
+			RateLimits limits) {
+		this.limits = limits;
 		this.recipes = recipes;
 		this.media = media;
 		this.currentUser = currentUser;
@@ -42,6 +46,8 @@ public class RecipePhotoController {
 		UUID authorId = currentUser.id();
 		UUID recipeId = RecipeController.parse(id);
 		recipes.requireOwned(authorId, recipeId);
+		limits.upload(authorId);
+		recipes.requirePhotoRoom(recipeId);
 		ProcessedUpload upload = media.process(() -> {
 			try {
 				return file.getBytes();

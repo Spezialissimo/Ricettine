@@ -35,7 +35,13 @@ public class ProblemAdvice extends ResponseEntityExceptionHandler {
 			pd.setProperty("fields", ex.getFields());
 		}
 		ex.getProperties().forEach(pd::setProperty);
-		return ResponseEntity.status(ex.getStatus()).body(pd);
+		ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.getStatus());
+		if (ex.getRetryAfter() != null) {
+			long seconds = Math.max(1, (ex.getRetryAfter().toMillis() + 999) / 1000);
+			pd.setProperty("retryAfter", seconds);
+			response.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds));
+		}
+		return response.body(pd);
 	}
 
 	/**

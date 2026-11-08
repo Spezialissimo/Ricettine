@@ -119,6 +119,7 @@ class RecipePhotoBusyIT extends IntegrationTest {
 				.with(csrf()).cookie(me))
 				.andExpect(status().isServiceUnavailable())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Retry-After", "10"))
 				.andExpect(jsonPath("$.code").value("busy"));
 		}
 		finally {

@@ -1,0 +1,7 @@
+# e2e overlay: every Playwright request arrives from the one Docker gateway IP, so the per-IP abuse limits are
+# effectively off. The per-account, upload and profile limits keep their defaults.
+services:
+  app:
+    environment:
+      RICETTINE_LIMITS_LOGINIP_LIMIT: "100000"
+      RICETTINE_LIMITS_ANONYMOUSAUTH_LIMIT: "100000"
