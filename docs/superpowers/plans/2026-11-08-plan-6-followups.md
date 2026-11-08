@@ -20,3 +20,4 @@
 - CONC-1: `addPhoto` now takes `FOR UPDATE` on the recipe instead of `FOR SHARE`, so the photo cap re-check serialises concurrent uploads (two share-locked uploads could both pass a count of 149). Uploads to one recipe now queue for the short transaction only.
 - DUP-1: `LoginAttempt.failed()` stays public because `RateLimitsTest` calls it; making it private means changing that test.
 - If the JVM dies between a blob write and the row insert, the blobs are orphaned with no row. `OrphanMediaCleanup` covers rows without blobs, not blobs without rows; a sweep of `img/` keys with no `media` row is still open.
+- CONC-1: if the connection drops during commit after the DB has committed, `storeThen` sees a failure and deletes the blobs of a committed row; `OrphanMediaCleanup` then heals the row.

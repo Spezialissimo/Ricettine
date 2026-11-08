@@ -131,12 +131,13 @@ public class MediaService {
 	private void writeBlobs(String id, ProcessedUpload upload, List<String> written) {
 		for (var e : upload.variants().entrySet()) {
 			String k = key(id, e.getKey());
-			blobs.put(k, e.getValue(), "image/jpeg");
+			// Recorded before the put: a put that times out client-side may still land, and delete is idempotent.
 			written.add(k);
+			blobs.put(k, e.getValue(), "image/jpeg");
 		}
 	}
 
-	/** Deletes {@code keys}, attaching any failure to {@code cause}. A put that threw may have left a partial blob. */
+	/** Deletes {@code keys}, attaching any failure to {@code cause}. Keys are listed before their put, so a put that failed (or timed out but landed) is removed too; delete of a missing key is a no-op. */
 	private void removeBlobs(List<String> keys, RuntimeException cause) {
 		for (String k : keys) {
 			try {

@@ -182,6 +182,20 @@ class BlobOutsideTxIT extends IntegrationTest {
 	}
 
 	@Test
+	void putThatLandsButReportsFailureLeavesNoBlob() throws Exception {
+		String recipe = create("/api/recipes", null);
+		// stored on the server, but the client saw a failure (e.g. an S3 call timeout)
+		doAnswer(inv -> {
+			inv.callRealMethod();
+			throw new IllegalStateException("timed out after the write landed");
+		}).when(blobs).put(any(), any(), any());
+		assertThat(uploadPhoto(recipe).andReturn().getResponse().getStatus()).isEqualTo(500);
+		assertThat(attemptedKeys()).isNotEmpty();
+		assertThat(mediaRows()).isZero();
+		assertThat(storedAmongAttempted()).isZero();
+	}
+
+	@Test
 	void failedCoverBlobWriteLeavesNoRowAndNoBlob() throws Exception {
 		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
 		failSecondPut();
