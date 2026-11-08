@@ -29,6 +29,8 @@ import org.flywaydb.core.Flyway;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -79,8 +81,10 @@ class MediaAccessIT extends IntegrationTest {
 		return new String[] { id, mediaId };
 	}
 
-	@Test
-	void etagAndNotModified() throws Exception {
+	/** The conditional GET answers 304 for the exact ETag, a weak validator, a list containing it, and {@code *}. */
+	@ParameterizedTest
+	@ValueSource(strings = { "%s", "W/%s", "\"other\", %s", "\"other\", W/%s, \"another\"", "*" })
+	void etagAndNotModified(String ifNoneMatchForm) throws Exception {
 		var cookie = Sessions.login(mvc, "o@x.com");
 		String[] r = publishedRecipeWithPhoto(cookie);
 		String url = media.url(r[1], ImageVariant.THUMB);
@@ -90,11 +94,15 @@ class MediaAccessIT extends IntegrationTest {
 		assertThat(etag).isEqualTo("\"" + r[1] + ".thumb\"");
 		// the blob is gone: a 304 proves it was not loaded, while a 200 would now be a 404
 		blobs.delete(MediaService.key(r[1], ImageVariant.THUMB));
-		mvc.perform(get(url).param("s", data.recipeShareToken(r[0])).header("If-None-Match", etag))
+		mvc.perform(get(url).param("s", data.recipeShareToken(r[0])).header("If-None-Match",
+					ifNoneMatchForm.formatted(etag)))
 				.andExpect(status().isNotModified()).andExpect(header().string("ETag", etag))
 				.andExpect(header().string("Cache-Control", "private, no-cache"))
 				.andExpect(MockMvcResultMatchers.content().bytes(new byte[0]));
 		mvc.perform(get(url).param("s", data.recipeShareToken(r[0]))).andExpect(status().isNotFound());
+		// a validator for some other representation never matches
+		mvc.perform(get(url).param("s", data.recipeShareToken(r[0])).header("If-None-Match", "\"other\", W/\"x\""))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test

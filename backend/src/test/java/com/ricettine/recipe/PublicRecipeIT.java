@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.testsupport.TestData.RecipeBody;
 import jakarta.servlet.http.Cookie;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -72,8 +73,8 @@ class PublicRecipeIT extends IntegrationTest {
 				.andExpect(jsonPath("$.author.id").doesNotExist())
 				.andExpect(jsonPath("$.groups[0].ingredients[0].name").value("flour"))
 				.andExpect(jsonPath("$.steps[0].text").value("mix"))
-				.andExpect(jsonPath("$.steps[0].photo.thumbUrl").value(org.hamcrest.Matchers.endsWith("?s=" + t)))
-				.andExpect(jsonPath("$.cover.displayUrl").value(org.hamcrest.Matchers.endsWith("?s=" + t)))
+				.andExpect(jsonPath("$.steps[0].photo.thumbUrl").value(Matchers.endsWith("?s=" + t)))
+				.andExpect(jsonPath("$.cover.displayUrl").value(Matchers.endsWith("?s=" + t)))
 				.andExpect(jsonPath("$.publishedAt").isNotEmpty())
 				.andExpect(jsonPath("$.viewerIsAuthor").value(false))
 				.andExpect(jsonPath("$.id").doesNotExist())
@@ -87,7 +88,7 @@ class PublicRecipeIT extends IntegrationTest {
 		String draft = data.draft(me);
 		for (String t : new String[] { data.recipeShareToken(draft), "nope", "a".repeat(43), "x".repeat(2000), "a.b", "!!!" }) {
 			mvc.perform(get("/api/r/" + t)).andExpect(status().isNotFound())
-				.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+				.andExpect(header().string("Cache-Control", Matchers.containsString("no-store")))
 				.andExpect(jsonPath("$.code").value("recipe_not_found"));
 		}
 	}

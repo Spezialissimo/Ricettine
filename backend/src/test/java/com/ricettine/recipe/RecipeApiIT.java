@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -322,7 +323,7 @@ class RecipeApiIT extends IntegrationTest {
 	@Test
 	void hugeGroupListIsRejectedWithoutIterating() throws Exception {
 		String id = data.draft(me);
-		String groups = String.join(",", java.util.Collections.nCopies(1001, "{\"name\":\"\",\"ingredients\":[]}"));
+		String groups = String.join(",", Collections.nCopies(1001, "{\"name\":\"\",\"ingredients\":[]}"));
 		String body = """
 			{"version":0,"title":"t","portions":1,"visibility":"PRIVATE","groups":[%s],"steps":[]}"""
 			.formatted(groups);

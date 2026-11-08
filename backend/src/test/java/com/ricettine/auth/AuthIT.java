@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -164,7 +165,7 @@ class AuthIT extends IntegrationTest {
 	@Test
 	void legacyBcryptHashStillLogsIn() throws Exception {
 		User u = user("old@x.com", "olduser", false);
-		String bcrypt = "{bcrypt}" + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+		String bcrypt = "{bcrypt}" + new BCryptPasswordEncoder()
 			.encode("correct-horse-1");
 		jdbc.update("update app_user set password_hash = ? where id = ?", bcrypt, u.getId());
 		assertThat(login("old@x.com", "correct-horse-1").getResponse().getStatus()).isEqualTo(200);

@@ -1,11 +1,13 @@
 package com.ricettine.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import org.assertj.core.api.Assertions;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -64,7 +66,7 @@ class SpaFallbackIT extends IntegrationTest {
 
 	@Test
 	void bareMediaIsNotIndex() throws Exception {
-		mvc.perform(get("/media").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("u")))
+		mvc.perform(get("/media").with(SecurityMockMvcRequestPostProcessors.user("u")))
 				.andExpect(status().isNotFound());
 	}
 
@@ -77,11 +79,18 @@ class SpaFallbackIT extends IntegrationTest {
 		}
 	}
 
+	/** Case variants are not the /api, /media or /actuator prefixes, so they stay closed (401); %61 is a bad request. */
 	@Test
 	void caseVariantAndEncodedApiPathsAreNotPermittedSpaPaths() throws Exception {
-		for (String path : new String[] {"/API/x", "/API/me", "/%61pi/me", "/%61pi/x", "/Api", "/MEDIA/x", "/ACTUATOR/info"}) {
-			int s = mvc.perform(get(path)).andReturn().getResponse().getStatus();
-			Assertions.assertThat(s).as(path).isIn(400, 401, 404);
+		Map<String, Integer> expected = new LinkedHashMap<>();
+		for (String path : new String[] {"/API/x", "/API/me", "/Api", "/MEDIA/x", "/ACTUATOR/info"}) {
+			expected.put(path, 401);
+		}
+		expected.put("/%61pi/me", 400);
+		expected.put("/%61pi/x", 400);
+		for (Map.Entry<String, Integer> e : expected.entrySet()) {
+			assertThat(mvc.perform(get(e.getKey())).andReturn().getResponse().getStatus()).as(e.getKey())
+				.isEqualTo(e.getValue());
 		}
 	}
 }

@@ -12,7 +12,6 @@ import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
 import com.ricettine.media.TestImages;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -22,10 +21,6 @@ class RobotsHeaderIT extends IntegrationTest {
 	static final String NOINDEX = "noindex, nofollow";
 
 	@Autowired MediaService media;
-
-	@BeforeEach
-	void setUp() {
-	}
 
 	@Test
 	void spaPathsCarryIt() throws Exception {
@@ -49,7 +44,7 @@ class RobotsHeaderIT extends IntegrationTest {
 				MediaKind.AVATAR, null);
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isOk())
 				.andExpect(header().string("X-Robots-Tag", NOINDEX));
-		mvc.perform(get("/actuator/health")).andExpect(header().string("X-Robots-Tag", NOINDEX));
+		mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(header().string("X-Robots-Tag", NOINDEX));
 	}
 
 	@Test

@@ -142,6 +142,11 @@ class AccountDeletionIT extends IntegrationTest {
 		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
 				.content(body(Sessions.PASSWORD)))
 			.andExpect(status().isNoContent());
+		assertThat(jdbc.queryForObject("select count(*) from app_user", Integer.class)).isOne();
+		assertThat(jdbc.queryForObject("select is_admin from app_user where username = 'boss2'", Boolean.class))
+			.isTrue();
+		assertThat(jdbc.queryForObject("select count(*) from app_user where username = 'boss'", Integer.class))
+			.isZero();
 	}
 
 	@Test

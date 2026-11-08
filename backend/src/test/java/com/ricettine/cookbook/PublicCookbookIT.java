@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.sql.DataSource;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,7 +75,7 @@ class PublicCookbookIT extends IntegrationTest {
 			.andExpect(jsonPath("$.recipes[0].recipeId").value(r))
 			.andExpect(jsonPath("$.recipes[0].title").value("Pasta"))
 			.andExpect(jsonPath("$.recipes[0].author.username").value("mario"))
-			.andExpect(jsonPath("$.recipes[0].coverThumbUrl").value(org.hamcrest.Matchers.endsWith("?c=" + t)))
+			.andExpect(jsonPath("$.recipes[0].coverThumbUrl").value(Matchers.endsWith("?c=" + t)))
 			.andExpect(jsonPath("$.viewerRole").doesNotExist())
 			.andExpect(jsonPath("$.cookbookId").doesNotExist());
 
@@ -83,7 +84,7 @@ class PublicCookbookIT extends IntegrationTest {
 			.andExpect(jsonPath("$.title").value("Pasta"))
 			.andExpect(jsonPath("$.shareUrl").doesNotExist())
 			.andExpect(jsonPath("$.recipeId").doesNotExist())
-			.andExpect(jsonPath("$.steps[0].photo.displayUrl").value(org.hamcrest.Matchers.endsWith("?c=" + t)))
+			.andExpect(jsonPath("$.steps[0].photo.displayUrl").value(Matchers.endsWith("?c=" + t)))
 			.andReturn();
 		assertThat(res.getResponse().getContentAsString()).doesNotContain(data.recipeShareToken(r));
 		String photo = data.read(res).get("steps").get(0).get("photo").get("displayUrl").asText();

@@ -43,6 +43,28 @@ class CookbookMemberIT extends CookbookIT {
 	}
 
 	@Test
+	void removingEntriesWithAnAuthorLeavesTheirEntriesInOtherCookbooks() throws Exception {
+		String first = data.createCookbook(owner);
+		String second = data.createCookbook(owner);
+		join(first, carl);
+		join(second, carl);
+		String inFirst = data.publishedRecipe(carl, "PRIVATE");
+		String inSecond = data.publishedRecipe(carl, "PRIVATE");
+		addRecipe(carl, first, inFirst).andExpect(status().isCreated());
+		addRecipe(carl, second, inSecond).andExpect(status().isCreated());
+
+		removeAuthor(owner, first, userId("carl1"), true).andExpect(status().isNoContent());
+
+		assertThat(data.read(mvc.perform(get("/api/cookbooks/" + first).cookie(owner)).andReturn()).get("recipes"))
+			.isEmpty();
+		JsonNode other = data.read(mvc.perform(get("/api/cookbooks/" + second).cookie(carl)).andReturn());
+		assertThat(other.get("recipes")).hasSize(1);
+		assertThat(other.get("recipes").get(0).get("recipeId").asText()).isEqualTo(inSecond);
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_author where cookbook_id = ?::uuid",
+				Integer.class, second)).isOne();
+	}
+
+	@Test
 	void authorLeavesAndCanBeReinvited() throws Exception {
 		String id = data.createCookbook(owner);
 		join(id, bea);

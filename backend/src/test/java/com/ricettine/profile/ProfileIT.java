@@ -86,6 +86,30 @@ class ProfileIT extends IntegrationTest {
 		assertThat(p.get("cookbooks").get(0).get("shareToken").asText()).isNotEmpty();
 	}
 
+	/** String-level guard: nothing private, draft or tokenised-private leaks through any field of the visitor view. */
+	@Test
+	void visitorProfileJsonContainsNoPrivateIdsOrTokens() throws Exception {
+		String raw = mvc.perform(get("/api/users/alice/profile").cookie(b)).andExpect(status().isOk()).andReturn()
+			.getResponse().getContentAsString();
+		assertThat(raw).contains(pubPublished).contains(aPublicBook); // positive control
+		assertThat(raw).doesNotContain(privPublished, pubDraft, privDraft, aPrivateBook)
+			.doesNotContain(data.recipeShareToken(privPublished), data.recipeShareToken(pubDraft),
+					data.recipeShareToken(privDraft), data.cookbookShareToken(aPrivateBook));
+	}
+
+	@Test
+	void selfViewThumbsAreServed() throws Exception {
+		JsonNode p = profile(a, "alice");
+		assertThat(p.get("recipes")).hasSize(4);
+		for (JsonNode r : p.get("recipes")) {
+			mvc.perform(get(r.get("coverThumbUrl").asText()).cookie(a)).andExpect(status().isOk());
+		}
+		assertThat(p.get("cookbooks")).hasSize(2);
+		for (JsonNode c : p.get("cookbooks")) {
+			mvc.perform(get(c.get("coverThumbUrl").asText()).cookie(a)).andExpect(status().isOk());
+		}
+	}
+
 	@Test
 	void selfSeesAllMarked() throws Exception {
 		JsonNode p = profile(a, "alice");

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -108,7 +109,8 @@ class FeedIT extends IntegrationTest {
 	@Test
 	void publicDraftNeverListed() throws Exception {
 		String d = draft(a, "PUBLIC");
-		assertThat(walk(b, 50)).doesNotContain(d);
+		String listed = published(a, "PUBLIC"); // positive control: the walk does return recipes
+		assertThat(walk(b, 50)).contains(listed).doesNotContain(d);
 	}
 
 	@Test
@@ -211,6 +213,6 @@ class FeedIT extends IntegrationTest {
 	void anonymousIs401AndResponseIsNoStore() throws Exception {
 		mvc.perform(get("/api/feed")).andExpect(status().isUnauthorized());
 		mvc.perform(get("/api/feed").cookie(a)).andExpect(status().isOk())
-			.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+			.andExpect(header().string("Cache-Control", Matchers.containsString("no-store")));
 	}
 }

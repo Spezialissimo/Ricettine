@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ricettine.Sessions;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import com.ricettine.testsupport.TestData;
@@ -42,7 +43,7 @@ class CookbookAccountDeletionIT extends CookbookIT {
 		addRecipe(bea, bBook, r2).andExpect(status().isCreated());
 
 		mvc.perform(delete("/api/me").with(csrf()).cookie(bea).contentType(MediaType.APPLICATION_JSON)
-			.content("{\"password\":\"" + com.ricettine.Sessions.PASSWORD + "\"}")).andExpect(status().isNoContent());
+			.content("{\"password\":\"" + Sessions.PASSWORD + "\"}")).andExpect(status().isNoContent());
 
 		assertThat(jdbc.queryForObject("select count(*) from cookbook where id = ?::uuid", Integer.class, aBook)).isZero();
 		assertThat(jdbc.queryForObject("select count(*) from one_time_token where cookbook_id = ?::uuid",
@@ -58,5 +59,25 @@ class CookbookAccountDeletionIT extends CookbookIT {
 		assertThat(jdbc.queryForObject("select added_by from cookbook_entry where cookbook_id = ?::uuid",
 			UUID.class, bBook)).isNull();
 		assertThat(jdbc.queryForObject("select count(*) from recipe where id = ?::uuid", Integer.class, r2)).isOne();
+	}
+
+	/** Bea's own cookbook goes with her, but the owner's outstanding invite to a cookbook she co-authors stays. */
+	@Test
+	void deletionKeepsAnotherOwnersOutstandingInvite() throws Exception {
+		String aBook = data.createCookbook(bea);
+		String bBook = data.createCookbook(owner);
+		join(bBook, bea);
+		invite(bea, aBook);
+		String[] kept = invite(owner, bBook);
+
+		mvc.perform(delete("/api/me").with(csrf()).cookie(bea).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"password\":\"" + Sessions.PASSWORD + "\"}")).andExpect(status().isNoContent());
+
+		assertThat(jdbc.queryForObject("select count(*) from one_time_token where cookbook_id = ?::uuid",
+				Integer.class, aBook)).isZero();
+		assertThat(jdbc.queryForObject("select count(*) from one_time_token where cookbook_id = ?::uuid "
+				+ "and used_at is null", Integer.class, bBook)).isOne();
+		preview(carl, kept[1]).andExpect(status().isOk());
+		accept(carl, kept[1]).andExpect(status().isOk());
 	}
 }

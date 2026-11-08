@@ -10,10 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
+import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -56,7 +59,7 @@ class CookbookApiIT extends IntegrationTest {
 			.andExpect(jsonPath("$.name").value("Dinners")).andExpect(jsonPath("$.visibility").value("PRIVATE"))
 			.andExpect(jsonPath("$.role").value("OWNER")).andExpect(jsonPath("$.description").doesNotExist())
 			.andExpect(jsonPath("$.owner.username").value("mario")).andExpect(jsonPath("$.authors").isEmpty())
-			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").value(org.hamcrest.Matchers.startsWith("http://localhost/c/")))
+			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").value(Matchers.startsWith("http://localhost/c/")))
 			.andExpect(jsonPath("$.cover").doesNotExist()).andReturn();
 		JsonNode n = data.read(r);
 		UUID id = UUID.fromString(n.get("id").asText());
@@ -218,12 +221,8 @@ class CookbookApiIT extends IntegrationTest {
 		assertThat(fetch(me, id).get("recipes")).isEmpty();
 	}
 
-	@Test
-	void cookbookFullAt500() throws Exception {
-		String id = data.createCookbook(me);
-		String first = data.publishedRecipe(me, "PRIVATE");
-		String extra = data.publishedRecipe(me, "PRIVATE");
-		// 499 entries (the key is cookbook + recipe, so bulk-insert real recipe rows), then one more fits, the next not.
+	/** Puts 499 entries in the cookbook (bulk-inserted recipe rows plus {@code first}); the key is cookbook + recipe. */
+	private void fillTo499(String cookbookId, String first) {
 		jdbc.update("""
 			insert into recipe (id, author_id, status, visibility, title, portions, share_token, version, created_at, updated_at)
 			select gen_random_uuid(), (select id from app_user where username = 'mario'), 'PUBLISHED', 'PRIVATE', 'bulk', 1,
@@ -231,14 +230,43 @@ class CookbookApiIT extends IntegrationTest {
 			from generate_series(1, 498) g""");
 		jdbc.update("""
 			insert into cookbook_entry (cookbook_id, recipe_id, added_by, added_at)
-			select ?::uuid, id, null, now() from recipe where title = 'bulk' or id = ?::uuid""", id, first);
+			select ?::uuid, id, null, now() from recipe where title = 'bulk' or id = ?::uuid""", cookbookId, first);
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(499);
+	}
+
+	@Test
+	void cookbookFullAt500() throws Exception {
+		String id = data.createCookbook(me);
+		String first = data.publishedRecipe(me, "PRIVATE");
+		String extra = data.publishedRecipe(me, "PRIVATE");
+		fillTo499(id, first);
 		addById(me, id, extra).andExpect(status().isCreated());
 		String third = data.publishedRecipe(me, "PRIVATE");
 		addById(me, id, third).andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("cookbook_full"));
 		addById(me, id, extra).andExpect(status().isOk());
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(500);
+	}
+
+	@Test
+	void concurrentAddsAt499FillTheCookbookExactlyOnce() throws Exception {
+		String id = data.createCookbook(me);
+		String first = data.publishedRecipe(me, "PRIVATE");
+		List<String> extras = List.of(data.publishedRecipe(me, "PRIVATE"), data.publishedRecipe(me, "PRIVATE"));
+		fillTo499(id, first);
+		List<Integer> codes = Concurrently.run(2,
+				i -> () -> addById(me, id, extras.get(i)).andReturn().getResponse().getStatus());
+		assertThat(codes).containsExactlyInAnyOrder(201, 409);
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(500);
+	}
+
+	@Test
+	void ownDraftCannotBeAddedByShareToken() throws Exception {
+		String id = data.createCookbook(me);
+		String draft = data.draft(me);
+		addByToken(me, id, data.recipeShareToken(draft)).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("recipe_not_found"));
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isZero();
 	}
 
 	@Test

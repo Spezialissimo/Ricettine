@@ -9,14 +9,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos;
 import com.ricettine.common.Tokens;
 import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import tools.jackson.databind.JsonNode;
 
@@ -91,6 +91,67 @@ class CookbookInviteIT extends CookbookIT {
 			.andExpect(status().isNotFound());
 	}
 
+	/** A fresh token of the given other purpose, made through the admin endpoint (the cookbook owner is an admin). */
+	private String otherPurposeToken(String purpose) throws Exception {
+		String path = purpose.equals("INSTANCE_INVITE") ? "/api/admin/invites"
+				: "/api/admin/users/" + userId("bea1") + "/password-reset";
+		String url = data.read(mvc.perform(post(path).with(csrf()).cookie(owner)).andExpect(status().isCreated())
+			.andReturn()).get("url").asText();
+		assertThat(jdbc.queryForObject("select purpose from one_time_token where token_hash = ?", String.class,
+				Tokens.hash(url.substring(url.lastIndexOf('/') + 1)))).isEqualTo(purpose);
+		return url.substring(url.lastIndexOf('/') + 1);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "INSTANCE_INVITE", "PASSWORD_RESET" })
+	void otherPurposeTokensAreInvalidAsCookbookInvites(String purpose) throws Exception {
+		data.createCookbook(owner);
+		String token = otherPurposeToken(purpose);
+		preview(carl, token).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("cookbook_invite_invalid"));
+		accept(carl, token).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("cookbook_invite_invalid"));
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_author", Integer.class)).isZero();
+		assertThat(jdbc.queryForObject("select count(*) from one_time_token where used_at is not null",
+				Integer.class)).isZero();
+	}
+
+	@Test
+	void cookbookInviteTokenIsInvalidAsInstanceInvite() throws Exception {
+		String token = invite(owner, data.createCookbook(owner))[1];
+		mvc.perform(get("/api/invites/" + token)).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("invite_invalid"));
+		mvc.perform(post("/api/invites/" + token + "/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"email\":\"new@x.com\",\"password\":\"correct-horse-1\",\"username\":\"newbie\","
+					+ "\"displayName\":\"New\"}"))
+			.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("invite_invalid"));
+		assertThat(jdbc.queryForObject("select count(*) from app_user where username = 'newbie'", Integer.class))
+			.isZero();
+		preview(carl, token).andExpect(status().isOk()); // still a valid cookbook invite
+	}
+
+	@Test
+	void anonymousAcceptIs401AndKeepsTheInvite() throws Exception {
+		String token = invite(owner, data.createCookbook(owner))[1];
+		mvc.perform(post("/api/cookbook-invites/" + token + "/accept").with(csrf()))
+			.andExpect(status().isUnauthorized());
+		assertThat(jdbc.queryForObject("select count(*) from one_time_token where used_at is not null",
+				Integer.class)).isZero();
+		accept(bea, token).andExpect(status().isOk());
+	}
+
+	@Test
+	void revokingThroughAnotherCookbooksIdIs404() throws Exception {
+		String first = data.createCookbook(owner);
+		String second = data.createCookbook(owner);
+		String[] inv = invite(owner, first);
+		mvc.perform(delete("/api/cookbooks/" + second + "/invites/" + inv[0]).with(csrf()).cookie(owner))
+			.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("cookbook_invite_invalid"));
+		preview(bea, inv[1]).andExpect(status().isOk()); // the invite of the first cookbook is untouched
+		mvc.perform(delete("/api/cookbooks/" + first + "/invites/" + inv[0]).with(csrf()).cookie(owner))
+			.andExpect(status().isNoContent());
+	}
+
 	@Test
 	void alreadyMemberKeepsInvite() throws Exception {
 		String id = data.createCookbook(owner);
@@ -106,8 +167,7 @@ class CookbookInviteIT extends CookbookIT {
 	void authorsFullKeepsInvite() throws Exception {
 		String id = data.createCookbook(owner);
 		for (int i = 0; i < 20; i++) {
-			accounts.create(new AccountDtos.NewAccountRequest("a" + i + "@x.com",
-					Sessions.PASSWORD, "author" + i, "A" + i), false);
+			data.account("a" + i + "@x.com", "author" + i, "A" + i, false);
 			jdbc.update("insert into cookbook_author (cookbook_id, user_id, joined_at) values (?, ?, now())",
 					UUID.fromString(id), userId("author" + i));
 		}
