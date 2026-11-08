@@ -2,7 +2,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKey, fieldErrorKey, toApiError } from '../core/api-error';
-import { uid } from '../recipes/editor/editor-sheet';
+import { uid } from '../shared/sheet';
 import { CookbookInput, CookbookVisibility, MAX_DESCRIPTION, MAX_NAME, codePoints } from './cookbook.model';
 
 export type CookbookFormData = {
@@ -17,7 +17,7 @@ export type CookbookFormData = {
   selector: 'app-cookbook-form-dialog',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../recipes/editor/sheet.scss',
+  styleUrl: '../shared/sheet.scss',
   styles: `
     .field { margin-bottom: 12px; }
     textarea { width: 100%; min-height: 88px; padding: 8px 12px; font: inherit; border: 1px solid #e2dcd3; border-radius: 10px; box-sizing: border-box; }

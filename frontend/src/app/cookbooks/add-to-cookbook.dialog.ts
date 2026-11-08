@@ -1,9 +1,8 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet, uid } from '../recipes/editor/editor-sheet';
+import { openSheet, uid } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInput, CookbookSummary, RecipeRef } from './cookbook.model';
 import { CookbookFormDialog } from './cookbook-form.dialog';
@@ -15,7 +14,7 @@ type Row = { id: string; name: string; state: 'idle' | 'busy' | 'added' | 'alrea
   selector: 'app-add-to-cookbook-dialog',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../recipes/editor/sheet.scss',
+  styleUrl: '../shared/sheet.scss',
   styles: `
     ul { list-style: none; margin: 0 0 12px; padding: 0; }
     li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; flex-wrap: wrap; padding: 4px 0; }
@@ -99,7 +98,7 @@ export class AddToCookbookDialog {
   /** Creates a cookbook, then adds the recipe to it; the form stays open if either step fails. */
   protected async createNew(): Promise<void> {
     const state: { made: { id: string; name: string } | null } = { made: null };
-    const sheet = openEditorSheet(this.dialog, this.injector, CookbookFormDialog, {
+    const result = await openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.newTitle'),
       data: {
         submit: async (input: CookbookInput) => {
@@ -108,7 +107,7 @@ export class AddToCookbookDialog {
         },
       },
     });
-    if ((await firstValueFrom(sheet.closed, { defaultValue: undefined })) === true && state.made) {
+    if (result === true && state.made) {
       const { id, name } = state.made;
       this.rows.update((rs) => [{ id, name, state: 'added', error: null }, ...(rs ?? [])]);
     }

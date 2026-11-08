@@ -1,13 +1,11 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, input, output, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { confirmSheet } from '../shared/confirm-dialog.component';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook } from './cookbook.model';
-import { ConfirmResetCookbookLinkDialog } from './confirm-reset-cookbook-link.dialog';
 
 /** The cookbook's share link for every member, with a confirmed "Reset link" for the owner only. */
 @Component({
@@ -57,10 +55,13 @@ export class CookbookSharePanelComponent {
     this.error.set(null);
     this.done.set(false);
     try {
-      const ref = openEditorSheet(this.dialog, this.injector, ConfirmResetCookbookLinkDialog, {
-        label: this.i18n.translate('cookbooks.resetLinkConfirm.title'),
+      const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+        titleKey: 'cookbooks.resetLinkConfirm.title',
+        bodyKey: 'cookbooks.resetLinkConfirm.body',
+        confirmKey: 'cookbooks.resetLinkConfirm.confirm',
+        danger: true,
       });
-      if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+      if (!confirmed) return;
       this.updated.emit(await this.api.resetLink(this.book().id));
       this.done.set(true);
     } catch (e) {

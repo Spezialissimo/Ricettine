@@ -2,11 +2,10 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { mediaUrl } from '../core/media';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { openSheet } from '../shared/sheet';
 import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { CookbookApi } from './cookbook.api';
@@ -160,11 +159,10 @@ export class MembersPanelComponent {
 
   private async removeAuthor(userId: string, data: { name: string; self: boolean }, leaving: boolean): Promise<void> {
     this.error.set(null);
-    const ref = openEditorSheet(this.dialog, this.injector, RemoveMemberDialog, {
+    const res = await openSheet<{ removeRecipes: boolean } | false>(this.dialog, this.injector, RemoveMemberDialog, {
       label: this.i18n.translate(data.self ? 'cookbooks.leave' : 'cookbooks.removeMember'),
       data,
     });
-    const res = (await firstValueFrom(ref.closed, { defaultValue: undefined })) as { removeRecipes: boolean } | false | undefined;
     if (!res) return;
     try {
       await this.api.removeAuthor(this.book().id, userId, res.removeRecipes);

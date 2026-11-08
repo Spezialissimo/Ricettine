@@ -3,7 +3,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { formatAmount, parseAmount } from '../amount';
 import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
 import { countingIngredients, countsIngredient, unnamedRows } from './completeness';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 import { EditorStore } from './editor-store';
 
 export const MAX_GROUPS = 20;

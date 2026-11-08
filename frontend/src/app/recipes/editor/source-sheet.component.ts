@@ -2,7 +2,7 @@ import { DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 
 export const MAX_SOURCE = 500;
 
@@ -11,7 +11,7 @@ export const MAX_SOURCE = 500;
   selector: 'app-source-sheet',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './sheet.scss',
+  styleUrl: '../../shared/sheet.scss',
   template: `
     <ng-container *transloco="let t">
       <h2>{{ t('editor.sourceSheet.title') }}</h2>

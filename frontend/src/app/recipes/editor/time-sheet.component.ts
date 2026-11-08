@@ -2,7 +2,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 
 export type TimeKind = 'prep' | 'cook';
 export type TimeSheetData = { tab: TimeKind };
@@ -25,7 +25,7 @@ const field = (kind: TimeKind) => (kind === 'prep' ? 'prepMinutes' : 'cookMinute
   selector: 'app-time-sheet',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './sheet.scss',
+  styleUrl: '../../shared/sheet.scss',
   styles: `
     .tabs, .custom { display: flex; gap: 6px; margin: 10px 0; }
     .tabs button { flex: 1; }

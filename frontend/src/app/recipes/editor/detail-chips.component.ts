@@ -3,7 +3,7 @@ import { ComponentType } from '@angular/cdk/portal';
 import { ChangeDetectionStrategy, Component, Injector, inject } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
-import { openEditorSheet } from './editor-sheet';
+import { openSheet } from '../../shared/sheet';
 import { PortionsSheetComponent } from './portions-sheet.component';
 import { SourceSheetComponent } from './source-sheet.component';
 import { TimeKind, TimeSheetComponent, TimeSheetData, durationKey } from './time-sheet.component';
@@ -70,6 +70,6 @@ export class DetailChipsComponent {
   }
 
   private open<C, D = unknown>(component: ComponentType<C>, labelKey: string, data?: D): void {
-    openEditorSheet(this.dialog, this.injector, component, { label: this.i18n.translate(labelKey), data });
+    void openSheet(this.dialog, this.injector, component, { label: this.i18n.translate(labelKey), data });
   }
 }

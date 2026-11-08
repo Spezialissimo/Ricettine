@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRend
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { StepInput } from '../recipe.model';
 import { countingSteps, countsStep } from './completeness';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 import { EditorStore } from './editor-store';
 import { remapIndex } from './remap-index';
 import { PhotoDropDirective } from './photo-drop.directive';

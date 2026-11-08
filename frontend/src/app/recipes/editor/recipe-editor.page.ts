@@ -3,15 +3,12 @@ import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
-import { ConfirmDeleteDialog } from './confirm-delete.dialog';
-import { ConfirmLeaveDialog } from './confirm-leave.dialog';
 import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore, conflictText } from './editor-store';
-import { openEditorSheet } from './editor-sheet';
+import { confirmSheet } from '../../shared/confirm-dialog.component';
 import { IngredientsEditorComponent } from './ingredients-editor.component';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoPickerComponent } from './photo-picker.component';
@@ -245,10 +242,13 @@ export class RecipeEditorPage {
    */
   async canLeave(): Promise<boolean> {
     if (!this.store.uploadsUnfinished() || this.auth.me() === null) return true;
-    const ref = openEditorSheet(this.dialog, this.injector, ConfirmLeaveDialog, {
-      label: this.i18n.translate('editor.leaveConfirm.title'),
+    return confirmSheet(this.dialog, this.injector, this.i18n, {
+      titleKey: 'editor.leaveConfirm.title',
+      bodyKey: 'editor.leaveConfirm.body',
+      cancelKey: 'editor.leaveConfirm.stay',
+      confirmKey: 'editor.leaveConfirm.leave',
+      cancelPrimary: true,
     });
-    return (await firstValueFrom(ref.closed, { defaultValue: undefined })) === true;
   }
 
   /** The bottom bar has no step of its own: a refused file is reported on the step it was meant for. */
@@ -355,10 +355,13 @@ export class RecipeEditorPage {
     this.busy.set(true);
     this.actionError.set(null);
     try {
-      const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteDialog, {
-        label: this.i18n.translate('editor.deleteConfirm.title'),
+      const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+        titleKey: 'editor.deleteConfirm.title',
+        bodyKey: 'editor.deleteConfirm.body',
+        confirmKey: 'editor.deleteConfirm.confirm',
+        danger: true,
       });
-      if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+      if (!confirmed) return;
       await this.store.remove();
       await this.router.navigateByUrl('/recipes');
     } catch (e) {

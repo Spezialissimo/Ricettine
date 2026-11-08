@@ -1,7 +1,7 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { uid } from '../recipes/editor/editor-sheet';
+import { uid } from '../shared/sheet';
 
 export type RemoveMemberData = { name: string; self: boolean };
 
@@ -13,7 +13,7 @@ export type RemoveMemberData = { name: string; self: boolean };
   selector: 'app-remove-member-dialog',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../recipes/editor/sheet.scss',
+  styleUrl: '../shared/sheet.scss',
   styles: `
     .actions { display: flex; gap: 8px; justify-content: flex-end; }
     .actions button { padding: 0 16px; }

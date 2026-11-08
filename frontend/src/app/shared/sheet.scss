@@ -1,4 +1,4 @@
-@use '../../../styles/tokens' as t;
+@use '../../styles/tokens' as t;
 
 :host { display: block; padding: t.$space-4; }
 h2 { margin: 0 0 t.$space-1; font-size: 1.1rem; }

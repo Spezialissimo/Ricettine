@@ -182,7 +182,7 @@ describe('RecipeEditorPage', () => {
     await settle(f);
     await f.componentInstance.confirmDelete(); // ignored while Done is running
     await settle(f);
-    expect(document.querySelector('app-confirm-delete-dialog')).toBeNull();
+    expect(document.querySelector('app-confirm-dialog')).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
 
@@ -192,7 +192,7 @@ describe('RecipeEditorPage', () => {
     const { f, el, nav } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, remove });
     void f.componentInstance.confirmDelete();
     await settle(f);
-    expect(document.querySelector('app-confirm-delete-dialog')).toBeTruthy();
+    expect(document.querySelector('app-confirm-dialog')).toBeTruthy();
     expect((byText(el, 'button', en.editor.done) as HTMLButtonElement).disabled).toBe(true);
     await f.componentInstance.done();
     expect(remove).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('RecipeEditorPage', () => {
     await settle(f);
     byText(document, '[role="menuitem"]', en.editor.delete)!.click();
     await settle(f);
-    const dialog = document.querySelector('app-confirm-delete-dialog')!;
+    const dialog = document.querySelector('app-confirm-dialog')!;
     expect(dialog.textContent).toContain(en.editor.deleteConfirm.title);
     expect(remove).not.toHaveBeenCalled();
     byText(dialog, 'button', en.editor.deleteConfirm.confirm)!.click();
@@ -517,14 +517,14 @@ describe('RecipeEditorPage', () => {
       const { f } = await failUpload();
       const first = f.componentInstance.canLeave();
       await settle(f);
-      let dialog = document.querySelector('app-confirm-leave-dialog')!;
+      let dialog = document.querySelector('app-confirm-dialog')!;
       expect(dialog.textContent).toContain(en.editor.leaveConfirm.body);
       byText(dialog, 'button', en.editor.leaveConfirm.stay)!.click();
       expect(await first).toBe(false);
 
       const second = f.componentInstance.canLeave();
       await settle(f);
-      dialog = document.querySelector('app-confirm-leave-dialog')!;
+      dialog = document.querySelector('app-confirm-dialog')!;
       byText(dialog, 'button', en.editor.leaveConfirm.leave)!.click();
       expect(await second).toBe(true);
     });

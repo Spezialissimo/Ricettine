@@ -1,13 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { errorKey, toApiError } from '../../core/api-error';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { CopyLinkComponent } from '../../shared/copy-link.component';
-import { ConfirmResetLinkDialog } from './confirm-reset-link.dialog';
 import { EditorStore } from './editor-store';
-import { openEditorSheet } from './editor-sheet';
+import { confirmSheet } from '../../shared/confirm-dialog.component';
+import { openSheet } from '../../shared/sheet';
 
 /** The share link of a published recipe with Copy/Share and a confirmed "Reset link"; drafts are told to publish first. */
 @Component({
@@ -62,7 +61,7 @@ export class SharePanelComponent {
   protected readonly conflict = computed(() => this.store.status() === 'conflict');
 
   protected addToCookbook(recipeId: string): void {
-    openEditorSheet(this.dialog, this.injector, AddToCookbookDialog, {
+    void openSheet(this.dialog, this.injector, AddToCookbookDialog, {
       label: this.i18n.translate('cookbooks.addToCookbook'),
       data: { ref: { recipeId } },
     });
@@ -74,10 +73,13 @@ export class SharePanelComponent {
     this.error.set(null);
     this.done.set(false);
     try {
-      const ref = openEditorSheet(this.dialog, this.injector, ConfirmResetLinkDialog, {
-        label: this.i18n.translate('editor.resetLinkConfirm.title'),
+      const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+        titleKey: 'editor.resetLinkConfirm.title',
+        bodyKey: 'editor.resetLinkConfirm.body',
+        confirmKey: 'editor.resetLinkConfirm.confirm',
+        danger: true,
       });
-      if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+      if (!confirmed) return;
       this.done.set((await this.store.resetLink()) === 'reset');
     } catch (e) {
       this.error.set(errorKey(toApiError(e)));
