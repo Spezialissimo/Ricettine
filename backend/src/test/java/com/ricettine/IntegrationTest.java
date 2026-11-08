@@ -70,7 +70,7 @@ public abstract class IntegrationTest {
 	 * session-backed one. Put the production cookie repository back so no test depends on the order of its neighbours.
 	 */
 	@AfterEach
-	void restoreCsrfRepository() {
+	protected void restoreCsrfRepository() {
 		WebTestUtils.setCsrfTokenRepository(new MockHttpServletRequest(wac.getServletContext()),
 				CookieCsrfTokenRepository.withHttpOnlyFalse());
 	}

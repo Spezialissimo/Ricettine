@@ -27,19 +27,11 @@ import tools.jackson.databind.JsonNode;
 
 class InviteIT extends IntegrationTest {
 
-
 	Cookie admin;
 
 	@BeforeEach
 	void clean() throws Exception {
-		data.account("admin@x.com", "boss", "Boss", true);
-		admin = login("admin@x.com");
-	}
-
-	private Cookie login(String email) throws Exception {
-		MvcResult r = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-				.content("{\"email\":\"%s\",\"password\":\"correct-horse-1\"}".formatted(email))).andReturn();
-		return r.getResponse().getCookie("SESSION");
+		admin = data.user("admin@x.com", "boss", "Boss", true);
 	}
 
 	private JsonNode createInvite() throws Exception {

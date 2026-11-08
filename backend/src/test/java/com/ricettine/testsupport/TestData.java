@@ -49,6 +49,11 @@ public final class TestData {
 		return Sessions.login(mvc, email);
 	}
 
+	/** Shorthand for tag@x.com with username and display name {@code tag}. */
+	public Cookie user(String tag, boolean admin) throws Exception {
+		return user(tag + "@x.com", tag, tag, admin);
+	}
+
 	/** Creates the account and returns the entity, without logging in. */
 	public User account(String email, String username, String displayName, boolean admin) {
 		return accounts.create(new NewAccountRequest(email, Sessions.PASSWORD, username, displayName), admin);
@@ -145,6 +150,11 @@ public final class TestData {
 	/** A PRIVATE cookbook with the given name; returns its id. */
 	public String createCookbook(Cookie who, String name) throws Exception {
 		return createCookbookJson(who, "{\"name\":\"" + name + "\"}").get("id").asText();
+	}
+
+	/** A PRIVATE cookbook named "Dinners"; returns its id. */
+	public String createCookbook(Cookie who) throws Exception {
+		return createCookbook(who, "Dinners");
 	}
 
 	/** A cookbook with the given visibility and a cover photo; returns its id. */

@@ -22,11 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
 class RecipeApiIT extends IntegrationTest {
-
 
 	Cookie me;
 	Cookie other;
@@ -35,12 +33,6 @@ class RecipeApiIT extends IntegrationTest {
 	void setUp() throws Exception {
 		me = data.user("me@x.com", "mario", "Me", true);
 		other = data.user("other@x.com", "other1", "Other", false);
-	}
-
-	JsonNode create(Cookie who) throws Exception {
-		MvcResult r = mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andExpect(status().isCreated())
-			.andReturn();
-		return json.readTree(r.getResponse().getContentAsString());
 	}
 
 	static String full(long version, String title, int steps) {
@@ -55,16 +47,6 @@ class RecipeApiIT extends IntegrationTest {
 			  {"name":"","ingredients":[]},
 			  {"name":"Sauce","ingredients":[{"amount":0.5,"unit":"l","name":"milk"}]}],
 			 "steps":[%s]}""".formatted(version, title == null ? "null" : "\"" + title + "\"", st);
-	}
-
-	ResultActions putRecipe(Cookie who, Object id, String body) throws Exception {
-		return mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content(body));
-	}
-
-	ResultActions publish(Cookie who, Object id, long version) throws Exception {
-		return mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + version + "}"));
 	}
 
 	JsonNode fetch(Cookie who, Object id) throws Exception {
@@ -86,17 +68,17 @@ class RecipeApiIT extends IntegrationTest {
 		assertThat(n.get("createdAt").asText()).isNotBlank();
 		assertThat(jdbc.queryForObject("select share_token from recipe where id = ?", String.class, id)).hasSize(43);
 		assertThat(fetch(me, id).get("id").asText()).isEqualTo(id.toString());
-		assertThat(create(me).get("id").asText()).isNotEqualTo(id.toString());
+		assertThat(data.draft(me)).isNotEqualTo(id.toString());
 	}
 
 	@Test
 	void otherUsersRecipeIs404() throws Exception {
-		String id = create(me).get("id").asText();
+		String id = data.draft(me);
 		mvc.perform(get("/api/recipes/" + id).cookie(other)).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
-		putRecipe(other, id, full(0, "Hijack", 1)).andExpect(status().isNotFound())
+		data.putRecipe(other, id, full(0, "Hijack", 1)).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
-		publish(other, id, 0).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("recipe_not_found"));
+		data.publishRequest(other, id, 0).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("recipe_not_found"));
 		mvc.perform(delete("/api/recipes/" + id).with(csrf()).cookie(other)).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
 		mvc.perform(get("/api/recipes/" + UUID.randomUUID()).cookie(me)).andExpect(status().isNotFound());
@@ -108,8 +90,8 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void saveReplacesChildrenInOrder() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "  Pasta ", 3)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1))
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "  Pasta ", 3)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1))
 			.andExpect(jsonPath("$.title").value("Pasta")).andExpect(jsonPath("$.source").value("gran"))
 			.andExpect(jsonPath("$.notes").doesNotExist()).andExpect(jsonPath("$.groups.length()").value(2))
 			.andExpect(jsonPath("$.groups[0].name").value("Dough"))
@@ -126,7 +108,7 @@ class RecipeApiIT extends IntegrationTest {
 			{"version":1,"title":"Pasta","portions":2,"visibility":"PUBLIC","groups":[
 			 {"name":"B","ingredients":[{"name":"z"},{"name":"a"}]},{"name":"A","ingredients":[{"name":"q"}]}],
 			 "steps":[{"text":"two"},{"text":""}]}""";
-		putRecipe(me, id, second).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+		data.putRecipe(me, id, second).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
 		JsonNode n = fetch(me, id);
 		assertThat(n.get("visibility").asText()).isEqualTo("PUBLIC");
 		assertThat(n.get("portions").asInt()).isEqualTo(2);
@@ -144,17 +126,17 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void staleVersionIs409() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "First", 1)).andExpect(status().isOk());
-		putRecipe(me, id, full(0, "Second", 2)).andExpect(status().isConflict())
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "First", 1)).andExpect(status().isOk());
+		data.putRecipe(me, id, full(0, "Second", 2)).andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("recipe_conflict"));
 		JsonNode n = fetch(me, id);
 		assertThat(n.get("title").asText()).isEqualTo("First");
 		assertThat(n.get("steps")).hasSize(1);
 		assertThat(n.get("version").asLong()).isEqualTo(1);
-		publish(me, id, 0).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("recipe_conflict"));
+		data.publishRequest(me, id, 0).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("recipe_conflict"));
 		// version beats validation in precedence
-		putRecipe(me, id, full(0, "x".repeat(201), 1)).andExpect(status().isConflict());
+		data.putRecipe(me, id, full(0, "x".repeat(201), 1)).andExpect(status().isConflict());
 	}
 
 	@Test
@@ -162,14 +144,14 @@ class RecipeApiIT extends IntegrationTest {
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		try {
 			for (int round = 0; round < 5; round++) {
-				String id = create(me).get("id").asText();
+				String id = data.draft(me);
 				CountDownLatch go = new CountDownLatch(1);
 				List<Future<Integer>> calls = new ArrayList<>();
 				for (int t = 0; t < 2; t++) {
 					String body = full(0, "T" + t, 5 + t);
 					calls.add(pool.submit(() -> {
 						go.await();
-						return putRecipe(me, id, body).andReturn().getResponse().getStatus();
+						return data.putRecipe(me, id, body).andReturn().getResponse().getStatus();
 					}));
 				}
 				go.countDown();
@@ -191,16 +173,16 @@ class RecipeApiIT extends IntegrationTest {
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		try {
 			for (int round = 0; round < 5; round++) {
-				String id = create(me).get("id").asText();
-				putRecipe(me, id, full(0, "Base", 3)).andExpect(status().isOk());
-				putRecipe(me, id, full(1, "Base2", 4)).andExpect(status().isOk());
+				String id = data.draft(me);
+				data.putRecipe(me, id, full(0, "Base", 3)).andExpect(status().isOk());
+				data.putRecipe(me, id, full(1, "Base2", 4)).andExpect(status().isOk());
 				CountDownLatch go = new CountDownLatch(1);
 				List<Future<Integer>> calls = new ArrayList<>();
 				for (int t = 0; t < 2; t++) {
 					String body = full(2, "R" + t, 2 + t);
 					calls.add(pool.submit(() -> {
 						go.await();
-						return putRecipe(me, id, body).andReturn().getResponse().getStatus();
+						return data.putRecipe(me, id, body).andReturn().getResponse().getStatus();
 					}));
 				}
 				go.countDown();
@@ -219,11 +201,11 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void putResponseUpdatedAtMatchesFollowingGet() throws Exception {
-		String id = create(me).get("id").asText();
-		JsonNode put = json.readTree(putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk()).andReturn()
+		String id = data.draft(me);
+		JsonNode put = json.readTree(data.putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk()).andReturn()
 			.getResponse().getContentAsString());
 		assertThat(fetch(me, id).get("updatedAt").asText()).isEqualTo(put.get("updatedAt").asText());
-		JsonNode pub = json.readTree(publish(me, id, 1).andExpect(status().isOk()).andReturn().getResponse()
+		JsonNode pub = json.readTree(data.publishRequest(me, id, 1).andExpect(status().isOk()).andReturn().getResponse()
 			.getContentAsString());
 		JsonNode got = fetch(me, id);
 		assertThat(got.get("updatedAt").asText()).isEqualTo(pub.get("updatedAt").asText());
@@ -232,8 +214,8 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void versionIsRequired() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "T", 1).replace("\"version\":0,", "")).andExpect(status().isBadRequest())
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "T", 1).replace("\"version\":0,", "")).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation_failed")).andExpect(jsonPath("$.fields.version")
 				.value("required"));
 		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(me)
@@ -244,34 +226,34 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void blankStepsDoNotCountAsSteps() throws Exception {
-		String id = create(me).get("id").asText();
+		String id = data.draft(me);
 		String blank = full(0, "T", 0).replace("\"steps\":[]", "\"steps\":[{\"text\":\"  \"},{\"text\":\"\"}]");
-		putRecipe(me, id, blank).andExpect(status().isOk());
-		publish(me, id, 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("recipe_incomplete"))
+		data.putRecipe(me, id, blank).andExpect(status().isOk());
+		data.publishRequest(me, id, 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("recipe_incomplete"))
 			.andExpect(jsonPath("$.fields.steps").exists()).andExpect(jsonPath("$.fields.length()").value(1));
-		putRecipe(me, id, full(1, "T", 1)).andExpect(status().isOk());
-		publish(me, id, 2).andExpect(status().isOk());
-		putRecipe(me, id, blank.replace("\"version\":0", "\"version\":3")).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, full(1, "T", 1)).andExpect(status().isOk());
+		data.publishRequest(me, id, 2).andExpect(status().isOk());
+		data.putRecipe(me, id, blank.replace("\"version\":0", "\"version\":3")).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("recipe_incomplete")).andExpect(jsonPath("$.fields.steps").exists());
 		assertThat(fetch(me, id).get("steps")).hasSize(1);
 	}
 
 	@Test
 	void validationFailuresUseDottedFieldPaths() throws Exception {
-		String id = create(me).get("id").asText();
+		String id = data.draft(me);
 		String body = """
 			{"version":0,"title":"t","portions":0,"visibility":"PRIVATE","groups":[
 			 {"name":"g","ingredients":[{"name":"a"},{"name":"b"},{"amount":0,"name":"c"}]}],
 			 "steps":[{"text":"a"},{"text":"b"},{"text":"c"},{"text":"%s"}]}""".formatted("x".repeat(5001));
-		putRecipe(me, id, body).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, body).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation_failed"))
 			.andExpect(jsonPath("$.fields.portions").exists())
 			.andExpect(jsonPath("$.fields['groups[0].ingredients[2].amount']").exists())
 			.andExpect(jsonPath("$.fields['steps[3].text']").exists());
-		putRecipe(me, id, full(0, "x".repeat(201), 1)).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, full(0, "x".repeat(201), 1)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.fields.title").exists());
 		String badUnit = full(0, "t", 1).replace("\"unit\":\"g\"", "\"unit\":\"oz\"");
-		putRecipe(me, id, badUnit).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, badUnit).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("invalid_unit"))
 			.andExpect(jsonPath("$.fields['groups[0].ingredients[0].unit']").value("invalid_unit"));
 		assertThat(fetch(me, id).get("version").asLong()).isEqualTo(0);
@@ -279,46 +261,46 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void unknownPhotoIdIs400() throws Exception {
-		String id = create(me).get("id").asText();
+		String id = data.draft(me);
 		String body = full(0, "t", 1).replace("\"steps\":[{\"text\":\"step 0\"}]",
 				"\"steps\":[{\"text\":\"a\",\"photoMediaId\":\"abc\"}]");
-		putRecipe(me, id, body).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, body).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("photo_not_in_recipe"));
-		putRecipe(me, id, full(0, "t", 1).replace("\"portions\"", "\"coverMediaId\":\"abc\",\"portions\""))
+		data.putRecipe(me, id, full(0, "t", 1).replace("\"portions\"", "\"coverMediaId\":\"abc\",\"portions\""))
 			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("photo_not_in_recipe"));
 	}
 
 	@Test
 	void publishRequiresTitleIngredientStep() throws Exception {
-		String id = create(me).get("id").asText();
-		publish(me, id, 0).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("recipe_incomplete"))
+		String id = data.draft(me);
+		data.publishRequest(me, id, 0).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("recipe_incomplete"))
 			.andExpect(jsonPath("$.fields.length()").value(3)).andExpect(jsonPath("$.fields.title").exists())
 			.andExpect(jsonPath("$.fields.ingredients").exists()).andExpect(jsonPath("$.fields.steps").exists());
-		putRecipe(me, id, """
+		data.putRecipe(me, id, """
 			{"version":0,"title":"T","portions":1,"visibility":"PRIVATE",
 			 "groups":[{"name":"g","ingredients":[{"name":"a"}]}],"steps":[]}""").andExpect(status().isOk());
-		publish(me, id, 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.fields.length()").value(1))
+		data.publishRequest(me, id, 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.fields.length()").value(1))
 			.andExpect(jsonPath("$.fields.steps").exists());
-		putRecipe(me, id, full(1, "T", 1)).andExpect(status().isOk());
-		publish(me, id, 2).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PUBLISHED"))
+		data.putRecipe(me, id, full(1, "T", 1)).andExpect(status().isOk());
+		data.publishRequest(me, id, 2).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.version").value(3)).andExpect(jsonPath("$.publishedAt").exists());
 		String firstPublishedAt = fetch(me, id).get("publishedAt").asText();
-		publish(me, id, 3).andExpect(status().isOk());
+		data.publishRequest(me, id, 3).andExpect(status().isOk());
 		assertThat(fetch(me, id).get("publishedAt").asText()).isEqualTo(firstPublishedAt);
 	}
 
 	@Test
 	void publishedRecipeCannotBecomeIncomplete() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "Keep", 2)).andExpect(status().isOk());
-		publish(me, id, 1).andExpect(status().isOk());
-		putRecipe(me, id, full(2, "Keep", 0)).andExpect(status().isBadRequest())
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "Keep", 2)).andExpect(status().isOk());
+		data.publishRequest(me, id, 1).andExpect(status().isOk());
+		data.putRecipe(me, id, full(2, "Keep", 0)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("recipe_incomplete")).andExpect(jsonPath("$.fields.steps").exists())
 			.andExpect(jsonPath("$.fields.length()").value(1));
-		putRecipe(me, id, full(2, "  ", 2)).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, full(2, "  ", 2)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("recipe_incomplete")).andExpect(jsonPath("$.fields.title").exists());
 		// validation errors outrank incompleteness
-		putRecipe(me, id, full(2, "x".repeat(201), 0)).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, full(2, "x".repeat(201), 0)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation_failed"));
 		JsonNode n = fetch(me, id);
 		assertThat(n.get("version").asLong()).isEqualTo(2);
@@ -326,25 +308,25 @@ class RecipeApiIT extends IntegrationTest {
 		assertThat(n.get("steps")).hasSize(2);
 		assertThat(n.get("status").asText()).isEqualTo("PUBLISHED");
 		// a complete edit still works
-		putRecipe(me, id, full(2, "Renamed", 1)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(3));
+		data.putRecipe(me, id, full(2, "Renamed", 1)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(3));
 	}
 
 	@Test
 	void mineIsNewestFirstAndOwnOnly() throws Exception {
-		String a = create(me).get("id").asText();
-		String b = create(me).get("id").asText();
-		String c = create(other).get("id").asText();
-		putRecipe(me, a, full(0, "Alpha", 1)).andExpect(status().isOk());
+		String a = data.draft(me);
+		String b = data.draft(me);
+		String c = data.draft(other);
+		data.putRecipe(me, a, full(0, "Alpha", 1)).andExpect(status().isOk());
 		mvc.perform(get("/api/recipes/mine").cookie(me)).andExpect(status().isOk())
 			.andExpect(jsonPath("$.length()").value(2)).andExpect(jsonPath("$[0].id").value(a))
 			.andExpect(jsonPath("$[0].title").value("Alpha")).andExpect(jsonPath("$[0].status").value("DRAFT"))
 			.andExpect(jsonPath("$[0].visibility").value("PRIVATE")).andExpect(jsonPath("$[0].coverThumbUrl")
 				.doesNotExist())
 			.andExpect(jsonPath("$[0].updatedAt").exists()).andExpect(jsonPath("$[1].id").value(b));
-		putRecipe(me, b, full(0, "Beta", 1)).andExpect(status().isOk());
+		data.putRecipe(me, b, full(0, "Beta", 1)).andExpect(status().isOk());
 		mvc.perform(get("/api/recipes/mine").cookie(me)).andExpect(jsonPath("$[0].id").value(b))
 			.andExpect(jsonPath("$[1].id").value(a));
-		publish(me, a, 1).andExpect(status().isOk());
+		data.publishRequest(me, a, 1).andExpect(status().isOk());
 		mvc.perform(get("/api/recipes/mine").cookie(me)).andExpect(jsonPath("$[0].id").value(a));
 		mvc.perform(get("/api/recipes/mine").cookie(other)).andExpect(jsonPath("$.length()").value(1))
 			.andExpect(jsonPath("$[0].id").value(c));
@@ -352,9 +334,9 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void accountDeletionDeletesRecipes() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "Gone", 2)).andExpect(status().isOk());
-		String keep = create(other).get("id").asText();
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "Gone", 2)).andExpect(status().isOk());
+		String keep = data.draft(other);
 		jdbc.update("delete from app_user where email = 'me@x.com'");
 		assertThat(jdbc.queryForObject("select count(*) from recipe", Integer.class)).isEqualTo(1);
 		assertThat(jdbc.queryForObject("select count(*) from step", Integer.class)).isZero();
@@ -365,8 +347,8 @@ class RecipeApiIT extends IntegrationTest {
 
 	@Test
 	void versionedDeleteRejectsStaleVersion() throws Exception {
-		String id = create(me).get("id").asText();
-		putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk());
+		String id = data.draft(me);
+		data.putRecipe(me, id, full(0, "T", 1)).andExpect(status().isOk());
 		mvc.perform(delete("/api/recipes/" + id).param("version", "0").with(csrf()).cookie(me))
 			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("recipe_conflict"));
 		assertThat(fetch(me, id).get("title").asText()).isEqualTo("T");
@@ -376,24 +358,24 @@ class RecipeApiIT extends IntegrationTest {
 			.andExpect(status().isNoContent());
 		mvc.perform(get("/api/recipes/" + id).cookie(me)).andExpect(status().isNotFound());
 		// without a version the delete is unconditional (backwards compatible)
-		String id2 = create(me).get("id").asText();
-		putRecipe(me, id2, full(0, "T", 1)).andExpect(status().isOk());
+		String id2 = data.draft(me);
+		data.putRecipe(me, id2, full(0, "T", 1)).andExpect(status().isOk());
 		mvc.perform(delete("/api/recipes/" + id2).with(csrf()).cookie(me)).andExpect(status().isNoContent());
 		mvc.perform(get("/api/recipes/" + id2).cookie(me)).andExpect(status().isNotFound());
 	}
 
 	@Test
 	void hugeGroupListIsRejectedWithoutIterating() throws Exception {
-		String id = create(me).get("id").asText();
+		String id = data.draft(me);
 		String groups = String.join(",", java.util.Collections.nCopies(1001, "{\"name\":\"\",\"ingredients\":[]}"));
 		String body = """
 			{"version":0,"title":"t","portions":1,"visibility":"PRIVATE","groups":[%s],"steps":[]}"""
 			.formatted(groups);
-		putRecipe(me, id, body).andExpect(status().isBadRequest())
+		data.putRecipe(me, id, body).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation_failed"))
 			.andExpect(jsonPath("$.fields.groups").value("too_many"));
 		// 1000 dropped (empty) groups are still fine
-		putRecipe(me, id, body.replaceFirst("\\{\"name\":\"\",\"ingredients\":\\[\\]\\},", ""))
+		data.putRecipe(me, id, body.replaceFirst("\\{\"name\":\"\",\"ingredients\":\\[\\]\\},", ""))
 			.andExpect(status().isOk());
 	}
 

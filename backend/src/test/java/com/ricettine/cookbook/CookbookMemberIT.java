@@ -19,24 +19,24 @@ class CookbookMemberIT extends CookbookIT {
 
 	@Test
 	void removeAuthorOptionallyTakesTheirEntries() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		join(id, carl);
-		String c1 = publishedRecipe(carl);
-		String c2 = publishedRecipe(carl);
-		String a1 = publishedRecipe(owner);
+		String c1 = data.publishedRecipe(carl, "PRIVATE");
+		String c2 = data.publishedRecipe(carl, "PRIVATE");
+		String a1 = data.publishedRecipe(owner, "PRIVATE");
 		addRecipe(carl, id, c1).andExpect(status().isCreated());
 		addRecipe(carl, id, c2).andExpect(status().isCreated());
 		addRecipe(owner, id, a1).andExpect(status().isCreated());
 
 		removeAuthor(owner, id, userId("carl1"), false).andExpect(status().isNoContent());
 		mvc.perform(get("/api/cookbooks/" + id).cookie(carl)).andExpect(status().isNotFound());
-		JsonNode kept = read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn());
+		JsonNode kept = data.read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn());
 		assertThat(kept.get("authors")).isEmpty();
 		assertThat(kept.get("recipes")).hasSize(3);
 
 		join(id, carl); // re-invite
 		removeAuthor(owner, id, userId("carl1"), true).andExpect(status().isNoContent());
-		JsonNode left = read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn());
+		JsonNode left = data.read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn());
 		assertThat(left.get("recipes")).hasSize(1);
 		assertThat(left.get("recipes").get(0).get("recipeId").asText()).isEqualTo(a1);
 		assertThat(recipeRows()).isEqualTo(3);
@@ -44,7 +44,7 @@ class CookbookMemberIT extends CookbookIT {
 
 	@Test
 	void authorLeavesAndCanBeReinvited() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		join(id, bea);
 		removeAuthor(bea, id, userId("bea1"), false).andExpect(status().isNoContent());
 		mvc.perform(get("/api/cookbooks/" + id).cookie(bea)).andExpect(status().isNotFound());
@@ -54,7 +54,7 @@ class CookbookMemberIT extends CookbookIT {
 
 	@Test
 	void permissionsOfRemoval() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		join(id, bea);
 		join(id, carl);
 		// owner can't leave, whoever asks
@@ -70,19 +70,19 @@ class CookbookMemberIT extends CookbookIT {
 			.andExpect(jsonPath("$.code").value("cookbook_not_found"));
 		mvc.perform(delete("/api/cookbooks/" + id + "/authors/not-a-uuid").with(csrf()).cookie(owner))
 			.andExpect(status().isNotFound());
-		String other = cookbook(owner);
+		String other = data.createCookbook(owner);
 		removeAuthor(bea, other, userId("bea1"), false).andExpect(status().isNotFound());
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_author", Integer.class)).isEqualTo(2);
 		// a leaving author's removeRecipes only touches their own entries
-		String mine = publishedRecipe(owner);
+		String mine = data.publishedRecipe(owner, "PRIVATE");
 		addRecipe(owner, id, mine).andExpect(status().isCreated());
 		removeAuthor(bea, id, userId("bea1"), true).andExpect(status().isNoContent());
-		assertThat(read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn()).get("recipes")).hasSize(1);
+		assertThat(data.read(mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andReturn()).get("recipes")).hasSize(1);
 	}
 
 	@Test
 	void personIdsOnlyForMembers() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		join(id, bea);
 		String token = jdbc.queryForObject("select share_token from cookbook", String.class);
 		mvc.perform(get("/api/c/" + token)).andExpect(status().isOk()).andExpect(jsonPath("$.owner.id").doesNotExist())

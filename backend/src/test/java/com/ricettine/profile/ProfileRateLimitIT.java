@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 class ProfileRateLimitIT extends IntegrationTest {
 
-
 	@Test
 	void profileReadsLimitedPerUser() throws Exception {
 		Cookie a = data.user("a@x.com", "alice", "Alice", true);

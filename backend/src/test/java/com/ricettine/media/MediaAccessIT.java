@@ -6,13 +6,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.User;
+import com.ricettine.testsupport.TestData.RecipeBody;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Connection;
@@ -72,29 +72,11 @@ class MediaAccessIT extends IntegrationTest {
 
 	/** Published recipe of the owner with one cover photo; returns {recipeId, mediaId}. */
 	String[] publishedRecipeWithPhoto(Cookie who) throws Exception {
-		String id = json.readTree(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andReturn().getResponse()
-				.getContentAsString()).get("id").asText();
-		String mediaId = uploadPhoto(who, id);
-		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"version":0,"title":"Pasta","portions":2,"visibility":"PRIVATE","coverMediaId":"%s",
-						 "groups":[{"name":"","ingredients":[{"name":"flour"}]}],
-						 "steps":[{"text":"mix","photoMediaId":null}]}""".formatted(mediaId)))
-				.andExpect(status().isOk());
-		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
-				.contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}")).andExpect(status().isOk());
+		String id = data.draft(who);
+		String mediaId = data.uploadPhoto(who, id);
+		data.save(who, id, RecipeBody.of(0).cover(mediaId));
+		data.publish(who, id, 1);
 		return new String[] { id, mediaId };
-	}
-
-	String uploadPhoto(Cookie who, String recipeId) throws Exception {
-		return json.readTree(mvc.perform(multipart("/api/recipes/" + recipeId + "/photos")
-				.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
-				.with(csrf()).cookie(who)).andExpect(status().isCreated()).andReturn().getResponse()
-				.getContentAsString()).get("mediaId").asText();
-	}
-
-	String shareToken(String recipeId) {
-		return jdbc.queryForObject("select share_token from recipe where id = ?::uuid", String.class, recipeId);
 	}
 
 	@Test
@@ -102,17 +84,17 @@ class MediaAccessIT extends IntegrationTest {
 		var cookie = Sessions.login(mvc, "o@x.com");
 		String[] r = publishedRecipeWithPhoto(cookie);
 		String url = media.url(r[1], ImageVariant.THUMB);
-		String etag = mvc.perform(get(url).param("s", shareToken(r[0]))).andExpect(status().isOk())
+		String etag = mvc.perform(get(url).param("s", data.recipeShareToken(r[0]))).andExpect(status().isOk())
 				.andExpect(header().string("Cache-Control", "private, no-cache"))
 				.andReturn().getResponse().getHeader("ETag");
 		assertThat(etag).isEqualTo("\"" + r[1] + ".thumb\"");
 		// the blob is gone: a 304 proves it was not loaded, while a 200 would now be a 404
 		blobs.delete(MediaService.key(r[1], ImageVariant.THUMB));
-		mvc.perform(get(url).param("s", shareToken(r[0])).header("If-None-Match", etag))
+		mvc.perform(get(url).param("s", data.recipeShareToken(r[0])).header("If-None-Match", etag))
 				.andExpect(status().isNotModified()).andExpect(header().string("ETag", etag))
 				.andExpect(header().string("Cache-Control", "private, no-cache"))
 				.andExpect(MockMvcResultMatchers.content().bytes(new byte[0]));
-		mvc.perform(get(url).param("s", shareToken(r[0]))).andExpect(status().isNotFound());
+		mvc.perform(get(url).param("s", data.recipeShareToken(r[0]))).andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -120,7 +102,7 @@ class MediaAccessIT extends IntegrationTest {
 		var cookie = Sessions.login(mvc, "o@x.com");
 		String[] r = publishedRecipeWithPhoto(cookie);
 		String url = media.url(r[1], ImageVariant.THUMB);
-		String oldToken = shareToken(r[0]);
+		String oldToken = data.recipeShareToken(r[0]);
 		String etag = mvc.perform(get(url).param("s", oldToken)).andExpect(status().isOk()).andReturn().getResponse()
 				.getHeader("ETag");
 		mvc.perform(post("/api/recipes/" + r[0] + "/share-link/reset").with(csrf()).cookie(cookie)
@@ -133,7 +115,7 @@ class MediaAccessIT extends IntegrationTest {
 	void differentUploadsDifferentEtags() throws Exception {
 		var cookie = Sessions.login(mvc, "o@x.com");
 		String[] r = publishedRecipeWithPhoto(cookie);
-		String second = uploadPhoto(cookie, r[0]);
+		String second = data.uploadPhoto(cookie, r[0]);
 		String a = mvc.perform(get(media.url(r[1], ImageVariant.THUMB)).cookie(cookie)).andReturn().getResponse()
 				.getHeader("ETag");
 		String b = mvc.perform(get(media.url(second, ImageVariant.THUMB)).cookie(cookie)).andReturn().getResponse()
@@ -148,7 +130,7 @@ class MediaAccessIT extends IntegrationTest {
 		var cookie = Sessions.login(mvc, "o@x.com");
 		String[] r = publishedRecipeWithPhoto(cookie);
 		String url = media.url(r[1], ImageVariant.THUMB);
-		String token = shareToken(r[0]);
+		String token = data.recipeShareToken(r[0]);
 		var cb = json.readTree(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(cookie)
 				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Dinners\"}")).andReturn().getResponse()
 				.getContentAsString()).get("id").asText();

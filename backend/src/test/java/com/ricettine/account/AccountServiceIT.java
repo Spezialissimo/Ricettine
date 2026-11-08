@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 
 class AccountServiceIT extends IntegrationTest {
 
-
 	@BeforeEach
 	void clean() {
 	}

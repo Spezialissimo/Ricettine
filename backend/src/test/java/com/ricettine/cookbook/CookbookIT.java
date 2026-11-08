@@ -4,7 +4,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
@@ -12,13 +11,11 @@ import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
 /** Shared setup for the co-author ITs: owner "mario", users "bea" and "carl". */
 abstract class CookbookIT extends IntegrationTest {
-
 
 	Cookie owner;
 	Cookie bea;
@@ -31,22 +28,13 @@ abstract class CookbookIT extends IntegrationTest {
 		carl = data.user("carl@x.com", "carl1", "Carl", false);
 	}
 
-	JsonNode read(MvcResult r) throws Exception {
-		return json.readTree(r.getResponse().getContentAsString());
-	}
-
-	String cookbook(Cookie who) throws Exception {
-		return read(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content("{\"name\":\"Dinners\"}")).andExpect(status().isCreated()).andReturn()).get("id").asText();
-	}
-
 	UUID userId(String username) {
 		return jdbc.queryForObject("select id from app_user where username = ?", UUID.class, username);
 	}
 
 	/** Creates an invite and returns {id, token}. */
 	String[] invite(Cookie who, String cookbookId) throws Exception {
-		JsonNode n = read(mvc.perform(post("/api/cookbooks/" + cookbookId + "/invites").with(csrf()).cookie(who))
+		JsonNode n = data.read(mvc.perform(post("/api/cookbooks/" + cookbookId + "/invites").with(csrf()).cookie(who))
 			.andExpect(status().isCreated()).andReturn());
 		String url = n.get("url").asText();
 		return new String[] { n.get("id").asText(), url.substring(url.lastIndexOf('/') + 1) };
@@ -63,19 +51,6 @@ abstract class CookbookIT extends IntegrationTest {
 	/** Invites and accepts in one go. */
 	void join(String cookbookId, Cookie who) throws Exception {
 		accept(who, invite(owner, cookbookId)[1]).andExpect(status().isOk());
-	}
-
-	String publishedRecipe(Cookie who) throws Exception {
-		JsonNode draft = read(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andReturn());
-		String id = draft.get("id").asText();
-		String body = """
-			{"version":0,"title":"R","portions":2,"visibility":"PRIVATE","groups":[
-			 {"ingredients":[{"name":"flour"}]}],"steps":[{"text":"mix"}]}""";
-		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content(body)).andExpect(status().isOk());
-		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}")).andExpect(status().isOk());
-		return id;
 	}
 
 	ResultActions addRecipe(Cookie who, String cookbookId, String recipeId) throws Exception {

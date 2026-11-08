@@ -3,7 +3,6 @@ package com.ricettine.recipe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -11,24 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.media.TestImages;
+import com.ricettine.testsupport.TestData.RecipeBody;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.web.support.WebTestUtils;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.JsonNode;
 
 class PublicRecipeIT extends IntegrationTest {
-
-	@Autowired WebApplicationContext wac;
 
 	Cookie me;
 	Cookie other;
@@ -37,37 +29,6 @@ class PublicRecipeIT extends IntegrationTest {
 	void setUp() throws Exception {
 		me = data.user("me@x.com", "mario", "Mario R", true);
 		other = data.user("other@x.com", "other1", "Other", false);
-	}
-
-	JsonNode recipe(MvcResult r) throws Exception {
-		return json.readTree(r.getResponse().getContentAsString());
-	}
-
-	String create(Cookie who) throws Exception {
-		return recipe(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andExpect(status().isCreated())
-			.andReturn()).get("id").asText();
-	}
-
-	String uploadOk(Cookie who, String id) throws Exception {
-		return recipe(mvc.perform(multipart("/api/recipes/" + id + "/photos")
-			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
-			.with(csrf()).cookie(who)).andExpect(status().isCreated()).andReturn()).get("mediaId").asText();
-	}
-
-	void save(String id, long version, String visibility, String cover, String stepPhoto) throws Exception {
-		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(me).contentType(MediaType.APPLICATION_JSON)
-			.content("""
-				{"version":%d,"title":"Pasta","portions":2,"prepMinutes":5,"visibility":"%s","coverMediaId":%s,
-				 "groups":[{"name":"","ingredients":[{"name":"flour","amount":1.5,"unit":"g"}]}],
-				 "steps":[{"text":"mix","photoMediaId":%s}]}""".formatted(version, visibility,
-					cover == null ? "null" : "\"" + cover + "\"", stepPhoto == null ? "null" : "\"" + stepPhoto + "\"")))
-			.andExpect(status().isOk());
-	}
-
-	void publish(String id, long version) throws Exception {
-		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(me)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + version + "}"))
-			.andExpect(status().isOk());
 	}
 
 	long version(String id) {
@@ -80,31 +41,17 @@ class PublicRecipeIT extends IntegrationTest {
 		return who == null ? req : req.cookie(who);
 	}
 
-	String token(String id) {
-		return jdbc.queryForObject("select share_token from recipe where id = ?::uuid", String.class, id);
-	}
-
-	/** Published recipe with a cover and a step photo; returns its id. */
-	String published(String visibility) throws Exception {
-		String id = create(me);
-		String cover = uploadOk(me, id);
-		String step = uploadOk(me, id);
-		save(id, 0, visibility, cover, step);
-		publish(id, 1);
-		return id;
-	}
-
 	@Test
 	void amountsKeepThreeDecimals() throws Exception {
-		String id = create(me);
+		String id = data.draft(me);
 		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(me).contentType(MediaType.APPLICATION_JSON)
 			.content("""
 				{"version":0,"title":"Pasta","portions":3,"visibility":"PRIVATE",
 				 "groups":[{"name":"","ingredients":[{"name":"milk","amount":0.333,"unit":"cup"}]}],
 				 "steps":[{"text":"mix","photoMediaId":null}]}"""))
 			.andExpect(status().isOk());
-		publish(id, 1);
-		mvc.perform(get("/api/r/" + token(id))).andExpect(status().isOk())
+		data.publish(me, id, 1);
+		mvc.perform(get("/api/r/" + data.recipeShareToken(id))).andExpect(status().isOk())
 			.andExpect(jsonPath("$.portions").value(3))
 			.andExpect(jsonPath("$.groups[0].ingredients[0].amount").value(0.333));
 	}
@@ -112,8 +59,8 @@ class PublicRecipeIT extends IntegrationTest {
 	@Test
 	void anonymousReadsPublishedPrivateAndPublicRecipesByToken() throws Exception {
 		for (String vis : new String[] { "PRIVATE", "PUBLIC" }) {
-			String id = published(vis);
-			String t = token(id);
+			String id = data.publishedRecipeWithPhotos(me, vis);
+			String t = data.recipeShareToken(id);
 			mvc.perform(get("/api/r/" + t)).andExpect(status().isOk())
 				.andExpect(header().string("Cache-Control", "no-store"))
 				.andExpect(jsonPath("$.title").value("Pasta"))
@@ -137,8 +84,8 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void unknownMalformedAndDraftTokensAre404() throws Exception {
-		String draft = create(me);
-		for (String t : new String[] { token(draft), "nope", "a".repeat(43), "x".repeat(2000), "a.b", "!!!" }) {
+		String draft = data.draft(me);
+		for (String t : new String[] { data.recipeShareToken(draft), "nope", "a".repeat(43), "x".repeat(2000), "a.b", "!!!" }) {
 			mvc.perform(get("/api/r/" + t)).andExpect(status().isNotFound())
 				.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
 				.andExpect(jsonPath("$.code").value("recipe_not_found"));
@@ -147,12 +94,8 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void anonymousRequestCreatesNoSession() throws Exception {
-		String t = token(published("PRIVATE"));
-		// csrf() in earlier requests leaves a session-backed CSRF repository in the shared filter chain
-		// (test-support artifact); put the production cookie repository back before measuring.
-		WebTestUtils.setCsrfTokenRepository(
-				new MockHttpServletRequest(wac.getServletContext()),
-				CookieCsrfTokenRepository.withHttpOnlyFalse());
+		String t = data.recipeShareToken(data.publishedRecipeWithPhotos(me, "PRIVATE"));
+		restoreCsrfRepository(); // the setup requests above used csrf(), which swaps the repository
 		int sessions = jdbc.queryForObject("select count(*) from spring_session", Integer.class);
 		MvcResult r = mvc.perform(get("/api/r/" + t)).andExpect(status().isOk()).andReturn();
 		assertThat(r.getResponse().getCookie("SESSION")).isNull();
@@ -166,8 +109,8 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void photosLoadAnonymouslyWithSAndNeverCacheable() throws Exception {
-		String id = published("PRIVATE");
-		JsonNode pub = recipe(mvc.perform(get("/api/r/" + token(id))).andReturn());
+		String id = data.publishedRecipeWithPhotos(me, "PRIVATE");
+		JsonNode pub = data.read(mvc.perform(get("/api/r/" + data.recipeShareToken(id))).andReturn());
 		String withS = pub.get("cover").get("displayUrl").asText();
 		mvc.perform(get(withS)).andExpect(status().isOk())
 			.andExpect(header().string("Cache-Control", "private, no-cache"));
@@ -176,8 +119,8 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void viewerIsAuthorOnlyForTheAuthorsSession() throws Exception {
-		String id = published("PRIVATE");
-		String t2 = token(id);
+		String id = data.publishedRecipeWithPhotos(me, "PRIVATE");
+		String t2 = data.recipeShareToken(id);
 		mvc.perform(get("/api/r/" + t2).cookie(me)).andExpect(jsonPath("$.viewerIsAuthor").value(true))
 			.andExpect(jsonPath("$.recipeId").value(id));
 		for (Cookie[] who : new Cookie[][] { { other }, {} }) {
@@ -191,19 +134,19 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@Test
 	void shareUrlIsSetOnlyWhilePublished() throws Exception {
-		String id = create(me);
+		String id = data.draft(me);
 		mvc.perform(get("/api/recipes/" + id).cookie(me)).andExpect(jsonPath("$.shareUrl").doesNotExist());
-		save(id, 0, "PRIVATE", null, null);
-		publish(id, 1);
+		data.save(me, id, RecipeBody.of(0).visibility("PRIVATE").cover(null).stepPhoto(null));
+		data.publish(me, id, 1);
 		mvc.perform(get("/api/recipes/" + id).cookie(me))
-			.andExpect(jsonPath("$.shareUrl").value("http://localhost/r/" + token(id)));
+			.andExpect(jsonPath("$.shareUrl").value("http://localhost/r/" + data.recipeShareToken(id)));
 	}
 
 	@Test
 	void resetInvalidatesOldLinkAndPhotos() throws Exception {
-		String id = published("PRIVATE");
-		String oldToken = token(id);
-		JsonNode before = recipe(mvc.perform(get("/api/r/" + oldToken)).andReturn());
+		String id = data.publishedRecipeWithPhotos(me, "PRIVATE");
+		String oldToken = data.recipeShareToken(id);
+		JsonNode before = data.read(mvc.perform(get("/api/r/" + oldToken)).andReturn());
 		String oldPhoto = before.get("cover").get("thumbUrl").asText();
 		mvc.perform(get(oldPhoto)).andExpect(status().isOk());
 
@@ -212,50 +155,50 @@ class PublicRecipeIT extends IntegrationTest {
 			.andExpect(status().isOk()).andExpect(jsonPath("$.version").value(v + 1)).andReturn();
 		assertThat(jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id))
 			.isEqualTo(v + 1);
-		String newToken = token(id);
+		String newToken = data.recipeShareToken(id);
 		assertThat(newToken).isNotEqualTo(oldToken);
-		assertThat(recipe(res).get("shareUrl").asText()).endsWith("/r/" + newToken);
+		assertThat(data.read(res).get("shareUrl").asText()).endsWith("/r/" + newToken);
 
 		mvc.perform(get("/api/r/" + oldToken)).andExpect(status().isNotFound());
 		mvc.perform(get(oldPhoto)).andExpect(status().isNotFound());
-		JsonNode after = recipe(mvc.perform(get("/api/r/" + newToken)).andExpect(status().isOk()).andReturn());
+		JsonNode after = data.read(mvc.perform(get("/api/r/" + newToken)).andExpect(status().isOk()).andReturn());
 		mvc.perform(get(after.get("cover").get("thumbUrl").asText())).andExpect(status().isOk());
 		mvc.perform(get(after.get("steps").get(0).get("photo").get("displayUrl").asText()))
 			.andExpect(status().isOk());
 		// the author's own photo URLs (no s) still work
-		mvc.perform(get(recipe(res).get("cover").get("thumbUrl").asText()).cookie(me)).andExpect(status().isOk());
+		mvc.perform(get(data.read(res).get("cover").get("thumbUrl").asText()).cookie(me)).andExpect(status().isOk());
 	}
 
 	@Test
 	void resetIsAuthorOnlyAndWorksOnDrafts() throws Exception {
-		String id = create(me);
-		String old = token(id);
+		String id = data.draft(me);
+		String old = data.recipeShareToken(id);
 		mvc.perform(reset(id, other, 0))
 			.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("recipe_not_found"));
 		mvc.perform(reset(id, null, 0))
 			.andExpect(status().isUnauthorized());
-		assertThat(token(id)).isEqualTo(old);
+		assertThat(data.recipeShareToken(id)).isEqualTo(old);
 		mvc.perform(reset(id, me, 0))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.shareUrl").doesNotExist());
-		assertThat(token(id)).isNotEqualTo(old);
+		assertThat(data.recipeShareToken(id)).isNotEqualTo(old);
 	}
 
 	@Test
 	void resetWithStaleVersionIs409AndChangesNothing() throws Exception {
-		String id = published("PRIVATE");
-		String old = token(id);
+		String id = data.publishedRecipeWithPhotos(me, "PRIVATE");
+		String old = data.recipeShareToken(id);
 		long v = version(id);
 		mvc.perform(reset(id, me, v - 1)).andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("recipe_conflict"));
-		assertThat(token(id)).isEqualTo(old);
+		assertThat(data.recipeShareToken(id)).isEqualTo(old);
 		assertThat(version(id)).isEqualTo(v);
 		mvc.perform(get("/api/r/" + old)).andExpect(status().isOk());
 	}
 
 	@Test
 	void resetWithoutVersionIs400() throws Exception {
-		String id = published("PRIVATE");
-		String old = token(id);
+		String id = data.publishedRecipeWithPhotos(me, "PRIVATE");
+		String old = data.recipeShareToken(id);
 		long v = version(id);
 		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me)
 			.contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -264,7 +207,7 @@ class PublicRecipeIT extends IntegrationTest {
 		mvc.perform(post("/api/recipes/" + id + "/share-link/reset").with(csrf()).cookie(me))
 			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"))
 			.andExpect(jsonPath("$.fields.version").value("required"));
-		assertThat(token(id)).isEqualTo(old);
+		assertThat(data.recipeShareToken(id)).isEqualTo(old);
 		assertThat(version(id)).isEqualTo(v);
 	}
 }

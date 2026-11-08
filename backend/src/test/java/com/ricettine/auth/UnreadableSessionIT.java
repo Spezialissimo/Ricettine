@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 
 class UnreadableSessionIT extends IntegrationTest {
 
-
 	@Test
 	void unreadableSessionMeansLoggedOut() throws Exception {
 		Cookie cookie = data.user("u@x.com", "unreadable", "U", false);

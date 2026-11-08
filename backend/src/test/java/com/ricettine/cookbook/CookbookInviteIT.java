@@ -27,8 +27,8 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void createPreviewAcceptMakesAnAuthor() throws Exception {
-		String id = cookbook(owner);
-		JsonNode created = read(mvc.perform(post("/api/cookbooks/" + id + "/invites").with(csrf()).cookie(owner))
+		String id = data.createCookbook(owner);
+		JsonNode created = data.read(mvc.perform(post("/api/cookbooks/" + id + "/invites").with(csrf()).cookie(owner))
 			.andExpect(status().isCreated()).andReturn());
 		String url = created.get("url").asText();
 		assertThat(url).startsWith("http://localhost/cookbook-invite/");
@@ -46,7 +46,7 @@ class CookbookInviteIT extends CookbookIT {
 		mvc.perform(get("/api/cookbooks/" + id).cookie(owner)).andExpect(jsonPath("$.authors[0].username").value("bea1"))
 			.andExpect(jsonPath("$.authors[0].id").value(userId("bea1").toString()));
 
-		String recipe = publishedRecipe(bea);
+		String recipe = data.publishedRecipe(bea, "PRIVATE");
 		addRecipe(bea, id, recipe).andExpect(status().isCreated());
 		mvc.perform(delete("/api/cookbooks/" + id + "/recipes/" + recipe).with(csrf()).cookie(bea))
 			.andExpect(status().isNoContent());
@@ -59,7 +59,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void inviteIsSingleUseUnderConcurrency() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		String token = invite(owner, id)[1];
 		CountDownLatch gate = new CountDownLatch(1);
 		ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -86,7 +86,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void usedExpiredAndRevokedTokensAre404() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		String used = invite(owner, id)[1];
 		accept(bea, used).andExpect(status().isOk());
 		String expired = invite(owner, id)[1];
@@ -112,7 +112,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void alreadyMemberKeepsInvite() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		String token = invite(owner, id)[1];
 		accept(owner, token).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("already_member"));
 		accept(carl, token).andExpect(status().isOk());
@@ -123,7 +123,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void authorsFullKeepsInvite() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		for (int i = 0; i < 20; i++) {
 			accounts.create(new AccountDtos.NewAccountRequest("a" + i + "@x.com",
 					Sessions.PASSWORD, "author" + i, "A" + i), false);
@@ -138,7 +138,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void onlyTheOwnerManagesInvites() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		join(id, bea);
 		String[] inv = invite(owner, id);
 		mvc.perform(post("/api/cookbooks/" + id + "/invites").with(csrf()).cookie(bea)).andExpect(status().isForbidden());
@@ -157,7 +157,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void listShowsOutstandingOnlyAndCapIs20() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		String[] first = invite(owner, id);
 		accept(bea, first[1]).andExpect(status().isOk());
 		String[] second = invite(owner, id);
@@ -176,7 +176,7 @@ class CookbookInviteIT extends CookbookIT {
 
 	@Test
 	void tokenIsHashedAndDeletingTheCookbookDeletesItsInvites() throws Exception {
-		String id = cookbook(owner);
+		String id = data.createCookbook(owner);
 		String[] inv = invite(owner, id);
 		assertThat(jdbc.queryForObject("select token_hash from one_time_token", String.class))
 			.isEqualTo(Tokens.hash(inv[1]));

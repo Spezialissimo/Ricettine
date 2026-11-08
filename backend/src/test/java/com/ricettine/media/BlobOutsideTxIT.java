@@ -9,7 +9,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.ricettine.IntegrationTest;
@@ -53,14 +52,6 @@ class BlobOutsideTxIT extends IntegrationTest {
 	@AfterEach
 	void tearDown() {
 		pool.shutdownNow();
-	}
-
-	String create(String path, String body) throws Exception {
-		var req = post(path).with(csrf()).cookie(me);
-		if (body != null) {
-			req = req.contentType(MediaType.APPLICATION_JSON).content(body);
-		}
-		return json.readTree(mvc.perform(req).andReturn().getResponse().getContentAsString()).get("id").asText();
 	}
 
 	MockMultipartFile file() {
@@ -110,7 +101,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void slowBlobWriteDoesNotBlockRecipeSave() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -133,7 +124,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void slowBlobWriteDoesNotBlockCookbookWrites() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -152,7 +143,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void failedBlobWriteLeavesNoRowAndNoBlob() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		failSecondPut();
 		assertThat(uploadPhoto(recipe).andReturn().getResponse().getStatus()).isEqualTo(500);
 		assertThat(attemptedKeys()).hasSize(2);
@@ -171,7 +162,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void putThatLandsButReportsFailureLeavesNoBlob() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		// stored on the server, but the client saw a failure (e.g. an S3 call timeout)
 		doAnswer(inv -> {
 			inv.callRealMethod();
@@ -185,7 +176,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void failedCoverBlobWriteLeavesNoRowAndNoBlob() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		failSecondPut();
 		assertThat(uploadCover(cookbook).andReturn().getResponse().getStatus()).isEqualTo(500);
 		assertThat(attemptedKeys()).hasSize(2);
@@ -200,7 +191,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void recipeDeletedBetweenBlobWriteAndTransactionLeavesNothing() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -221,7 +212,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void cookbookDeletedBetweenBlobWriteAndTransactionLeavesNothing() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -241,7 +232,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void concurrentUploadsNearThePhotoCapCannotOvershootIt() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		jdbc.update("insert into media (id, owner_id, kind, recipe_id, created_at) "
 				+ "select 'seed' || g, (select id from app_user limit 1), 'RECIPE', ?::uuid, now() "
 				+ "from generate_series(1, 149) g", recipe);
