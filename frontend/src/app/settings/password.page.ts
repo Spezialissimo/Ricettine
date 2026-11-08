@@ -1,11 +1,10 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { PASSWORD_VALIDATORS } from '../auth/account-form.component';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
+import { SettingsApi } from './settings.api';
 
 @Component({
   selector: 'app-password-page',
@@ -39,7 +38,7 @@ import { errorKey, toApiError } from '../core/api-error';
   `,
 })
 export class PasswordPage {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(SettingsApi);
   readonly form = new FormGroup({
     currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     newPassword: new FormControl('', { nonNullable: true, validators: PASSWORD_VALIDATORS }),
@@ -62,12 +61,12 @@ export class PasswordPage {
     this.busy.set(true);
     this.error.set(null);
     try {
-      await firstValueFrom(this.http.put<void>('/api/me/password', this.form.getRawValue()));
+      await this.api.changePassword(this.form.getRawValue());
       this.done.set(true);
       this.form.reset();
       this.attempted.set(false);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }

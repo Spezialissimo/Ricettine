@@ -3,7 +3,7 @@ import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../../core/api-error';
+import { errorKey, errorKeyOf, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
 import { DetailChipsComponent } from './detail-chips.component';
@@ -344,7 +344,7 @@ export class RecipeEditorPage {
       }
       await this.router.navigateByUrl('/recipes');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -365,7 +365,7 @@ export class RecipeEditorPage {
       await this.store.remove();
       await this.router.navigateByUrl('/recipes');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -376,7 +376,7 @@ export class RecipeEditorPage {
     try {
       await this.store.loadLatest();
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 }

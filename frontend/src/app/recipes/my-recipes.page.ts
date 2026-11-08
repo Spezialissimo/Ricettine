@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { mediaUrl } from '../core/media';
 import { RecipeApi } from './recipe.api';
 import { RecipeSummary } from './recipe.model';
@@ -60,7 +60,7 @@ export class MyRecipesPage {
     try {
       this.recipes.set(await this.api.mine());
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 

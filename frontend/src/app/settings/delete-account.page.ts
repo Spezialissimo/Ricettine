@@ -1,13 +1,12 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { SetupStatus } from '../core/auth.guards';
 import { AuthStore } from '../core/auth.store';
 import { CookbookApi } from '../cookbooks/cookbook.api';
+import { SettingsApi } from './settings.api';
 
 @Component({
   selector: 'app-delete-account-page',
@@ -39,7 +38,7 @@ import { CookbookApi } from '../cookbooks/cookbook.api';
   `,
 })
 export class DeleteAccountPage implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(SettingsApi);
   private readonly auth = inject(AuthStore);
   private readonly setup = inject(SetupStatus);
   private readonly router = inject(Router);
@@ -67,11 +66,9 @@ export class DeleteAccountPage implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      await firstValueFrom(
-        this.http.delete<void>('/api/me', { body: { password: this.password.value } }),
-      );
+      await this.api.deleteAccount(this.password.value);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
       this.busy.set(false);
       return;
     }

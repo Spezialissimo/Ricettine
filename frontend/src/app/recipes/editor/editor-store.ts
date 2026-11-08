@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
-import { ApiError, errorKey, toApiError } from '../../core/api-error';
+import { ApiError, errorKey, errorKeyOf, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
@@ -245,7 +245,7 @@ export class EditorStore {
     try {
       server = await this.api.get(id);
     } catch (e) {
-      this._loadError.set(errorKey(toApiError(e)));
+      this._loadError.set(errorKeyOf(e));
       return;
     }
     this.replace(server);

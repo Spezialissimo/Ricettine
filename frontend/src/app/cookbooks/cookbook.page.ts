@@ -2,7 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { confirmSheet } from '../shared/confirm-dialog.component';
 import { openSheet } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
@@ -106,7 +106,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.get(this.id));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
@@ -134,7 +134,7 @@ export class CookbookPage {
       await this.api.remove(b.id);
       await this.router.navigateByUrl('/cookbooks');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -143,7 +143,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.setCover(b.id, file));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -152,7 +152,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.removeCover(b.id));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -162,7 +162,7 @@ export class CookbookPage {
       await this.api.removeRecipe(b.id, recipeId);
       this.book.update((cur) => (cur ? { ...cur, recipes: cur.recipes.filter((r) => r.recipeId !== recipeId) } : cur));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 }

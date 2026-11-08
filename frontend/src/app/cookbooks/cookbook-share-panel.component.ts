@@ -1,7 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, input, output, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { confirmSheet } from '../shared/confirm-dialog.component';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { CookbookApi } from './cookbook.api';
@@ -65,7 +65,7 @@ export class CookbookSharePanelComponent {
       this.updated.emit(await this.api.resetLink(this.book().id));
       this.done.set(true);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }

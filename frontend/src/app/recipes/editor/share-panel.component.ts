@@ -1,7 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../../core/api-error';
+import { errorKeyOf } from '../../core/api-error';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { CopyLinkComponent } from '../../shared/copy-link.component';
 import { EditorStore } from './editor-store';
@@ -82,7 +82,7 @@ export class SharePanelComponent {
       if (!confirmed) return;
       this.done.set((await this.store.resetLink()) === 'reset');
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }

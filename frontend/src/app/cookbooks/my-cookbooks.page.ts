@@ -2,7 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { openSheet } from '../shared/sheet';
 import { mediaUrl } from '../core/media';
 import { CookbookApi } from './cookbook.api';
@@ -69,7 +69,7 @@ export class MyCookbooksPage {
     try {
       this.books.set(await this.api.mine());
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 

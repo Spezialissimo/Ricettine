@@ -1,27 +1,23 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { CopyLinkComponent } from '../shared/copy-link.component';
+import { AdminApi } from './admin.api';
+import { AdminUser as User, PasswordReset } from './admin.model';
+import { AdminTabsComponent } from './admin-tabs.component';
 
-type User = { id: string; username: string; displayName: string; email: string; admin: boolean; createdAt: string };
-type Reset = { name: string; url: string; expiresAt: string };
+type Reset = PasswordReset & { name: string };
 
 @Component({
   selector: 'app-users-page',
-  imports: [TranslocoDirective, CopyLinkComponent, RouterLink, RouterLinkActive],
+  imports: [TranslocoDirective, CopyLinkComponent, AdminTabsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../settings/settings-page.scss',
   template: `
     <ng-container *transloco="let t">
-      <h1>{{ t('admin.title') }}</h1>
-      <nav class="tabs">
-        <a routerLink="/admin/invites" routerLinkActive="active">{{ t('admin.invites') }}</a>
-        <a routerLink="/admin/users" routerLinkActive="active">{{ t('admin.users') }}</a>
-      </nav>
+      <app-admin-tabs />
       @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
       @if (reset(); as r) {
         <h2>{{ t('admin.resetReady', { name: r.name }) }}</h2>
@@ -50,7 +46,7 @@ type Reset = { name: string; url: string; expiresAt: string };
   `,
 })
 export class UsersPage implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(AdminApi);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   readonly users = signal<User[]>([]);
@@ -69,9 +65,7 @@ export class UsersPage implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const updated = await firstValueFrom(
-        this.http.post<User>(`/api/admin/users/${encodeURIComponent(u.id)}/admin`, { admin: !u.admin }),
-      );
+      const updated = await this.api.setAdmin(u.id, !u.admin);
       if (u.id === this.auth.me()?.id) {
         // A role change ends all of the target's sessions, including this one: sign in again.
         this.auth.setMe(null);
@@ -80,7 +74,7 @@ export class UsersPage implements OnInit {
       }
       this.users.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -88,21 +82,19 @@ export class UsersPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      this.users.set(await firstValueFrom(this.http.get<User[]>('/api/admin/users')));
+      this.users.set(await this.api.users());
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
   async resetPassword(u: User): Promise<void> {
     this.error.set(null);
     try {
-      const r = await firstValueFrom(
-        this.http.post<{ url: string; expiresAt: string }>(`/api/admin/users/${encodeURIComponent(u.id)}/password-reset`, null),
-      );
+      const r = await this.api.passwordReset(u.id);
       this.reset.set({ name: u.displayName, ...r });
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 }

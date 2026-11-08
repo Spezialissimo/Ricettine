@@ -1,7 +1,7 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { openSheet, uid } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInput, CookbookSummary, RecipeRef } from './cookbook.model';
@@ -77,7 +77,7 @@ export class AddToCookbookDialog {
       const mine = await this.api.mine();
       this.rows.set(mine.map((c: CookbookSummary) => ({ id: c.id, name: c.name, state: 'idle', error: null })));
     } catch (e) {
-      this.loadError.set(errorKey(toApiError(e)));
+      this.loadError.set(errorKeyOf(e));
     }
   }
 
@@ -91,7 +91,7 @@ export class AddToCookbookDialog {
       const { created } = await this.api.addRecipe(id, this.data.ref);
       this.patchRow(id, { state: created ? 'added' : 'already' });
     } catch (e) {
-      this.patchRow(id, { state: 'idle', error: errorKey(toApiError(e)) });
+      this.patchRow(id, { state: 'idle', error: errorKeyOf(e) });
     }
   }
 
