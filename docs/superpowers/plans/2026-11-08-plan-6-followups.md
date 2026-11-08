@@ -21,3 +21,10 @@
 - DUP-1: `LoginAttempt.failed()` stays public because `RateLimitsTest` calls it; making it private means changing that test.
 - If the JVM dies between a blob write and the row insert, the blobs are orphaned with no row. `OrphanMediaCleanup` covers rows without blobs, not blobs without rows; a sweep of `img/` keys with no `media` row is still open.
 - CONC-1: if the connection drops during commit after the DB has committed, `storeThen` sees a failure and deletes the blobs of a committed row; `OrphanMediaCleanup` then heals the row.
+
+## PR E (AWS and CI)
+- TEST-7: only the `infra` job was added (infra-check.sh plus backup-restore-check.sh). The finding's `ops-drills` job with `https-smoke.sh` (Caddy overlays, ports 80/443) is not wired yet, and the CLAUDE.md CI line names only `infra`. The brief scoped PR E to the two scripts.
+- OPS-2: the stale alarm is a CloudWatch alarm, not the optional `newer_noncurrent_versions` guard, so lifecycle can still expire the last dumps if the alarm is ignored. The alarm fires between the first apply and the first dump (missing data breaches); documented in the runbook.
+- OPS-2: S3 request metrics on `db/` bill as custom CloudWatch metrics (about 0.30 USD per month); inside the 25 USD budget default but not zero.
+- DATA-2: versioning also applies to avatars and photos replaced in place; storage grows by what is deleted within `backup_retention_days`. There is no tested restore procedure for photos beyond the documented `list-object-versions` steps (never run against real AWS).
+- The Terraform has still never been applied; the `aws_s3_bucket_metric` resource and the alarm dimensions (`BucketName`, `FilterId`) are checked by mock tests only.
