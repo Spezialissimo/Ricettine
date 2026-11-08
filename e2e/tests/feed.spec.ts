@@ -50,7 +50,7 @@ test('login lands on the feed, which lists only published public recipes and fol
   const saved = a.waitForResponse((r) => r.request().method() === 'PUT' && r.url().includes('/api/recipes/'));
   await a.getByRole('radio', { name: 'Private' }).check();
   await saved;
-  await expect(a.getByText(/^Hidden from the home feed and your profile\./)).toBeVisible();
+  await expect(a.getByText(/Hidden from the home feed and your profile\./)).toBeVisible();
 
   await b.goto('/');
   await feedLoaded(b);

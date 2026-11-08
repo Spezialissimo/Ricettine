@@ -62,7 +62,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.POST, "/api/password-resets/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/r/*").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/c/**").permitAll()
-				.requestMatchers(HttpMethod.GET, "/media/**").permitAll()
+				// GET /media/** is owned by the media chain; HEAD falls through to here, so it is authenticated (401 anonymous)
 				// SPA paths: everything except the backend prefixes (case-insensitive so /API/x is not a SPA path)
 				.requestMatchers(RegexRequestMatcher.regexMatcher(HttpMethod.GET,
 						"^/(?!(?i:api|media|actuator)(/|$)).*"))

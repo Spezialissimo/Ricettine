@@ -4,6 +4,7 @@ import {
   KNOWN_ERROR_CODES,
   KNOWN_FIELD_ERROR_CODES,
   errorKey,
+  errorKeyOf,
   fieldErrorKey,
   toApiError,
 } from './api-error';
@@ -12,6 +13,12 @@ describe('api-error', () => {
   it('maps a ProblemDetail body', () => {
     const e = new HttpErrorResponse({ status: 409, error: { code: 'email_taken', status: 409 } });
     expect(toApiError(e)).toEqual({ status: 409, code: 'email_taken', fields: undefined });
+  });
+
+  it('passes an already converted ApiError through', () => {
+    const e = { status: 0, code: 'network_error' };
+    expect(toApiError(e)).toBe(e);
+    expect(errorKeyOf(e)).toBe('errors.network_error');
   });
 
   it('keeps validation fields', () => {

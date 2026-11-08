@@ -54,7 +54,14 @@ export const KNOWN_ERROR_CODES: readonly string[] = [
   'unknown',
 ];
 
+function isApiError(e: unknown): e is ApiError {
+  return (
+    typeof e === 'object' && e !== null && 'status' in e && typeof (e as ApiError).code === 'string'
+  );
+}
+
 export function toApiError(e: unknown): ApiError {
+  if (isApiError(e) && !(e instanceof HttpErrorResponse)) return e; // already converted, e.g. AuthStore.logout rejects with one
   if (e instanceof HttpErrorResponse) {
     if (e.status === 0) {
       return { status: 0, code: 'network_error' };
