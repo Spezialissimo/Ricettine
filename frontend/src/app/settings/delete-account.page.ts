@@ -21,17 +21,30 @@ import { SettingsApi } from './settings.api';
         @if (ownedCookbooks().length > 0) {
           <p>{{ t('settings.deleteCookbooks') }}</p>
           <ul data-owned-cookbooks>
-            @for (name of ownedCookbooks(); track $index) { <li>{{ name }}</li> }
+            @for (name of ownedCookbooks(); track $index) {
+              <li>{{ name }}</li>
+            }
           </ul>
         }
-        @if (cookbooksUnknown()) { <p>{{ t('settings.deleteCookbooksUnknown') }}</p> }
+        @if (cookbooksUnknown()) {
+          <p>{{ t('settings.deleteCookbooksUnknown') }}</p>
+        }
         <label>
           {{ t('auth.password') }}
-          <input type="password" name="password" [formControl]="password" autocomplete="current-password"
-            [class.invalid]="password.invalid && attempted()" />
+          <input
+            type="password"
+            name="password"
+            [formControl]="password"
+            autocomplete="current-password"
+            [class.invalid]="password.invalid && attempted()"
+          />
         </label>
-        @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
-        <button type="submit" class="primary danger" [disabled]="busy()">{{ t('settings.deleteSubmit') }}</button>
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
+        <button type="submit" class="primary danger" [disabled]="busy()">
+          {{ t('settings.deleteSubmit') }}
+        </button>
       </form>
       <a class="btn-back" routerLink="/settings/profile">{{ t('common.back') }}</a>
     </ng-container>

@@ -16,8 +16,12 @@ import { AccountFormComponent, AccountValues } from './account-form.component';
       <h1>{{ t('setup.title') }}</h1>
       <p class="intro">{{ t('setup.intro') }}</p>
       <div class="card">
-        <app-account-form submitLabelKey="setup.submit" [busy]="busy()" [error]="error()"
-          (submitted)="submit($event)" />
+        <app-account-form
+          submitLabelKey="setup.submit"
+          [busy]="busy()"
+          [error]="error()"
+          (submitted)="submit($event)"
+        />
       </div>
     </ng-container>
   `,

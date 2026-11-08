@@ -20,7 +20,9 @@ describe('SourceSheetComponent', () => {
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     const input = el.querySelector('input') as HTMLInputElement;
-    expect(el.querySelector(`label[for="${input.id}"]`)?.textContent).toContain(en.editor.sourceSheet.label);
+    expect(el.querySelector(`label[for="${input.id}"]`)?.textContent).toContain(
+      en.editor.sourceSheet.label,
+    );
     expect(input.value).toBe('Nonna');
     expect(input.maxLength).toBe(500);
     input.value = 'Ottolenghi, Simple p.112';

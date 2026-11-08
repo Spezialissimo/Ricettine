@@ -1,6 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import en from '../../../public/i18n/en.json';
-import { KNOWN_ERROR_CODES, KNOWN_FIELD_ERROR_CODES, errorKey, fieldErrorKey, toApiError } from './api-error';
+import {
+  KNOWN_ERROR_CODES,
+  KNOWN_FIELD_ERROR_CODES,
+  errorKey,
+  fieldErrorKey,
+  toApiError,
+} from './api-error';
 
 describe('api-error', () => {
   it('maps a ProblemDetail body', () => {

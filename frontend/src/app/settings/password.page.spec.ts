@@ -9,7 +9,12 @@ import { PasswordPage } from './password.page';
 describe('PasswordPage', () => {
   async function run(status: number, body: object | null) {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
     const http = TestBed.inject(HttpTestingController);
     const f = TestBed.createComponent(PasswordPage);
@@ -19,7 +24,10 @@ describe('PasswordPage', () => {
     await settle(f);
     const req = http.expectOne('/api/me/password');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ currentPassword: 'oldpassword1', newPassword: 'newpassword1' });
+    expect(req.request.body).toEqual({
+      currentPassword: 'oldpassword1',
+      newPassword: 'newpassword1',
+    });
     req.flush(body, { status, statusText: 'x' });
     await settle(f);
     return el;

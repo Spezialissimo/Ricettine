@@ -55,18 +55,30 @@ describe('CookbookFormDialog', () => {
     ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.click();
     (ov.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await settle(f);
-    expect(submit).toHaveBeenCalledWith({ name: 'Desserts', description: null, visibility: 'PUBLIC' });
+    expect(submit).toHaveBeenCalledWith({
+      name: 'Desserts',
+      description: null,
+      visibility: 'PUBLIC',
+    });
     expect(closed).toHaveBeenCalledWith(true);
   });
 
   it('prefills when editing and maps a server field error to its message', async () => {
     const submit = vi.fn().mockRejectedValue(
-      new HttpErrorResponse({ status: 400, error: { code: 'validation_failed', fields: { name: 'too_long' } } }),
+      new HttpErrorResponse({
+        status: 400,
+        error: { code: 'validation_failed', fields: { name: 'too_long' } },
+      }),
     );
-    const { ov, f } = await open({ initial: { name: 'Old', description: 'D', visibility: 'PUBLIC' }, submit });
+    const { ov, f } = await open({
+      initial: { name: 'Old', description: 'D', visibility: 'PUBLIC' },
+      submit,
+    });
     expect(ov.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Old');
     expect(ov.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('D');
-    expect(ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.checked).toBe(true);
+    expect(ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.checked).toBe(
+      true,
+    );
     (ov.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await settle(f);
     expect(ov.querySelector('.field-error')?.textContent).toContain(en.errors.field.too_long);

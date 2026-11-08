@@ -1,8 +1,31 @@
 @use '../../styles/tokens' as t;
 
-.head { display: flex; align-items: center; gap: t.$space-3; margin-bottom: t.$space-4; }
-.head h1 { margin: 0; }
-.avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: t.$border; flex: none; }
-.handle { color: t.$muted; margin: 0; }
-h2 { font-size: 1.15rem; margin: t.$space-4 0 t.$space-3; }
-.meta { color: t.$muted; font-size: 0.85rem; }
+.head {
+  display: flex;
+  align-items: center;
+  gap: t.$space-3;
+  margin-bottom: t.$space-4;
+}
+.head h1 {
+  margin: 0;
+}
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: t.$border;
+  flex: none;
+}
+.handle {
+  color: t.$muted;
+  margin: 0;
+}
+h2 {
+  font-size: 1.15rem;
+  margin: t.$space-4 0 t.$space-3;
+}
+.meta {
+  color: t.$muted;
+  font-size: 0.85rem;
+}

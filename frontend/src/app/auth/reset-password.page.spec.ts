@@ -10,8 +10,14 @@ describe('ResetPasswordPage', () => {
   async function run(status: number, body: object | null) {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+        },
       ],
     });
     const http = TestBed.inject(HttpTestingController);

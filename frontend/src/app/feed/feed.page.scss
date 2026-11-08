@@ -1,17 +1,47 @@
 @use '../../styles/tokens' as t;
 
-.meta { color: t.$muted; font-size: 0.85rem; }
+.meta {
+  color: t.$muted;
+  font-size: 0.85rem;
+}
 button.more {
   @include t.touch-target;
-  display: block; margin: t.$space-4 auto 0; border: 1px solid t.$border; border-radius: t.$radius;
-  background: t.$surface; color: t.$ink; font: inherit; font-weight: 600; padding: 0 t.$space-4; cursor: pointer;
+  display: block;
+  margin: t.$space-4 auto 0;
+  border: 1px solid t.$border;
+  border-radius: t.$radius;
+  background: t.$surface;
+  color: t.$ink;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 t.$space-4;
+  cursor: pointer;
 }
-button.more:disabled { opacity: 0.6; cursor: default; }
+button.more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 
 // The card box sits on the <li> so the author link can live beside (not inside) the recipe link.
-li.card { display: flex; flex-direction: column; background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; overflow: hidden; }
-li.card a.recipe { border: 0; border-radius: 0; flex: 1; }
+li.card {
+  display: flex;
+  flex-direction: column;
+  background: t.$surface;
+  border: 1px solid t.$border;
+  border-radius: t.$radius;
+  overflow: hidden;
+}
+li.card a.recipe {
+  border: 0;
+  border-radius: 0;
+  flex: 1;
+}
 a.author {
   @include t.touch-target;
-  display: flex; align-items: center; padding: 0 t.$space-3; color: t.$muted; font-size: 0.85rem; text-decoration: underline;
+  display: flex;
+  align-items: center;
+  padding: 0 t.$space-3;
+  color: t.$muted;
+  font-size: 0.85rem;
+  text-decoration: underline;
 }

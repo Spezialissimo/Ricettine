@@ -23,7 +23,9 @@ describe('AccountFormComponent', () => {
     const el = f.nativeElement as HTMLElement;
     type(el, 'input[name=username]', 'Davide');
     await settle(f);
-    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.invalid_username);
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(
+      en.errors.invalid_username,
+    );
   });
 
   it('does not emit an invalid form', async () => {
@@ -40,7 +42,9 @@ describe('AccountFormComponent', () => {
     f.componentRef.setInput('error', { status: 409, code: 'username_taken' });
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.username_taken);
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(
+      en.errors.username_taken,
+    );
     expect(el.querySelector('[role=alert]')).toBeNull();
   });
 
@@ -65,7 +69,10 @@ describe('AccountFormComponent', () => {
     type(el, 'input[name=password]', 'longenough1');
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     expect(spy).toHaveBeenCalledWith({
-      email: 'a@b.co', username: 'davide_1', displayName: 'Davide', password: 'longenough1',
+      email: 'a@b.co',
+      username: 'davide_1',
+      displayName: 'Davide',
+      password: 'longenough1',
     });
   });
 
@@ -82,7 +89,9 @@ describe('AccountFormComponent', () => {
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     await f.whenStable();
     expect(spy).not.toHaveBeenCalled();
-    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.username_reserved);
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(
+      en.errors.username_reserved,
+    );
   });
 
   it('accepts an 80-char display name and rejects whitespace-only', async () => {

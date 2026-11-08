@@ -12,7 +12,12 @@ const ACCOUNT = { email: 'a@b.co', username: 'davide', displayName: 'D', passwor
 describe('SetupPage', () => {
   it('creates the admin, sets me and navigates home', async () => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
     const http = TestBed.inject(HttpTestingController);
     const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -21,7 +26,14 @@ describe('SetupPage', () => {
     const el = f.nativeElement as HTMLElement;
     fillForm(el, ACCOUNT);
     await settle(f);
-    const me = { id: '1', email: 'a@b.co', username: 'davide', displayName: 'D', avatarUrl: null, admin: true };
+    const me = {
+      id: '1',
+      email: 'a@b.co',
+      username: 'davide',
+      displayName: 'D',
+      avatarUrl: null,
+      admin: true,
+    };
     http.expectOne('/api/setup/admin').flush(me, { status: 201, statusText: 'Created' });
     await settle(f);
     expect(TestBed.inject(AuthStore).me()).toEqual(me);

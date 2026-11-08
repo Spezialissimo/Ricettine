@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
@@ -18,7 +25,9 @@ type Reset = PasswordReset & { name: string };
   template: `
     <ng-container *transloco="let t">
       <app-admin-tabs />
-      @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+      @if (error(); as e) {
+        <p class="alert" role="alert">{{ t(e) }}</p>
+      }
       @if (reset(); as r) {
         <h2>{{ t('admin.resetReady', { name: r.name }) }}</h2>
         <app-copy-link [url]="r.url" [expiresAt]="r.expiresAt" />
@@ -28,16 +37,26 @@ type Reset = PasswordReset & { name: string };
           <li [attr.data-user]="u.id">
             <span>
               <strong>{{ u.displayName }}</strong>
-              @if (u.admin) { <span class="muted"> ({{ t('admin.adminBadge') }})</span> }
+              @if (u.admin) {
+                <span class="muted"> ({{ t('admin.adminBadge') }})</span>
+              }
               <br /><span class="muted">&#64;{{ u.username }} &middot; {{ u.email }}</span>
             </span>
             <span class="actions">
               @if (canChangeRole(u)) {
-                <button type="button" class="btn" data-action="role" [disabled]="busy()" (click)="toggleAdmin(u)">
+                <button
+                  type="button"
+                  class="btn"
+                  data-action="role"
+                  [disabled]="busy()"
+                  (click)="toggleAdmin(u)"
+                >
                   {{ t(u.admin ? 'admin.removeAdmin' : 'admin.makeAdmin') }}
                 </button>
               }
-              <button type="button" class="btn" data-action="reset" (click)="resetPassword(u)">{{ t('admin.resetPassword') }}</button>
+              <button type="button" class="btn" data-action="reset" (click)="resetPassword(u)">
+                {{ t('admin.resetPassword') }}
+              </button>
             </span>
           </li>
         }

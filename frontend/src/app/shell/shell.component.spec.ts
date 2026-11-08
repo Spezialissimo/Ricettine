@@ -21,7 +21,9 @@ describe('ShellComponent', () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
         provideTestTransloco(),
       ],
     });
@@ -29,15 +31,30 @@ describe('ShellComponent', () => {
     await f.whenStable();
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('header')?.textContent).toContain('Ricettine');
-    expect(Array.from(el.querySelectorAll('nav'), (n) => n.getAttribute('aria-label'))).toEqual([en.nav.main, en.nav.sections]);
+    expect(Array.from(el.querySelectorAll('nav'), (n) => n.getAttribute('aria-label'))).toEqual([
+      en.nav.main,
+      en.nav.sections,
+    ]);
   });
 
   async function navFor(admin: boolean) {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
-    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ann',
+      displayName: 'Ann',
+      avatarUrl: null,
+      admin,
+    });
     const f = TestBed.createComponent(ShellComponent);
     await f.whenStable();
     return f.nativeElement as HTMLElement;
@@ -45,7 +62,11 @@ describe('ShellComponent', () => {
 
   it('shows Settings for everyone and the display name', async () => {
     const el = await navFor(false);
-    expect(Array.from(el.querySelectorAll('nav a[href="/settings/profile"]'), (a) => a.textContent?.trim())).toEqual([en.nav.settings, en.nav.settings]);
+    expect(
+      Array.from(el.querySelectorAll('nav a[href="/settings/profile"]'), (a) =>
+        a.textContent?.trim(),
+      ),
+    ).toEqual([en.nav.settings, en.nav.settings]);
     expect(el.querySelector('header')?.textContent).toContain('Ann');
   });
 
@@ -64,7 +85,9 @@ describe('ShellComponent', () => {
     expect(label('nav[aria-label="Main"] a[href="/recipes/new"]')).toBe(en.nav.newRecipe);
     expect(label('nav[aria-label="Sections"] a[href="/recipes"]')).toBe(en.nav.recipes);
     expect(label('nav[aria-label="Sections"] a[href="/settings/profile"]')).toBe(en.nav.settings);
-    expect(el.querySelector('header a.new-icon[href="/recipes/new"]')?.getAttribute('aria-label')).toBe(en.nav.newRecipeShort);
+    expect(
+      el.querySelector('header a.new-icon[href="/recipes/new"]')?.getAttribute('aria-label'),
+    ).toBe(en.nav.newRecipeShort);
     expect(el.querySelector('header button.logout')?.textContent).toContain('Log out');
   });
 
@@ -81,9 +104,21 @@ describe('ShellComponent', () => {
   it('logs out to /login', async () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
-    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ann',
+      displayName: 'Ann',
+      avatarUrl: null,
+      admin: false,
+    });
     const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const http = TestBed.inject(HttpTestingController);
     const f = TestBed.createComponent(ShellComponent);
@@ -100,9 +135,21 @@ describe('ShellComponent', () => {
   it('a failed logout keeps the user signed in, shows the network error, and the button retries', async () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
-    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ann',
+      displayName: 'Ann',
+      avatarUrl: null,
+      admin: false,
+    });
     const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const http = TestBed.inject(HttpTestingController);
     const f = TestBed.createComponent(ShellComponent);
@@ -134,18 +181,40 @@ describe('ShellComponent', () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideTestTransloco(),
-        provideRouter([{ path: 'recipes', component: Blank }, { path: 'settings/profile', component: Blank }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideTestTransloco(),
+        provideRouter([
+          { path: 'recipes', component: Blank },
+          { path: 'settings/profile', component: Blank },
+        ]),
       ],
     });
-    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ann',
+      displayName: 'Ann',
+      avatarUrl: null,
+      admin: false,
+    });
     const f = TestBed.createComponent(ShellComponent);
     await TestBed.inject(Router).navigateByUrl('/recipes');
     await f.whenStable();
     const el = f.nativeElement as HTMLElement;
     for (const nav of ['Main', 'Sections']) {
-      expect(el.querySelector(`nav[aria-label="${nav}"] a[href="/recipes"]`)?.getAttribute('aria-current'), nav).toBe('page');
-      expect(el.querySelector(`nav[aria-label="${nav}"] a[href="/settings/profile"]`)?.hasAttribute('aria-current'), nav).toBe(false);
+      expect(
+        el
+          .querySelector(`nav[aria-label="${nav}"] a[href="/recipes"]`)
+          ?.getAttribute('aria-current'),
+        nav,
+      ).toBe('page');
+      expect(
+        el
+          .querySelector(`nav[aria-label="${nav}"] a[href="/settings/profile"]`)
+          ?.hasAttribute('aria-current'),
+        nav,
+      ).toBe(false);
     }
   });
 
@@ -156,7 +225,9 @@ describe('ShellComponent', () => {
 
   it('shows admin link for admins', async () => {
     const el = await navFor(true);
-    expect(Array.from(el.querySelectorAll('nav a[href^="/admin"]'), (a) => a.textContent?.trim())).toEqual([en.nav.admin, en.nav.admin]);
+    expect(
+      Array.from(el.querySelectorAll('nav a[href^="/admin"]'), (a) => a.textContent?.trim()),
+    ).toEqual([en.nav.admin, en.nav.admin]);
   });
 });
 

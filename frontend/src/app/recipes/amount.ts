@@ -43,16 +43,28 @@ export function scaleAmount(amount: number | null, written: number, chosen: numb
 }
 
 const FRACTIONS: ReadonlyArray<readonly [number, string]> = [
-  [0, ''], [1 / 8, '⅛'], [1 / 4, '¼'], [1 / 3, '⅓'], [1 / 2, '½'], [2 / 3, '⅔'], [3 / 4, '¾'], [1, ''],
+  [0, ''],
+  [1 / 8, '⅛'],
+  [1 / 4, '¼'],
+  [1 / 3, '⅓'],
+  [1 / 2, '½'],
+  [2 / 3, '⅔'],
+  [3 / 4, '¾'],
+  [1, ''],
 ];
 
 /**
  * Reading-view amount text. Metric units are rounded to kitchen-friendly steps once scaled; every other
  * unit (and no unit) shows whole + fraction (1⅓). Unscaled values are exactly what the author wrote.
  */
-export function displayAmount(n: number | null, unit: Unit | null, opts: { scaled: boolean; locale: string }): string {
+export function displayAmount(
+  n: number | null,
+  unit: Unit | null,
+  opts: { scaled: boolean; locale: string },
+): string {
   if (n === null) return '';
-  const num = (v: number, max: number) => new Intl.NumberFormat(opts.locale, { maximumFractionDigits: max }).format(v);
+  const num = (v: number, max: number) =>
+    new Intl.NumberFormat(opts.locale, { maximumFractionDigits: max }).format(v);
   if (unit === 'g' || unit === 'ml') {
     if (!opts.scaled) return num(n, 3);
     if (n < 10) return num(Math.max(Math.round(n * 10) / 10, 0.1), 1);
@@ -63,7 +75,9 @@ export function displayAmount(n: number | null, unit: Unit | null, opts: { scale
   if (unit === 'kg' || unit === 'l') return num(n, opts.scaled ? 2 : 3);
   if (opts.scaled && n >= 20) return num(Math.round(n), 0);
   let whole = Math.floor(n);
-  const [value, glyph] = FRACTIONS.reduce((best, f) => (Math.abs(f[0] - (n - whole)) < Math.abs(best[0] - (n - whole)) ? f : best));
+  const [value, glyph] = FRACTIONS.reduce((best, f) =>
+    Math.abs(f[0] - (n - whole)) < Math.abs(best[0] - (n - whole)) ? f : best,
+  );
   if (!opts.scaled && Math.abs(value - (n - whole)) > 0.01) return num(n, 3);
   if (value === 1) whole += 1;
   if (whole === 0 && value === 0) return '⅛'; // a positive amount never shows as 0

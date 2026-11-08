@@ -1,5 +1,17 @@
 export const UNITS = [
-  'g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'piece', 'pinch', 'clove', 'slice', 'can', 'bunch',
+  'g',
+  'kg',
+  'ml',
+  'l',
+  'tsp',
+  'tbsp',
+  'cup',
+  'piece',
+  'pinch',
+  'clove',
+  'slice',
+  'can',
+  'bunch',
 ] as const;
 export type Unit = (typeof UNITS)[number];
 
@@ -8,7 +20,12 @@ export type Visibility = 'PRIVATE' | 'PUBLIC';
 
 export type Photo = { mediaId: string; thumbUrl: string; displayUrl: string };
 
-export type Ingredient = { amount: number | null; unit: Unit | null; name: string; note: string | null };
+export type Ingredient = {
+  amount: number | null;
+  unit: Unit | null;
+  name: string;
+  note: string | null;
+};
 export type Group = { name: string | null; ingredients: Ingredient[] };
 /** Server JSON can carry null for blank text (a fresh draft has `title: null`); `toInput` normalizes it once. */
 type ServerIngredient = Omit<Ingredient, 'name'> & { name: string | null };
@@ -74,7 +91,12 @@ export function toInput(r: Recipe): RecipeInput {
     coverMediaId: r.cover?.mediaId ?? null,
     groups: r.groups.map((g) => ({
       name: g.name,
-      ingredients: g.ingredients.map((i) => ({ amount: i.amount, unit: i.unit, name: i.name ?? '', note: i.note })),
+      ingredients: g.ingredients.map((i) => ({
+        amount: i.amount,
+        unit: i.unit,
+        name: i.name ?? '',
+        note: i.note,
+      })),
     })),
     steps: r.steps.map((s) => ({ text: s.text ?? '', photoMediaId: s.photo?.mediaId ?? null })),
   };

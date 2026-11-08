@@ -14,8 +14,13 @@ const problem = (status: number, code: string) =>
 async function mount(api: Partial<CookbookApi>) {
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]), provideTestTransloco(), { provide: CookbookApi, useValue: api },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'TOK' }) } } },
+      provideRouter([]),
+      provideTestTransloco(),
+      { provide: CookbookApi, useValue: api },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap({ token: 'TOK' }) } },
+      },
     ],
   });
   const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -23,12 +28,19 @@ async function mount(api: Partial<CookbookApi>) {
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, nav };
 }
-const preview = { cookbookName: 'Weeknight', owner: { username: 'ann', displayName: 'ANN', avatarUrl: null }, expiresAt: '2026-11-11T10:00:00Z' };
+const preview = {
+  cookbookName: 'Weeknight',
+  owner: { username: 'ann', displayName: 'ANN', avatarUrl: null },
+  expiresAt: '2026-11-11T10:00:00Z',
+};
 
 describe('AcceptInvitePage', () => {
   it('shows the cookbook and its owner, and Accept goes to the cookbook', async () => {
     const acceptInvite = vi.fn().mockResolvedValue({ id: 'c9' });
-    const { f, el, nav } = await mount({ previewInvite: vi.fn().mockResolvedValue(preview), acceptInvite });
+    const { f, el, nav } = await mount({
+      previewInvite: vi.fn().mockResolvedValue(preview),
+      acceptInvite,
+    });
     expect(el.textContent).toContain('Weeknight');
     expect(el.textContent).toContain('ANN');
     btn(el, en.cookbooks.accept)!.click();
@@ -45,14 +57,19 @@ describe('AcceptInvitePage', () => {
   });
 
   it('an invalid invite shows the error', async () => {
-    const { el } = await mount({ previewInvite: vi.fn().mockRejectedValue(problem(404, 'cookbook_invite_invalid')) });
-    expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.cookbook_invite_invalid);
+    const { el } = await mount({
+      previewInvite: vi.fn().mockRejectedValue(problem(404, 'cookbook_invite_invalid')),
+    });
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(
+      en.errors.cookbook_invite_invalid,
+    );
     expect(btn(el, en.cookbooks.accept)).toBeUndefined();
   });
 
   it('already a member shows the error with a link to the cookbooks', async () => {
     const { f, el } = await mount({
-      previewInvite: vi.fn().mockResolvedValue(preview), acceptInvite: vi.fn().mockRejectedValue(problem(409, 'already_member')),
+      previewInvite: vi.fn().mockResolvedValue(preview),
+      acceptInvite: vi.fn().mockRejectedValue(problem(409, 'already_member')),
     });
     btn(el, en.cookbooks.accept)!.click();
     await settle(f);

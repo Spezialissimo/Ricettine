@@ -43,14 +43,22 @@ import { Profile, ProfileRecipe } from './profile.model';
                 <li>
                   <a class="recipe" [routerLink]="recipeLink(r)">
                     @if (thumb(r.coverThumbUrl); as src) {
-                      <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })" />
+                      <img
+                        class="thumb"
+                        [src]="src"
+                        [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })"
+                      />
                     } @else {
                       <span class="thumb none" aria-hidden="true"></span>
                     }
                     <span class="body">
-                      <span class="name" [class.untitled]="!r.title">{{ r.title || t('recipes.untitled') }}</span>
+                      <span class="name" [class.untitled]="!r.title">{{
+                        r.title || t('recipes.untitled')
+                      }}</span>
                       @if (p.self) {
-                        <span class="badge" [attr.data-badge]="badge(r)">{{ t('recipes.status.' + badge(r)) }}</span>
+                        <span class="badge" [attr.data-badge]="badge(r)">{{
+                          t('recipes.status.' + badge(r))
+                        }}</span>
                       }
                     </span>
                   </a>
@@ -65,19 +73,33 @@ import { Profile, ProfileRecipe } from './profile.model';
             <ul class="grid">
               @for (b of p.cookbooks; track b.id) {
                 <li>
-                  <a class="recipe" [routerLink]="p.self ? ['/cookbooks', b.id] : ['/c', b.shareToken]">
+                  <a
+                    class="recipe"
+                    [routerLink]="p.self ? ['/cookbooks', b.id] : ['/c', b.shareToken]"
+                  >
                     @if (thumb(b.coverThumbUrl); as src) {
-                      <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: b.name })" />
+                      <img
+                        class="thumb"
+                        [src]="src"
+                        [alt]="t('recipes.coverAlt', { title: b.name })"
+                      />
                     } @else {
                       <span class="thumb none" aria-hidden="true"></span>
                     }
                     <span class="body">
                       <span class="name">{{ b.name }}</span>
                       <span class="meta">{{
-                        t(b.recipeCount === 1 ? 'cookbooks.recipeCountOne' : 'cookbooks.recipeCountOther', { count: b.recipeCount })
+                        t(
+                          b.recipeCount === 1
+                            ? 'cookbooks.recipeCountOne'
+                            : 'cookbooks.recipeCountOther',
+                          { count: b.recipeCount }
+                        )
                       }}</span>
                       @if (p.self) {
-                        <span class="badge" [attr.data-badge]="b.visibility.toLowerCase()">{{ t('cookbooks.visibility.' + b.visibility) }}</span>
+                        <span class="badge" [attr.data-badge]="b.visibility.toLowerCase()">{{
+                          t('cookbooks.visibility.' + b.visibility)
+                        }}</span>
                       }
                     </span>
                   </a>
@@ -127,7 +149,9 @@ export class UserProfilePage {
   }
 
   protected recipeLink(r: ProfileRecipe): string[] {
-    return r.status === 'DRAFT' || !r.shareToken ? ['/recipes', r.id, 'edit'] : ['/r', r.shareToken];
+    return r.status === 'DRAFT' || !r.shareToken
+      ? ['/recipes', r.id, 'edit']
+      : ['/r', r.shareToken];
   }
 
   protected badge(r: ProfileRecipe): 'draft' | 'private' | 'public' {

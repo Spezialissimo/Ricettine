@@ -11,18 +11,38 @@ import { RecipeApi } from '../recipe.api';
 import { PublicRecipe } from '../recipe.model';
 import { RecipeViewPage } from './recipe-view.page';
 
-const photo = (id: string) => ({ mediaId: id, thumbUrl: `/media/${id}/THUMB.jpg?s=tok`, displayUrl: `/media/${id}/DISPLAY.jpg?s=tok` });
+const photo = (id: string) => ({
+  mediaId: id,
+  thumbUrl: `/media/${id}/THUMB.jpg?s=tok`,
+  displayUrl: `/media/${id}/DISPLAY.jpg?s=tok`,
+});
 
 const pub = (over: Partial<PublicRecipe> = {}): PublicRecipe => ({
-  title: 'Lasagne', author: { username: 'giulia', displayName: 'Giulia', avatarUrl: null },
-  portions: 4, prepMinutes: 30, cookMinutes: 90, source: null, notes: 'Rest it',
+  title: 'Lasagne',
+  author: { username: 'giulia', displayName: 'Giulia', avatarUrl: null },
+  portions: 4,
+  prepMinutes: 30,
+  cookMinutes: 90,
+  source: null,
+  notes: 'Rest it',
   cover: photo('c1'),
   groups: [
-    { name: 'Ragu', ingredients: [{ amount: 0.5, unit: 'kg', name: 'beef', note: 'minced' }, { amount: null, unit: null, name: 'salt', note: null }] },
+    {
+      name: 'Ragu',
+      ingredients: [
+        { amount: 0.5, unit: 'kg', name: 'beef', note: 'minced' },
+        { amount: null, unit: null, name: 'salt', note: null },
+      ],
+    },
     { name: null, ingredients: [{ amount: 1.5, unit: 'l', name: 'milk', note: null }] },
   ],
-  steps: [{ text: 'Brown the beef', photo: photo('s1') }, { text: 'Simmer', photo: null }],
-  publishedAt: '2026-11-03T10:00:00Z', viewerIsAuthor: false, ...over,
+  steps: [
+    { text: 'Brown the beef', photo: photo('s1') },
+    { text: 'Simmer', photo: null },
+  ],
+  publishedAt: '2026-11-03T10:00:00Z',
+  viewerIsAuthor: false,
+  ...over,
 });
 
 async function mount(byToken: RecipeApi['byToken'], me: unknown = null) {
@@ -32,7 +52,10 @@ async function mount(byToken: RecipeApi['byToken'], me: unknown = null) {
       provideTestTransloco(),
       { provide: RecipeApi, useValue: { byToken } },
       { provide: AuthStore, useValue: { me: signal(me) } },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+      },
     ],
   });
   const f = TestBed.createComponent(RecipeViewPage);
@@ -80,31 +103,46 @@ describe('RecipeViewPage', () => {
     for (const chip of Array.from(el.querySelectorAll('.chips .chip'))) {
       const emoji = chip.querySelector('[aria-hidden="true"]');
       expect(emoji?.textContent?.trim()).toMatch(/\p{Extended_Pictographic}/u);
-      expect(chip.textContent!.replace(emoji!.textContent!, '')).not.toMatch(/\p{Extended_Pictographic}/u);
+      expect(chip.textContent!.replace(emoji!.textContent!, '')).not.toMatch(
+        /\p{Extended_Pictographic}/u,
+      );
     }
     expect(el.querySelector('ol.steps')?.getAttribute('role')).toBe('list');
     const lists = Array.from(el.querySelectorAll('.ingredients ul'));
     expect(lists.length).toBe(2);
     lists.forEach((l) => expect(l.getAttribute('role')).toBe('list'));
     expect(el.querySelector('.chips')?.getAttribute('role')).toBe('list');
-    expect(Array.from(el.querySelectorAll('.ingredients h3')).map((h) => h.textContent?.trim())).toContain('Ragu');
+    expect(
+      Array.from(el.querySelectorAll('.ingredients h3')).map((h) => h.textContent?.trim()),
+    ).toContain('Ragu');
     const box = el.querySelector('.ingredients')!;
     expect(box.getAttribute('tabindex')).toBe('0');
-    expect(el.querySelector('#' + box.getAttribute('aria-labelledby'))?.textContent).toContain(en.editor.ingredients);
+    expect(el.querySelector('#' + box.getAttribute('aria-labelledby'))?.textContent).toContain(
+      en.editor.ingredients,
+    );
   });
 
   it('scales amounts with the portions stepper and Reset restores the written ones', async () => {
     const r = pub({
       portions: 4,
-      groups: [{ name: null, ingredients: [
-        { amount: 200, unit: 'g', name: 'flour', note: null },
-        { amount: null, unit: null, name: 'salt', note: null },
-      ] }],
+      groups: [
+        {
+          name: null,
+          ingredients: [
+            { amount: 200, unit: 'g', name: 'flour', note: null },
+            { amount: null, unit: null, name: 'salt', note: null },
+          ],
+        },
+      ],
     });
     const { f, el } = await mount(vi.fn().mockResolvedValue(r));
     const ing = () => el.querySelector('.ingredients')!.textContent!.replace(/\s+/g, ' ');
     const click = async (label: string) => {
-      (Array.from(el.querySelectorAll('.ingredients button')).find((b) => b.getAttribute('aria-label') === label || b.textContent?.trim() === label) as HTMLElement).click();
+      (
+        Array.from(el.querySelectorAll('.ingredients button')).find(
+          (b) => b.getAttribute('aria-label') === label || b.textContent?.trim() === label,
+        ) as HTMLElement
+      ).click();
       await settle(f);
     };
     expect(ing()).toContain('200 g flour');
@@ -120,7 +158,10 @@ describe('RecipeViewPage', () => {
   });
 
   it('offers Keep screen on beside the author when the Wake Lock API exists', async () => {
-    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: vi.fn() } });
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: { request: vi.fn() },
+    });
     try {
       const { el } = await mount(vi.fn().mockResolvedValue(pub()));
       expect(el.querySelector('.author input[type="checkbox"]')).not.toBeNull();
@@ -134,7 +175,9 @@ describe('RecipeViewPage', () => {
     const { el } = await mount(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')));
     expect(el.textContent).toContain(en.recipes.notFound);
     expect(el.querySelector('.chips')).toBeNull();
-    const home = Array.from(el.querySelectorAll('main a')).find((a) => a.getAttribute('href') === '/');
+    const home = Array.from(el.querySelectorAll('main a')).find(
+      (a) => a.getAttribute('href') === '/',
+    );
     expect(home).toBeTruthy();
   });
 
@@ -142,7 +185,11 @@ describe('RecipeViewPage', () => {
     const byToken = vi.fn().mockRejectedValueOnce(http(0)).mockResolvedValue(pub());
     const { f, el } = await mount(byToken);
     expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.network_error);
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === en.common.retry) as HTMLElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === en.common.retry,
+      ) as HTMLElement
+    ).click();
     await settle(f);
     expect(el.querySelector('h1')?.textContent).toContain('Lasagne');
   });
@@ -177,7 +224,9 @@ describe('RecipeViewPage', () => {
     expect(r.el.querySelector('a[href$="/edit"]')).toBeNull();
 
     TestBed.resetTestingModule();
-    r = await mount(vi.fn().mockResolvedValue(pub({ viewerIsAuthor: true, recipeId: 'abc' })), { displayName: 'Me' });
+    r = await mount(vi.fn().mockResolvedValue(pub({ viewerIsAuthor: true, recipeId: 'abc' })), {
+      displayName: 'Me',
+    });
     const edit = r.el.querySelector('a[href="/recipes/abc/edit"]');
     expect(edit?.textContent?.trim()).toBe(en.recipes.edit);
   });
@@ -188,12 +237,15 @@ describe('RecipeViewPage', () => {
     expect(anon.el.querySelector('.author')!.textContent).toContain('by Giulia');
     TestBed.resetTestingModule();
     const user = await mount(vi.fn().mockResolvedValue(pub()), { username: 'x' });
-    expect(user.el.querySelector('.author a[href="/u/giulia"]')?.textContent).toContain('by Giulia');
+    expect(user.el.querySelector('.author a[href="/u/giulia"]')?.textContent).toContain(
+      'by Giulia',
+    );
   });
 
   it('offers Add to cookbook to a logged-in visitor only', async () => {
     const text = en.cookbooks.addToCookbook;
-    const has = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === text);
+    const has = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === text);
     const anon = await mount(vi.fn().mockResolvedValue(pub()), null);
     expect(has(anon.el)).toBe(false);
     TestBed.resetTestingModule();
@@ -208,11 +260,20 @@ describe('RecipeViewPage through a cookbook', () => {
     cookbookByToken.mockReset();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]), provideTestTransloco(),
+        provideRouter([]),
+        provideTestTransloco(),
         { provide: RecipeApi, useValue: { byToken: vi.fn() } },
         { provide: CookbookApi, useValue: { recipeByToken, byToken: cookbookByToken } },
         { provide: AuthStore, useValue: { me: signal(me) } },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 't', recipeId: 'r1' }), data: { via: 'cookbook' } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ token: 't', recipeId: 'r1' }),
+              data: { via: 'cookbook' },
+            },
+          },
+        },
       ],
     });
     const f = TestBed.createComponent(RecipeViewPage);
@@ -227,15 +288,23 @@ describe('RecipeViewPage through a cookbook', () => {
     expect(recipeByToken).toHaveBeenCalledWith('t', 'r1');
     expect(cookbookByToken).not.toHaveBeenCalled();
     expect(el.querySelector('h1')?.textContent).toContain('Lasagne');
-    const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Back to Desserts'));
+    const back = Array.from(el.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Back to Desserts'),
+    );
     expect(back?.getAttribute('href')).toBe('/c/t');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === en.cookbooks.addToCookbook)).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some(
+        (b) => b.textContent?.trim() === en.cookbooks.addToCookbook,
+      ),
+    ).toBe(false);
   });
 
   it('on 404 shows not found with a generic Back link', async () => {
     const { el } = await mountVia(vi.fn().mockRejectedValue(http(404, 'recipe_not_found')));
     expect(el.textContent).toContain(en.recipes.notFound);
-    const back = Array.from(el.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/c/t');
+    const back = Array.from(el.querySelectorAll('a')).find(
+      (a) => a.getAttribute('href') === '/c/t',
+    );
     expect(back?.textContent?.trim()).toBe(en.cookbooks.back);
   });
 });

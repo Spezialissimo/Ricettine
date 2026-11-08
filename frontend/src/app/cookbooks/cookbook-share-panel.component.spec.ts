@@ -7,18 +7,35 @@ import { Cookbook } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
 
 const book = (over: Partial<Cookbook> = {}): Cookbook => ({
-  id: 'c1', name: 'Desserts', description: null, visibility: 'PRIVATE', role: 'OWNER', owner: null, authors: [],
-  shareUrl: 'https://x.test/c/OLD', cover: null, recipes: [], updatedAt: '', ...over,
+  id: 'c1',
+  name: 'Desserts',
+  description: null,
+  visibility: 'PRIVATE',
+  role: 'OWNER',
+  owner: null,
+  authors: [],
+  shareUrl: 'https://x.test/c/OLD',
+  cover: null,
+  recipes: [],
+  updatedAt: '',
+  ...over,
 });
 
 @Component({
   imports: [CookbookSharePanelComponent],
   template: '<app-cookbook-share-panel [book]="book()" (updated)="book.set($event)" />',
 })
-class Host { book = signal(book()); }
+class Host {
+  book = signal(book());
+}
 
-async function mount(initial: Cookbook, resetLink = vi.fn().mockResolvedValue(book({ shareUrl: 'https://x.test/c/NEW' }))) {
-  TestBed.configureTestingModule({ providers: [provideTestTransloco(), { provide: CookbookApi, useValue: { resetLink } }] });
+async function mount(
+  initial: Cookbook,
+  resetLink = vi.fn().mockResolvedValue(book({ shareUrl: 'https://x.test/c/NEW' })),
+) {
+  TestBed.configureTestingModule({
+    providers: [provideTestTransloco(), { provide: CookbookApi, useValue: { resetLink } }],
+  });
   const f = TestBed.createComponent(Host);
   f.componentInstance.book.set(initial);
   await settle(f);

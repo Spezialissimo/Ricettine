@@ -22,7 +22,12 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   line-height: 1.4;
 }
 
@@ -33,10 +38,22 @@ a.btn {
 }
 
 // CDK dialogs used as editor sheets: centered card on desktop, bottom sheet on the phone.
-.cdk-overlay-dark-backdrop { background: rgba(0, 0, 0, 0.35); }
-.editor-sheet .cdk-dialog-container {
-  display: block; background: var(--surface); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-  max-height: 90dvh; overflow: auto; outline: none;
+.cdk-overlay-dark-backdrop {
+  background: rgba(0, 0, 0, 0.35);
 }
-.editor-sheet--center .cdk-dialog-container { border-radius: 16px; }
-.editor-sheet--bottom .cdk-dialog-container { border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+.editor-sheet .cdk-dialog-container {
+  display: block;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  max-height: 90dvh;
+  overflow: auto;
+  outline: none;
+}
+.editor-sheet--center .cdk-dialog-container {
+  border-radius: 16px;
+}
+.editor-sheet--bottom .cdk-dialog-container {
+  border-radius: 22px 22px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}

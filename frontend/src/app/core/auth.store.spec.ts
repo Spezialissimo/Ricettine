@@ -5,7 +5,12 @@ import { AuthStore, Me } from './auth.store';
 import { PendingSaves } from './pending-saves';
 
 const me: Me = {
-  id: '1', email: 'a@b.c', username: 'abc', displayName: 'Abc', avatarUrl: null, admin: false,
+  id: '1',
+  email: 'a@b.c',
+  username: 'abc',
+  displayName: 'Abc',
+  avatarUrl: null,
+  admin: false,
 };
 
 describe('AuthStore', () => {
@@ -13,7 +18,9 @@ describe('AuthStore', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     store = TestBed.inject(AuthStore);
     http = TestBed.inject(HttpTestingController);
   });
@@ -29,7 +36,9 @@ describe('AuthStore', () => {
 
   it('load sets null on 401', async () => {
     const p = store.load();
-    http.expectOne('/api/me').flush({ code: 'not_authenticated' }, { status: 401, statusText: 'x' });
+    http
+      .expectOne('/api/me')
+      .flush({ code: 'not_authenticated' }, { status: 401, statusText: 'x' });
     await p;
     expect(store.me()).toBeNull();
     expect(store.ready()).toBe(true);
@@ -90,18 +99,29 @@ describe('AuthStore', () => {
     store.setMe(me);
     const p = store.logout();
     await new Promise((r) => setTimeout(r)); // pending saves are flushed first (none here)
-    http.expectOne('/api/auth/logout').flush({ code: 'not_authenticated' }, { status: 401, statusText: 'x' });
+    http
+      .expectOne('/api/auth/logout')
+      .flush({ code: 'not_authenticated' }, { status: 401, statusText: 'x' });
     await p;
     expect(store.me()).toBeNull();
   });
 
-  it.each([0, 500])('logout keeps me set and rejects with an ApiError when the request fails with %i', async (status) => {
-    store.setMe(me);
-    const p = store.logout();
-    const rejected = p.then(() => null, (e: unknown) => e);
-    await new Promise((r) => setTimeout(r));
-    http.expectOne('/api/auth/logout').flush(null, { status, statusText: 'x' });
-    expect(await rejected).toMatchObject({ status, code: status === 0 ? 'network_error' : 'unknown' });
-    expect(store.me()).toEqual(me);
-  });
+  it.each([0, 500])(
+    'logout keeps me set and rejects with an ApiError when the request fails with %i',
+    async (status) => {
+      store.setMe(me);
+      const p = store.logout();
+      const rejected = p.then(
+        () => null,
+        (e: unknown) => e,
+      );
+      await new Promise((r) => setTimeout(r));
+      http.expectOne('/api/auth/logout').flush(null, { status, statusText: 'x' });
+      expect(await rejected).toMatchObject({
+        status,
+        code: status === 0 ? 'network_error' : 'unknown',
+      });
+      expect(store.me()).toEqual(me);
+    },
+  );
 });

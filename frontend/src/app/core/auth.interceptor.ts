@@ -14,7 +14,9 @@ function isGuestPage(url: string): boolean {
 function isExempt(method: string, url: string): boolean {
   const path = url.split(/[?#]/)[0];
   if (!path.startsWith('/api/')) return true;
-  return (method === 'GET' && path === '/api/me') || (method === 'POST' && path === '/api/auth/login');
+  return (
+    (method === 'GET' && path === '/api/me') || (method === 'POST' && path === '/api/auth/login')
+  );
 }
 
 /** True while a redirect to login that this interceptor started is under way (one navigation per burst of 401s). */
@@ -34,7 +36,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     tap({
       error: (e: unknown) => {
-        if (!(e instanceof HttpErrorResponse) || e.status !== 401 || isExempt(req.method, req.url)) return;
+        if (!(e instanceof HttpErrorResponse) || e.status !== 401 || isExempt(req.method, req.url))
+          return;
         // Only a session we had can expire: a 401 while signed out is the caller's to handle.
         if (auth.me() === null) return;
         auth.setMe(null);

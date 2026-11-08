@@ -1,5 +1,13 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 /**
@@ -11,13 +19,29 @@ import { TranslocoDirective } from '@jsverse/transloco';
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; cursor: pointer; }
-    input { width: 24px; height: 24px; margin: 0; }
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      min-width: 44px;
+      cursor: pointer;
+    }
+    input {
+      width: 24px;
+      height: 24px;
+      margin: 0;
+    }
   `,
   template: `
     @if (supported) {
       <label *transloco="let t">
-        <input #box type="checkbox" [checked]="checked()" (change)="toggle($any($event.target).checked)" />
+        <input
+          #box
+          type="checkbox"
+          [checked]="checked()"
+          (change)="toggle($any($event.target).checked)"
+        />
         {{ t('recipes.keepScreenOn') }}
       </label>
     }
@@ -30,7 +54,12 @@ export class KeepScreenOnComponent {
   private readonly box = viewChild<ElementRef<HTMLInputElement>>('box');
   private sentinel: WakeLockSentinel | null = null;
   private readonly onVisible = () => {
-    if (this.doc.visibilityState === 'visible' && this.checked() && (!this.sentinel || this.sentinel.released)) void this.acquire();
+    if (
+      this.doc.visibilityState === 'visible' &&
+      this.checked() &&
+      (!this.sentinel || this.sentinel.released)
+    )
+      void this.acquire();
   };
 
   constructor() {
@@ -59,7 +88,9 @@ export class KeepScreenOnComponent {
         void sentinel.release(); // unchecked or destroyed while the request was pending
         return;
       }
-      sentinel.addEventListener('release', () => { if (this.sentinel === sentinel) this.sentinel = null; });
+      sentinel.addEventListener('release', () => {
+        if (this.sentinel === sentinel) this.sentinel = null;
+      });
       this.sentinel = sentinel;
     } catch {
       // refused (battery saver, no permission): stay off, quietly
@@ -75,6 +106,10 @@ export class KeepScreenOnComponent {
   private async release(): Promise<void> {
     const s = this.sentinel;
     this.sentinel = null;
-    try { await s?.release(); } catch { /* already released */ }
+    try {
+      await s?.release();
+    } catch {
+      /* already released */
+    }
   }
 }

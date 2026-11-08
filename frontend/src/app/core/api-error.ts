@@ -1,6 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-export type ApiError = { status: number; code: string; fields?: Record<string, string>; mediaIds?: string[] };
+export type ApiError = {
+  status: number;
+  code: string;
+  fields?: Record<string, string>;
+  mediaIds?: string[];
+};
 
 /** Every `code` the backend can emit (plus frontend-only network_error / unknown). */
 export const KNOWN_ERROR_CODES: readonly string[] = [
@@ -60,7 +65,9 @@ export function toApiError(e: unknown): ApiError {
         status: e.status,
         code: body.code,
         fields: body.fields ?? undefined,
-        mediaIds: Array.isArray(body.mediaIds) ? body.mediaIds.filter((m: unknown) => typeof m === 'string') : undefined,
+        mediaIds: Array.isArray(body.mediaIds)
+          ? body.mediaIds.filter((m: unknown) => typeof m === 'string')
+          : undefined,
       };
     }
     return { status: e.status, code: 'unknown' };
@@ -78,9 +85,18 @@ export function errorKeyOf(e: unknown): string {
 }
 
 /** Field-level codes with an `errors.field.{code}` entry in en.json (a spec keeps the two in sync). */
-export const KNOWN_FIELD_ERROR_CODES: readonly string[] = ['required', 'too_long', 'out_of_range', 'too_many', 'invalid', 'invalid_unit'];
+export const KNOWN_FIELD_ERROR_CODES: readonly string[] = [
+  'required',
+  'too_long',
+  'out_of_range',
+  'too_many',
+  'invalid',
+  'invalid_unit',
+];
 
 /** Key for a per-field server error code: `errors.field.{code}`, else `errors.validation_failed`. */
 export function fieldErrorKey(code: string): string {
-  return KNOWN_FIELD_ERROR_CODES.includes(code) ? `errors.field.${code}` : 'errors.validation_failed';
+  return KNOWN_FIELD_ERROR_CODES.includes(code)
+    ? `errors.field.${code}`
+    : 'errors.validation_failed';
 }

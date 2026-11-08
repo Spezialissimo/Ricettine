@@ -22,7 +22,8 @@ async function mount(capture = false) {
   };
   return { f, el, input, picked, rejected, choose };
 }
-const file = (size: number, type = 'image/jpeg') => new File([new Uint8Array(size)], 'p.jpg', { type });
+const file = (size: number, type = 'image/jpeg') =>
+  new File([new Uint8Array(size)], 'p.jpg', { type });
 
 describe('PhotoPickerComponent', () => {
   it('has a hidden image input and an accessible button that opens it', async () => {

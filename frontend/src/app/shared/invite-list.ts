@@ -15,7 +15,11 @@ export class InviteList {
   readonly busy = signal(false);
 
   constructor(
-    private readonly ops: { list(): Promise<Invite[]>; create(): Promise<InviteCreated>; revoke(id: string): Promise<void> },
+    private readonly ops: {
+      list(): Promise<Invite[]>;
+      create(): Promise<InviteCreated>;
+      revoke(id: string): Promise<void>;
+    },
     readonly error: WritableSignal<string | null> = signal(null),
   ) {}
 
@@ -34,7 +38,10 @@ export class InviteList {
     try {
       const c = await this.ops.create();
       this.created.set(c);
-      this.invites.update((l) => [...l, { id: c.id, createdAt: new Date().toISOString(), expiresAt: c.expiresAt }]);
+      this.invites.update((l) => [
+        ...l,
+        { id: c.id, createdAt: new Date().toISOString(), expiresAt: c.expiresAt },
+      ]);
     } catch (e) {
       this.error.set(errorKeyOf(e));
     } finally {

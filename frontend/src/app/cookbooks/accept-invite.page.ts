@@ -18,9 +18,18 @@ import { CookbookInvitePreview } from './cookbook.model';
         <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.title') }}</a>
       } @else if (preview(); as p) {
         <h1>{{ t('cookbooks.acceptTitle') }}</h1>
-        <p class="desc">{{ t('cookbooks.acceptBody', { name: p.cookbookName, owner: p.owner?.displayName ?? t('cookbooks.deletedUser') }) }}</p>
+        <p class="desc">
+          {{
+            t('cookbooks.acceptBody', {
+              name: p.cookbookName,
+              owner: p.owner?.displayName ?? t('cookbooks.deletedUser'),
+            })
+          }}
+        </p>
         <div class="actions">
-          <button type="button" class="new" [disabled]="busy()" (click)="accept()">{{ t('cookbooks.accept') }}</button>
+          <button type="button" class="new" [disabled]="busy()" (click)="accept()">
+            {{ t('cookbooks.accept') }}
+          </button>
           <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.notNow') }}</a>
         </div>
       } @else {
