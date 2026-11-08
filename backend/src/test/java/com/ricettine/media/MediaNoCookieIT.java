@@ -2,6 +2,7 @@ package com.ricettine.media;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
@@ -45,5 +46,11 @@ class MediaNoCookieIT extends IntegrationTest {
 		var res = mvc.perform(get(url).cookie(new Cookie("SESSION", "stale"))).andExpect(status().isOk()).andReturn()
 				.getResponse();
 		assertThat(res.getHeaders("Set-Cookie")).isEmpty();
+	}
+
+	@Test
+	void nonGetRequestsKeepCsrfProtection() throws Exception {
+		Cookie session = Sessions.login(mvc, "o@x.com");
+		mvc.perform(post("/media/x").cookie(session)).andExpect(status().isForbidden());
 	}
 }

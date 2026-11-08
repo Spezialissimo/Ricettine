@@ -16,6 +16,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 @Configuration
@@ -35,7 +36,7 @@ public class SecurityConfig {
 	@Bean
 	@Order(1)
 	SecurityFilterChain mediaFilterChain(HttpSecurity http) throws Exception {
-		http.securityMatcher("/media/**")
+		http.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/media/**"))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.GET, "/media/**").permitAll()
 				.anyRequest().authenticated())
