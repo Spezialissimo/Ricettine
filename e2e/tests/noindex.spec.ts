@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { apiPublishRecipe, createCookbook, newUserPage } from './helpers';
+import { expect } from '@playwright/test';
+import { apiPublishRecipe, createCookbook, newUserPage, test } from '../helpers';
 
 const NOINDEX = 'noindex, nofollow';
 

@@ -1,5 +1,5 @@
 import { expect, test as setup } from '@playwright/test';
-import { ADMIN, expectHome } from './helpers';
+import { ADMIN, expectHome } from '../helpers';
 
 // The first-run flow can only happen once per instance, so it lives in this setup project.
 setup('fresh instance: / lands on /setup and the admin can be created', async ({ page }) => {

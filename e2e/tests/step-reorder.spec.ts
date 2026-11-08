@@ -1,8 +1,7 @@
-import { Locator, Page, expect, test } from '@playwright/test';
-import { createRecipe, newUserPage } from './helpers';
+import { Locator, Page, expect } from '@playwright/test';
+import { createRecipe, expectSaved, newUserPage, test } from '../helpers';
 
 const stepTexts = (page: Page) => page.getByRole('textbox', { name: /^Step \d+$/ }).evaluateAll((els) => els.map((e) => (e as HTMLTextAreaElement).value));
-const saved = (page: Page) => expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
 
 /** CDK needs intermediate pointer moves: press on `from`, move in steps to `to`, release. */
 async function drag(page: Page, from: Locator, to: Locator) {
@@ -41,7 +40,7 @@ test('reorder steps by handle, keyboard, and not by the text', async ({ browser 
   // drag C's handle above B
   await drag(page, handle(3), page.locator('li.step').nth(1));
   await expect.poll(() => stepTexts(page)).toEqual(['A', 'C', 'B']);
-  await saved(page);
+  await expectSaved(page);
   await page.reload();
   await expect.poll(() => stepTexts(page)).toEqual(['A', 'C', 'B']);
 
@@ -50,7 +49,7 @@ test('reorder steps by handle, keyboard, and not by the text', async ({ browser 
   await page.keyboard.press('ArrowUp');
   await expect(page.getByText('Step 3 moved to position 2')).toBeAttached();
   await expect(handle(2)).toBeFocused();
-  await saved(page);
+  await expectSaved(page);
   await page.reload();
   await expect.poll(() => stepTexts(page)).toEqual(['A', 'B', 'C']);
 });
@@ -59,7 +58,7 @@ test('a long step keeps a correct textarea height after moving', async ({ browse
   const { page } = await newUserPage(browser, testInfo, 'reorderh');
   await createRecipe(page, { title: 'Tall pie', ingredients: ['flour'], steps: ['short', 'x'] });
   await page.getByRole('textbox', { name: 'Step 2' }).fill(Array.from({ length: 12 }, (_, i) => `line ${i}`).join('\n'));
-  await saved(page);
+  await expectSaved(page);
   const h = (n: number) => page.getByRole('textbox', { name: `Step ${n}` }).evaluate((e) => e.getBoundingClientRect().height);
   const tall = await h(2);
   expect(tall).toBeGreaterThan(150);

@@ -1,5 +1,5 @@
-import { Page, TestInfo, expect, test } from '@playwright/test';
-import { apiPublishRecipe, createCookbook, createRecipe, newUserPage } from './helpers';
+import { Page, TestInfo, expect } from '@playwright/test';
+import { apiPublishRecipe, createCookbook, createRecipe, expectCardLayout, expectSaved, newUserPage, test } from '../helpers';
 
 const stamp = (testInfo: TestInfo) => `${testInfo.project.name}-${Date.now().toString(36)}`;
 
@@ -21,13 +21,13 @@ async function setCookbookVisibility(page: Page, visibility: 'Private' | 'Public
 
 test('a profile lists only public items to others, everything to its owner, and follows visibility', async ({ browser }, testInfo) => {
   const s = stamp(testInfo);
-  const { page: a, who: whoA, context: ctxA } = await newUserPage(browser, testInfo, 'profa');
-  const { page: b, context: ctxB } = await newUserPage(browser, testInfo, 'profb');
+  const { page: a, who: whoA } = await newUserPage(browser, testInfo, 'profa');
+  const { page: b } = await newUserPage(browser, testInfo, 'profb');
 
   // A: PUBLIC published (UI), PRIVATE published (API), a draft (UI), a PUBLIC and a PRIVATE cookbook (UI)
   await createRecipe(a, { title: `Prof-pub-${s}`, ingredients: ['salt'], steps: ['Cook'] });
   await a.getByRole('radio', { name: 'Public' }).check();
-  await expect(a.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(a);
   await a.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(a.locator('[data-url]')).toBeVisible();
   await apiPublishRecipe(a, { title: `Prof-priv-${s}`, visibility: 'PRIVATE' });
@@ -79,32 +79,20 @@ test('a profile lists only public items to others, everything to its owner, and 
   await expect(b.getByRole('link', { name: new RegExp(`Prof-pub-${s}`) })).toBeVisible();
   await expect(b.getByText(`Prof-book-pub-${s}`)).toHaveCount(0);
 
-  await ctxA.close();
-  await ctxB.close();
 });
 
 test('an unknown username shows the not-found state', async ({ browser }, testInfo) => {
-  const { page, context } = await newUserPage(browser, testInfo, 'profnf');
+  const { page } = await newUserPage(browser, testInfo, 'profnf');
   await page.goto(`/u/nobody_${Date.now().toString(36)}`);
   await expect(page.getByRole('heading', { name: 'This person is not here' })).toBeVisible();
-  await context.close();
 });
 
 test('profile cards sit side by side on desktop and stack on mobile', async ({ browser }, testInfo) => {
   const s = stamp(testInfo);
-  const { page, who, context } = await newUserPage(browser, testInfo, 'proflay');
+  const { page, who } = await newUserPage(browser, testInfo, 'proflay');
   await apiPublishRecipe(page, { title: `PLay-${s}-1`, visibility: 'PUBLIC' });
   await apiPublishRecipe(page, { title: `PLay-${s}-2`, visibility: 'PUBLIC' });
   await page.goto(`/u/${who.username}`);
   const cards = page.locator('a.recipe');
-  await expect(cards.nth(1)).toBeVisible();
-  const first = (await cards.nth(0).boundingBox())!;
-  const second = (await cards.nth(1).boundingBox())!;
-  if (testInfo.project.name === 'desktop') {
-    expect(Math.abs(first.y - second.y)).toBeLessThan(2);
-    expect(second.x).toBeGreaterThan(first.x + first.width - 1);
-  } else {
-    expect(second.y).toBeGreaterThan(first.y + first.height - 1);
-  }
-  await context.close();
+  await expectCardLayout(cards, testInfo.project.name);
 });

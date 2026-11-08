@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["tests", "fixtures", "playwright.config.ts"]
+  "include": ["tests", "helpers", "fixtures", "playwright.config.ts"]
 }

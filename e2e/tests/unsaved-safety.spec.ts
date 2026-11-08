@@ -1,10 +1,6 @@
-import { join } from 'node:path';
-import { Page, expect, test } from '@playwright/test';
-import { createRecipe, logIn, newContext, newUserPage } from './helpers';
+import { Page, expect } from '@playwright/test';
+import { createRecipe, expectSaved, logIn, newContext, newUserPage, test, pickPhoto } from '../helpers';
 
-const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'portrait-orientation6.jpg');
-
-const saved = (page: Page) => page.getByRole('status').getByText('Saved ✓');
 const step1 = (page: Page) => page.getByRole('textbox', { name: 'Step 1' });
 
 test('text typed offline saves when back online', async ({ browser }, testInfo) => {
@@ -16,7 +12,7 @@ test('text typed offline saves when back online', async ({ browser }, testInfo) 
   await expect(page.getByRole('status').getByText('Offline: will save when you reconnect')).toBeVisible();
 
   await context.setOffline(false);
-  await expect(saved(page)).toBeVisible();
+  await expectSaved(page);
   await page.reload();
   await expect(step1(page)).toHaveValue('Boil gently for ten minutes');
 });
@@ -43,7 +39,7 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   await again.goto(editorUrl);
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
   // So this tab restored it from the backup, and must save it.
-  await expect(saved(again)).toBeVisible();
+  await expectSaved(again);
   await expect.poll(serverStep).toBe('Soak overnight, then simmer');
   await again.reload();
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
@@ -63,9 +59,7 @@ test('failed upload can be retried', async ({ browser }, testInfo) => {
     }
   });
 
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add cover photo' }).click();
-  await (await chooser).setFiles(FIXTURE);
+  await pickPhoto(page, page.getByRole('button', { name: 'Add cover photo' }));
 
   await expect(page.getByText('Upload failed', { exact: true })).toBeVisible();
   const publish = page.getByRole('button', { name: 'Publish', exact: true });
@@ -73,7 +67,7 @@ test('failed upload can be retried', async ({ browser }, testInfo) => {
 
   await page.getByRole('button', { name: 'Retry cover photo upload' }).click();
   await expect(page.locator('img[src^="/media/"][alt="Cover photo"]')).toBeVisible();
-  await expect(saved(page)).toBeVisible();
+  await expectSaved(page);
   await expect(publish).toBeEnabled();
   expect(failed).toBe(true);
 });
@@ -91,14 +85,13 @@ test('conflict keeps my text', async ({ browser }, testInfo) => {
   await expect(step1(page2)).toHaveValue('Original step');
 
   await step1(page1).fill('Text from device one');
-  await expect(saved(page1)).toBeVisible();
+  await expectSaved(page1);
 
   await step1(page2).fill('Text from device two');
   await expect(page2.getByLabel('Your unsaved text')).toHaveValue(/Text from device two/);
 
   await page2.getByRole('button', { name: 'Load latest' }).click();
   await expect(step1(page2)).toHaveValue('Text from device one');
-  await ctx2.close();
 });
 
 test('conflict block includes an ingredient-only edit', async ({ browser }, testInfo) => {
@@ -113,7 +106,7 @@ test('conflict block includes an ingredient-only edit', async ({ browser }, test
   await expect(step1(page2)).toHaveValue('Original step');
 
   await step1(page1).fill('Changed on device one');
-  await expect(saved(page1)).toBeVisible();
+  await expectSaved(page1);
 
   await page2.getByRole('button', { name: '+ Ingredient' }).last().click();
   await expect(page2.getByLabel('Ingredient', { exact: true })).toHaveCount(2); // the new row exists before `.nth(1)` is used
@@ -121,11 +114,10 @@ test('conflict block includes an ingredient-only edit', async ({ browser }, test
   await page2.getByLabel('Amount', { exact: true }).nth(1).fill('300');
   await page2.getByLabel('Unit', { exact: true }).nth(1).selectOption('g');
   await expect(page2.getByLabel('Your unsaved text')).toHaveValue(/salt[\s\S]*300 g butter/);
-  await ctx2.close();
 });
 
 test('a failed logout keeps the user signed in and shows an error', async ({ browser }, testInfo) => {
-  const { page, context, who } = await newUserPage(browser, testInfo, 'logout-fail');
+  const { page, who } = await newUserPage(browser, testInfo, 'logout-fail');
   await page.route('**/api/auth/logout', (route) => route.abort('failed'));
   await page.getByRole('button', { name: 'Log out' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Cannot reach the server' })).toBeVisible();
@@ -133,5 +125,4 @@ test('a failed logout keeps the user signed in and shows an error', async ({ bro
   await expect(page).not.toHaveURL(/\/login$/);
   await page.reload();
   await expect(page.getByRole('banner').getByText(who.displayName, { exact: true })).toBeVisible();
-  await context.close();
 });

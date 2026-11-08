@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { ADMIN, createInvitePath, logIn, logOut, newContext } from './helpers';
+import { expect } from '@playwright/test';
+import { ADMIN, inviteAsAdmin, logIn, logOut, newContext, test } from '../helpers';
 
 test('login form: empty submit is announced and marked, wrong password shows the error', async ({ page }) => {
   await page.goto('/login');
@@ -20,16 +20,10 @@ test('login form: empty submit is announced and marked, wrong password shows the
 });
 
 test('registration email field offers email autofill', async ({ browser }, testInfo) => {
-  const adminCtx = await newContext(browser, testInfo);
-  const admin = await adminCtx.newPage();
-  await admin.goto('/login');
-  await logIn(admin, ADMIN);
-  const invitePath = await createInvitePath(admin);
-  await adminCtx.close();
+  const invitePath = await inviteAsAdmin(browser, testInfo);
 
   const ctx = await newContext(browser, testInfo);
   const page = await ctx.newPage();
   await page.goto(invitePath);
   await expect(page.getByLabel('Email', { exact: true })).toHaveAttribute('autocomplete', 'email');
-  await ctx.close();
 });

@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { createCookbook, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { createCookbook, newUserPage, publishRecipe, test } from '../helpers';
 
 test('account deletion names the owned cookbooks and leaves the shared ones intact', async ({ browser }, testInfo) => {
   const leaver = await newUserPage(browser, testInfo, 'delA');

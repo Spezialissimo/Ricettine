@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
-import { newUserPage } from './helpers';
+import { expect } from '@playwright/test';
+import { newUserPage, test } from '../helpers';
 
 test('responsive shell: the right navigation shows for the viewport', async ({ browser }, testInfo) => {
-  const { page, context } = await newUserPage(browser, testInfo, 'shell');
+  const { page } = await newUserPage(browser, testInfo, 'shell');
   const main = page.getByRole('navigation', { name: 'Main' });
   const bottom = page.getByRole('navigation', { name: 'Sections' });
   if (testInfo.project.name === 'desktop') {
@@ -19,11 +19,10 @@ test('responsive shell: the right navigation shows for the viewport', async ({ b
     await expect(page.getByRole('link', { name: 'New recipe' })).toBeVisible();
   }
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
-  await context.close();
 });
 
 test('a new recipe opens the editor route and is listed as a draft', async ({ browser }, testInfo) => {
-  const { page, context } = await newUserPage(browser, testInfo, 'draft');
+  const { page } = await newUserPage(browser, testInfo, 'draft');
   await page.getByRole('link', { name: 'My recipes' }).click();
   await expect(page.getByText('You have no recipes yet.')).toBeVisible();
 
@@ -41,5 +40,4 @@ test('a new recipe opens the editor route and is listed as a draft', async ({ br
   await expect(item).toBeVisible();
   await expect(item).toContainText('Untitled recipe');
   await expect(item).toContainText('Draft');
-  await context.close();
 });

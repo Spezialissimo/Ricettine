@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { newUserPage } from './helpers';
+import { expect } from '@playwright/test';
+import { newUserPage, test } from '../helpers';
 
 test('an expired session sends me to login and back to where I was', async ({ browser }, testInfo) => {
   const { who, context, page } = await newUserPage(browser, testInfo, 'expiry');

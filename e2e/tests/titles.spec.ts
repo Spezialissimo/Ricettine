@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { newContext, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { newContext, newUserPage, publishRecipe, test } from '../helpers';
 
 test('page titles follow the route and the recipe', async ({ browser }, testInfo) => {
   const anon = await (await newContext(browser, testInfo)).newPage();
@@ -44,5 +44,4 @@ test('cold loads of /login and a /r/ link log no console or page errors', async 
   await expect(page.getByRole('heading', { name: `Quiet soup ${testInfo.project.name}`, level: 1 })).toBeVisible();
   await page.waitForTimeout(500);
   expect(problems).toEqual([]);
-  await ctx.close();
 });

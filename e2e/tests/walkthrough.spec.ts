@@ -1,5 +1,5 @@
-import { BrowserContext, Frame, Page, expect, test } from '@playwright/test';
-import { ADMIN, Person, createInvitePath, expectHome, logIn, logOut, newContext, person, register } from './helpers';
+import { BrowserContext, Frame, Page, expect } from '@playwright/test';
+import { ADMIN, Person, createInvitePath, expectHome, logIn, logOut, newContext, person, register, test } from '../helpers';
 
 test.describe.serial('walkthrough: admin, invite, register, logout, login', () => {
   let adminCtx: BrowserContext;
