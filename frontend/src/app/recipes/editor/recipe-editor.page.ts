@@ -3,7 +3,7 @@ import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { errorKey, errorKeyOf, toApiError } from '../../core/api-error';
+import { errorKey, errorKeyOf, fieldErrorKey, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
 import { DetailChipsComponent } from './detail-chips.component';
@@ -19,10 +19,6 @@ import { countingIngredients, countingSteps } from './completeness';
 
 export const MAX_TITLE = 200;
 export const MAX_NOTES = 10_000;
-const FIELD_CODES = ['required', 'too_long', 'out_of_range', 'too_many', 'invalid', 'invalid_unit'];
-
-/** i18n key for a server field code (`fields` of validation_failed / recipe_incomplete). */
-export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.includes(code) ? code : 'invalid'}`;
 
 /**
  * The recipe editor. One DOM for both layouts (CSS at $bp-desktop): two columns on desktop (details,

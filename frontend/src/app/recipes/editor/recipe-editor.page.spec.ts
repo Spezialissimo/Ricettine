@@ -216,7 +216,7 @@ describe('RecipeEditorPage', () => {
     expect(title.getAttribute('aria-invalid')).toBe('true');
     const errorId = title.getAttribute('aria-describedby')!;
     const error = el.querySelector(`#${errorId}`)!;
-    expect(error.textContent).toContain(en.editor.field.required);
+    expect(error.textContent).toContain(en.errors.field.required);
     expect(error.closest('label')).toBeNull();
     expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.recipe_incomplete);
     expect(title.value).toBe('');

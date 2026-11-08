@@ -78,7 +78,7 @@ export function errorKeyOf(e: unknown): string {
 }
 
 /** Field-level codes with an `errors.field.{code}` entry in en.json (a spec keeps the two in sync). */
-export const KNOWN_FIELD_ERROR_CODES: readonly string[] = ['required', 'too_long', 'invalid'];
+export const KNOWN_FIELD_ERROR_CODES: readonly string[] = ['required', 'too_long', 'out_of_range', 'too_many', 'invalid', 'invalid_unit'];
 
 /** Key for a per-field server error code: `errors.field.{code}`, else `errors.validation_failed`. */
 export function fieldErrorKey(code: string): string {
