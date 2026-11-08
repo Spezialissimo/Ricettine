@@ -303,7 +303,7 @@
 - **Fix:** Don't issue CSRF cookies on /media/**. Either add a separate SecurityFilterChain for `/media/**` (GET only, csrf disabled, same session-based authentication), or use a request handler that skips token loading on safe requests to /media/**. Add the planned edge-caching IT: an avatar GET with no cookies and with a stale SESSION cookie must carry no Set-Cookie at all.
 - **Evidence:** Throwaway IT at AUDIT_SHA: GET of an avatar URL with no cookies returned 200, `Cache-Control: public, max-age=31536000, immutable` and `Set-Cookie: XSRF-TOKEN=<uuid>; Path=/`. With a stale SESSION cookie the result was the same (XSRF-TOKEN only, no SESSION cookie).
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Edge caching
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR B)
 
 ### SEC-6: No Content-Security-Policy (and no Referrer-Policy in self-hosted mode)
 
@@ -312,7 +312,7 @@
 - **Problem:** Neither the app nor the Caddy overlays send a CSP. The AWS Managed-SecurityHeadersPolicy doesn't add one either. Spring Security's defaults give nosniff and X-Frame-Options DENY only. If any XSS gets in through user-authored recipe content, nothing contains it. A reviewer checking the headers will notice right away. Self-hosted mode also sends no Referrer-Policy on pages whose URLs carry invite, reset and share tokens. Browser defaults strip the path on cross-origin requests, so it's low risk.
 - **Fix:** Add `headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")).referrerPolicy(r -> r.policy(SAME_ORIGIN)))` in SecurityConfig. Check it against the Angular build (critical-CSS inlining uses an inline onload handler, so set `inlineCritical: false` or use autoCsp). Assert the header in RobotsHeaderIT-style tests and run the e2e suite.
 - **Evidence:** Throwaway IT: GET /login returned `X-Frame-Options: DENY`, with no Content-Security-Policy and no Referrer-Policy. grep finds no CSP in deploy/ or backend.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR B)
 
 ### TEST-8: Cookbook invite, cap and removal edge cases from the Plan 3 follow-ups are still untested
 
