@@ -100,3 +100,38 @@ test('conflict keeps my text', async ({ browser }, testInfo) => {
   await expect(step1(page2)).toHaveValue('Text from device one');
   await ctx2.close();
 });
+
+test('conflict block includes an ingredient-only edit', async ({ browser }, testInfo) => {
+  const { who, page: page1 } = await newUserPage(browser, testInfo, 'conflict-ing');
+  const editorUrl = await createRecipe(page1, { title: 'Ingredient race', ingredients: ['salt'], steps: ['Original step'] });
+
+  const ctx2 = await newContext(browser, testInfo);
+  const page2 = await ctx2.newPage();
+  await page2.goto('/login');
+  await logIn(page2, who);
+  await page2.goto(editorUrl);
+  await expect(step1(page2)).toHaveValue('Original step');
+
+  await step1(page1).fill('Changed on device one');
+  await expect(saved(page1)).toBeVisible();
+
+  await page2.getByRole('button', { name: '+ Ingredient' }).last().click();
+  await expect(page2.getByLabel('Ingredient', { exact: true })).toHaveCount(2); // the new row exists before `.nth(1)` is used
+  await page2.getByLabel('Ingredient', { exact: true }).nth(1).fill('butter');
+  await page2.getByLabel('Amount', { exact: true }).nth(1).fill('300');
+  await page2.getByLabel('Unit', { exact: true }).nth(1).selectOption('g');
+  await expect(page2.getByLabel('Your unsaved text')).toHaveValue(/salt[\s\S]*300 g butter/);
+  await ctx2.close();
+});
+
+test('a failed logout keeps the user signed in and shows an error', async ({ browser }, testInfo) => {
+  const { page, context, who } = await newUserPage(browser, testInfo, 'logout-fail');
+  await page.route('**/api/auth/logout', (route) => route.abort('failed'));
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Cannot reach the server' })).toBeVisible();
+  await expect(page.getByRole('banner').getByText(who.displayName, { exact: true })).toBeVisible();
+  await expect(page).not.toHaveURL(/\/login$/);
+  await page.reload();
+  await expect(page.getByRole('banner').getByText(who.displayName, { exact: true })).toBeVisible();
+  await context.close();
+});

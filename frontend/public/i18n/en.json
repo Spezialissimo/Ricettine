@@ -363,6 +363,9 @@
     },
     "conflict": "This recipe was changed on another device or tab, so your latest changes were not saved. Copy anything you want to keep, then load the latest version.",
     "conflictCopy": "Your unsaved text",
+    "conflictPrep": "Prep: {{n}} min",
+    "conflictCook": "Cook: {{n}} min",
+    "conflictPortions": "Portions: {{n}}",
     "loadLatest": "Load latest",
     "field": {
       "required": "This field is required.",
