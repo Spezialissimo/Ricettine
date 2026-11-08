@@ -1,0 +1,28 @@
+# HTTPS overlay: Caddy terminates TLS for your domain (certificate from Let's Encrypt).
+#   RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.https.yaml up -d
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      RICETTINE_DOMAIN: ${RICETTINE_DOMAIN:?Set RICETTINE_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  app:
+    # only reachable through Caddy
+    ports: !reset []
+    environment:
+      RICETTINE_BASE_URL: https://${RICETTINE_DOMAIN:?Set RICETTINE_DOMAIN}
+
+volumes:
+  caddy-data:
+  caddy-config:
