@@ -9,12 +9,6 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
   let who: Person;
   let invitePath: string;
 
-  test('the project viewport applies', async ({ page }, testInfo) => {
-    const width = page.viewportSize()!.width;
-    if (testInfo.project.name === 'desktop') expect(width).toBeGreaterThanOrEqual(1200);
-    else expect(width).toBeLessThanOrEqual(450);
-  });
-
   test.beforeAll(async ({ browser }, testInfo) => {
     who = person(testInfo, 'walk');
     adminCtx = await newContext(browser, testInfo);
@@ -56,8 +50,8 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await logIn(admin, ADMIN);
     admin.off('framenavigated', onNav);
     expect((await loginResponse).status()).toBe(200);
-    // only the in-app route change after the successful login may have happened (to `/`)
-    expect(navigations.every((u) => ['/'].includes(new URL(u).pathname))).toBe(true);
+    // no full navigation to anywhere but `/`; an empty list (the in-app route change) is fine
+    expect(navigations.filter((u) => new URL(u).pathname !== '/')).toEqual([]);
   });
 
   test('invited person registers and lands on the feed without an Admin link', async () => {

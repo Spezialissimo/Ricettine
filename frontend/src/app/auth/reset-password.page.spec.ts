@@ -34,7 +34,7 @@ describe('ResetPasswordPage', () => {
   it('shows success with a login link', async () => {
     const el = await run(204, null);
     expect(el.textContent).toContain(en.reset.done);
-    expect(el.querySelector('a[href="/login"]')).toBeTruthy();
+    expect(el.querySelector('a[href="/login"]')?.textContent?.trim()).toBeTruthy();
   });
 
   it('shows reset_invalid', async () => {

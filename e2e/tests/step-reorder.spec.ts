@@ -47,7 +47,7 @@ test('reorder steps by handle, keyboard, and not by the text', async ({ browser 
   // keyboard: B (now step 3) up -> A, B, C
   await handle(3).focus();
   await page.keyboard.press('ArrowUp');
-  await expect(page.getByText('Step 3 moved to position 2')).toBeAttached();
+  await expect(page.locator('p.sr-only[aria-live="polite"]')).toHaveText('Step 3 moved to position 2');
   await expect(handle(2)).toBeFocused();
   await expectSaved(page);
   await page.reload();

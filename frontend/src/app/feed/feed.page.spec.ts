@@ -62,6 +62,30 @@ describe('FeedPage', () => {
     expect(more(el)!.disabled).toBe(true);
   });
 
+  it('a second Load more click while one is pending does not fetch again', async () => {
+    const page = vi.fn().mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' }).mockReturnValueOnce(new Promise(() => {}));
+    const { el } = await mount(page);
+    const button = more(el)!;
+    button.click();
+    button.click();
+    expect(page).toHaveBeenCalledTimes(2); // the initial load and one Load more
+  });
+
+  it('a double click on Retry after a failed page fetches once', async () => {
+    const page = vi.fn()
+      .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 500 }))
+      .mockReturnValueOnce(new Promise(() => {}));
+    const { f, el } = await mount(page);
+    more(el)!.click();
+    await settle(f);
+    expect(more(el)!.textContent).toContain('Retry');
+    const retry = more(el)!;
+    retry.click();
+    retry.click();
+    expect(page).toHaveBeenCalledTimes(3); // initial, the failed page, one retry
+  });
+
   it('keeps page 1 and offers Retry when page 2 fails', async () => {
     const page = vi.fn()
       .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })

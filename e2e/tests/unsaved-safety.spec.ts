@@ -1,5 +1,5 @@
 import { Page, expect } from '@playwright/test';
-import { createRecipe, expectSaved, logIn, newContext, newUserPage, test, pickPhoto } from '../helpers';
+import { createRecipe, expectSaved, logIn, newContext, newUserPage, pickPhoto, stepPhotoButton, test } from '../helpers';
 
 const step1 = (page: Page) => page.getByRole('textbox', { name: 'Step 1' });
 
@@ -38,6 +38,7 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   const again = await context.newPage();
   await again.goto(editorUrl);
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
+  await expect(again.getByText('Changes you made earlier on this device had not been saved. They were restored.')).toBeVisible();
   // So this tab restored it from the backup, and must save it.
   await expectSaved(again);
   await expect.poll(serverStep).toBe('Soak overnight, then simmer');
@@ -45,32 +46,36 @@ test('unsaved text survives closing the tab', async ({ browser }, testInfo) => {
   await expect(step1(again)).toHaveValue('Soak overnight, then simmer');
 });
 
-test('failed upload can be retried', async ({ browser }, testInfo) => {
-  const { page } = await newUserPage(browser, testInfo, 'retry');
-  await createRecipe(page, { title: 'Retry tart', ingredients: ['flour'], steps: ['Bake'] });
+for (const slot of ['cover', 'step'] as const) {
+  test(`failed ${slot} photo upload can be retried`, async ({ browser }, testInfo) => {
+    const desktop = testInfo.project.name === 'desktop';
+    const { page } = await newUserPage(browser, testInfo, `retry-${slot}`);
+    await createRecipe(page, { title: 'Retry tart', ingredients: ['flour'], steps: ['Bake'] });
 
-  let failed = false;
-  await page.route('**/photos', async (route) => {
-    if (route.request().method() === 'POST' && !failed) {
-      failed = true;
-      await route.abort('failed');
-    } else {
-      await route.continue();
-    }
+    let failed = false;
+    await page.route('**/photos', async (route) => {
+      if (route.request().method() === 'POST' && !failed) {
+        failed = true;
+        await route.abort('failed');
+      } else {
+        await route.continue();
+      }
+    });
+
+    const picker = slot === 'cover' ? page.getByRole('button', { name: 'Add cover photo' }) : await stepPhotoButton(page, desktop);
+    await pickPhoto(page, picker);
+
+    await expect(page.getByText('Upload failed', { exact: true })).toBeVisible();
+    const publish = page.getByRole('button', { name: 'Publish', exact: true });
+    await expect(publish).toBeDisabled();
+
+    await page.getByRole('button', { name: slot === 'cover' ? 'Retry cover photo upload' : 'Retry photo upload for step 1' }).click();
+    await expect(page.locator(`img[src^="/media/"][alt="${slot === 'cover' ? 'Cover photo' : 'Photo of step 1'}"]`)).toBeVisible();
+    await expectSaved(page);
+    await expect(publish).toBeEnabled();
+    expect(failed).toBe(true);
   });
-
-  await pickPhoto(page, page.getByRole('button', { name: 'Add cover photo' }));
-
-  await expect(page.getByText('Upload failed', { exact: true })).toBeVisible();
-  const publish = page.getByRole('button', { name: 'Publish', exact: true });
-  await expect(publish).toBeDisabled();
-
-  await page.getByRole('button', { name: 'Retry cover photo upload' }).click();
-  await expect(page.locator('img[src^="/media/"][alt="Cover photo"]')).toBeVisible();
-  await expectSaved(page);
-  await expect(publish).toBeEnabled();
-  expect(failed).toBe(true);
-});
+}
 
 test('conflict keeps my text', async ({ browser }, testInfo) => {
   const { who, page: page1 } = await newUserPage(browser, testInfo, 'conflict');
@@ -86,6 +91,11 @@ test('conflict keeps my text', async ({ browser }, testInfo) => {
 
   await step1(page1).fill('Text from device one');
   await expectSaved(page1);
+  // "Saved" can still be a stale indicator right after the edit: the server's copy is the proof.
+  const id = editorUrl.match(/\/recipes\/([0-9a-f-]{36})\/edit$/)![1];
+  await expect
+    .poll(async () => (await (await page1.request.get(`/api/recipes/${id}`)).json()).steps[0].text)
+    .toBe('Text from device one');
 
   await step1(page2).fill('Text from device two');
   await expect(page2.getByLabel('Your unsaved text')).toHaveValue(/Text from device two/);

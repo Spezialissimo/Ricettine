@@ -43,3 +43,8 @@ export function deferred<T>() {
   const promise = new Promise<T>((res, rej) => ((resolve = res), (reject = rej)));
   return { promise, resolve, reject };
 }
+
+/** Presses Escape on `target` the way the CDK overlay keyboard dispatcher expects it (it reads `keyCode`). */
+export function pressEscape(target: Element): void {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+}

@@ -324,3 +324,79 @@ describe('cover photo and photo_not_in_recipe', () => {
     });
   });
 });
+
+describe('uploads follow their step when steps change (EditorStore)', () => {
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:r');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  /** A store with steps A, B, C and a never-finishing upload on step B (index 1). */
+  async function pending() {
+    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) }, ['A', 'B', 'C']);
+    void store.uploadPhoto(1, jpeg());
+    expect(store.uploadFor(1)?.status).toBe('uploading');
+    return store;
+  }
+
+  it('stepInserted above it moves the upload down one step', async () => {
+    const store = await pending();
+    store.stepInserted(0);
+    expect(store.uploadFor(1)).toBeUndefined();
+    expect(store.uploadFor(2)?.status).toBe('uploading');
+  });
+
+  it('stepInserted below it leaves the upload where it is', async () => {
+    const store = await pending();
+    store.stepInserted(2);
+    expect(store.uploadFor(1)?.status).toBe('uploading');
+  });
+
+  it('stepRemoved above it moves the upload up one step', async () => {
+    const store = await pending();
+    store.stepRemoved(0);
+    expect(store.uploadFor(1)).toBeUndefined();
+    expect(store.uploadFor(0)?.status).toBe('uploading');
+  });
+
+  it('stepRemoved on its own step drops the upload', async () => {
+    const store = await pending();
+    store.stepRemoved(1);
+    expect(store.uploadFor(0)).toBeUndefined();
+    expect(store.uploadFor(1)).toBeUndefined();
+    expect(store.uploadsUnfinished()).toBe(false);
+  });
+
+  it('stepMoved: the moved step takes its upload along, and the steps it passes shift theirs', async () => {
+    const store = await pending();
+    store.stepMoved(1, 2); // B moves below C
+    expect(store.uploadFor(2)?.status).toBe('uploading');
+    expect(store.uploadFor(1)).toBeUndefined();
+    store.stepMoved(0, 2); // A moves below C: B's step (now 2) shifts up
+    expect(store.uploadFor(1)?.status).toBe('uploading');
+    expect(store.uploadFor(2)).toBeUndefined();
+    store.stepMoved(2, 0); // C moves to the top: B's step shifts down
+    expect(store.uploadFor(2)?.status).toBe('uploading');
+  });
+
+  it('a failed upload (with its Retry) follows its step too, and retry lands on the new index', async () => {
+    const uploadPhoto = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 0 })).mockResolvedValue(photo('m1'));
+    const { store } = await mount({ uploadPhoto }, ['A', 'B', 'C']);
+    await store.uploadPhoto(1, jpeg());
+    expect(store.uploadFor(1)?.status).toBe('failed');
+    store.stepInserted(0);
+    expect(store.uploadFor(1)).toBeUndefined();
+    expect(store.uploadFor(2)?.status).toBe('failed');
+    await store.retryUpload(2);
+    expect(store.recipe().steps[2].photoMediaId).toBe('m1');
+  });
+
+  it('a cover upload is not touched by step changes', async () => {
+    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) }, ['A', 'B']);
+    void store.uploadPhoto('cover', jpeg());
+    store.stepInserted(0);
+    store.stepRemoved(0);
+    store.stepMoved(0, 1);
+    expect(store.uploadFor('cover')?.status).toBe('uploading');
+  });
+});

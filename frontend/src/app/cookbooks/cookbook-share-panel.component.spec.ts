@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { en, provideTestTransloco } from '../testing/transloco';
-import { btn, clearOverlays, overlay, settle } from '../testing/spec-helpers';
+import { btn, clearOverlays, overlay, pressEscape, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
@@ -50,6 +50,18 @@ describe('CookbookSharePanelComponent', () => {
     expect(resetLink).toHaveBeenCalledWith('c1');
     expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/c/NEW');
     expect(el.querySelector('[role="status"]')?.textContent).toContain(en.cookbooks.linkReset);
+  });
+
+  it('Escape closes the reset confirmation without resetting', async () => {
+    const { f, el, resetLink } = await mount(book());
+    btn(el, en.cookbooks.resetLink)!.click();
+    await settle(f);
+    expect(overlay().textContent).toContain(en.cookbooks.resetLinkConfirm.title);
+    pressEscape(overlay().querySelector('app-confirm-dialog')!);
+    await settle(f);
+    expect(overlay().querySelector('app-confirm-dialog')).toBeNull();
+    expect(resetLink).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/c/OLD');
   });
 
   it('shows an error when the reset fails and keeps the old link', async () => {

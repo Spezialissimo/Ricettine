@@ -20,7 +20,7 @@ const book = (over: Partial<Cookbook> = {}): Cookbook => ({
 async function mount(api: Partial<CookbookApi>) {
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]), provideTestTransloco(), { provide: CookbookApi, useValue: api },
+      provideRouter([]), provideTestTransloco(), { provide: CookbookApi, useValue: { invites: vi.fn().mockResolvedValue([]), ...api } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'c1' }) } } },
     ],
   });

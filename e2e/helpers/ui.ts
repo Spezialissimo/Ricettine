@@ -28,16 +28,16 @@ export async function addCoverPhoto(page: Page) {
   await expectSaved(page);
 }
 
-/** In the editor: adds a photo to step 1 (desktop: the step's button; phone: the bottom bar) and waits until it is saved. */
+/** The "Add photo to step 1" button: on desktop the step's own, on the phone the bottom bar's (shown while the step has focus). */
+export async function stepPhotoButton(page: Page, desktop: boolean): Promise<Locator> {
+  if (desktop) return page.getByRole('button', { name: 'Add photo to step 1' }).first();
+  await page.getByRole('textbox', { name: 'Step 1' }).click();
+  return page.locator('.bottom-bar').getByRole('button', { name: 'Add photo to step 1' });
+}
+
+/** In the editor: adds a photo to step 1 and waits until it shows and is saved. */
 export async function addStepPhoto(page: Page, desktop: boolean) {
-  let button: Locator;
-  if (desktop) {
-    button = page.getByRole('button', { name: 'Add photo to step 1' }).first();
-  } else {
-    await page.getByRole('textbox', { name: 'Step 1' }).click();
-    button = page.locator('.bottom-bar').getByRole('button', { name: 'Add photo to step 1' });
-  }
-  await pickPhoto(page, button);
+  await pickPhoto(page, await stepPhotoButton(page, desktop));
   await expect(page.locator('img[src^="/media/"][alt="Photo of step 1"]')).toBeVisible();
   await expectSaved(page);
 }

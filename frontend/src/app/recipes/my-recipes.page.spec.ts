@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { provideTestTransloco } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
 import { settle } from '../testing/spec-helpers';
 import { MyRecipesPage } from './my-recipes.page';
 import { NewRecipePage } from './new-recipe.page';
@@ -52,7 +52,7 @@ describe('MyRecipesPage', () => {
     const f = TestBed.createComponent(MyRecipesPage);
     await settle(f);
     const a = (f.nativeElement as HTMLElement).querySelector('a[href="/recipes/new"]');
-    expect(a).toBeTruthy();
+    expect(a?.textContent).toContain(en.recipes.emptyAction);
   });
 
   it('shows an error with retry when loading fails', async () => {
@@ -61,7 +61,7 @@ describe('MyRecipesPage', () => {
     const f = TestBed.createComponent(MyRecipesPage);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    expect(el.querySelector('[role="alert"]')).toBeTruthy();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.unknown);
     (el.querySelector('button.retry') as HTMLButtonElement).click();
     await settle(f);
     expect(mine).toHaveBeenCalledTimes(2);
@@ -93,7 +93,7 @@ describe('NewRecipePage', () => {
     expect(el.querySelector('[role="status"]')).toBeTruthy();
     reject(new Error('boom'));
     await settle(f);
-    expect(el.querySelector('[role="alert"]')).toBeTruthy();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.unknown);
     (el.querySelector('button.retry') as HTMLButtonElement).click();
     await settle(f);
     expect(nav).toHaveBeenCalledWith('/recipes/n2/edit', { replaceUrl: true });

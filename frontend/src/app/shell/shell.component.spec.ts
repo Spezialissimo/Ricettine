@@ -29,7 +29,7 @@ describe('ShellComponent', () => {
     await f.whenStable();
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('header')?.textContent).toContain('Ricettine');
-    expect(el.querySelector('nav')).toBeTruthy();
+    expect(Array.from(el.querySelectorAll('nav'), (n) => n.getAttribute('aria-label'))).toEqual([en.nav.main, en.nav.sections]);
   });
 
   async function navFor(admin: boolean) {
@@ -45,7 +45,7 @@ describe('ShellComponent', () => {
 
   it('shows Settings for everyone and the display name', async () => {
     const el = await navFor(false);
-    expect(el.querySelector('nav a[href="/settings/profile"]')).toBeTruthy();
+    expect(Array.from(el.querySelectorAll('nav a[href="/settings/profile"]'), (a) => a.textContent?.trim())).toEqual([en.nav.settings, en.nav.settings]);
     expect(el.querySelector('header')?.textContent).toContain('Ann');
   });
 
@@ -59,11 +59,12 @@ describe('ShellComponent', () => {
 
   it('has a main nav, a bottom nav, a new-recipe action and a logout control', async () => {
     const el = await navFor(false);
-    expect(el.querySelector('nav[aria-label="Main"] a[href="/recipes"]')).toBeTruthy();
-    expect(el.querySelector('nav[aria-label="Main"] a[href="/recipes/new"]')).toBeTruthy();
-    expect(el.querySelector('nav[aria-label="Sections"] a[href="/recipes"]')).toBeTruthy();
-    expect(el.querySelector('nav[aria-label="Sections"] a[href="/settings/profile"]')).toBeTruthy();
-    expect(el.querySelector('header a[aria-label="New recipe"][href="/recipes/new"]')).toBeTruthy();
+    const label = (sel: string) => el.querySelector(sel)?.textContent?.trim();
+    expect(label('nav[aria-label="Main"] a[href="/recipes"]')).toBe(en.nav.recipes);
+    expect(label('nav[aria-label="Main"] a[href="/recipes/new"]')).toBe(en.nav.newRecipe);
+    expect(label('nav[aria-label="Sections"] a[href="/recipes"]')).toBe(en.nav.recipes);
+    expect(label('nav[aria-label="Sections"] a[href="/settings/profile"]')).toBe(en.nav.settings);
+    expect(el.querySelector('header a.new-icon[href="/recipes/new"]')?.getAttribute('aria-label')).toBe(en.nav.newRecipeShort);
     expect(el.querySelector('header button.logout')?.textContent).toContain('Log out');
   });
 
@@ -155,7 +156,7 @@ describe('ShellComponent', () => {
 
   it('shows admin link for admins', async () => {
     const el = await navFor(true);
-    expect(el.querySelector('nav a[href^="/admin"]')).toBeTruthy();
+    expect(Array.from(el.querySelectorAll('nav a[href^="/admin"]'), (a) => a.textContent?.trim())).toEqual([en.nav.admin, en.nav.admin]);
   });
 });
 

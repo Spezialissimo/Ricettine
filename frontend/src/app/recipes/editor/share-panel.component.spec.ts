@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { en, provideTestTransloco } from '../../testing/transloco';
-import { btn, clearOverlays, overlay, settle } from '../../testing/spec-helpers';
+import { btn, clearOverlays, overlay, pressEscape, settle } from '../../testing/spec-helpers';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore } from './editor-store';
@@ -52,6 +52,18 @@ describe('SharePanelComponent', () => {
     expect(resetLink).toHaveBeenCalledTimes(1);
     expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/NEW');
     expect(el.querySelector('.reset-done[role="status"]')?.textContent?.trim()).toBe(en.editor.linkReset);
+  });
+
+  it('Escape closes the reset confirmation without resetting', async () => {
+    const { f, el, resetLink } = await mount(serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }));
+    btn(el, en.editor.resetLink)!.click();
+    await settle(f);
+    expect(overlay().textContent).toContain(en.editor.resetLinkConfirm.title);
+    pressEscape(overlay().querySelector('app-confirm-dialog')!);
+    await settle(f);
+    expect(overlay().querySelector('app-confirm-dialog')).toBeNull();
+    expect(resetLink).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/OLD');
   });
 
   it('announces nothing before a reset, nor after a reset that ended in a conflict', async () => {

@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { PageTitle } from '../core/page-title';
-import { provideTestTransloco } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
 import { settle } from '../testing/spec-helpers';
 import { ProfileApi } from './profile.api';
 import { Profile, ProfileCookbook, ProfileRecipe } from './profile.model';
@@ -86,7 +86,7 @@ describe('UserProfilePage', () => {
   it('shows a load error with Retry', async () => {
     const get = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 500 })).mockResolvedValueOnce(profile({ recipes: [recipe('a')] }));
     const { f, el } = await mount(get);
-    expect(el.querySelector('[role="alert"]')).toBeTruthy();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.unknown);
     (el.querySelector('button.retry') as HTMLButtonElement).click();
     await settle(f);
     expect(hrefs(el)).toEqual(['/r/tok-a']);
