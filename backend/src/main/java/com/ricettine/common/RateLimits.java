@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -90,8 +91,17 @@ public class RateLimits {
 
 		/** Runs a password check: bad credentials keep the reservation, success clears it, anything else refunds. */
 		public void run(Runnable passwordCheck) {
-			try {
+			run(() -> {
 				passwordCheck.run();
+				return null;
+			});
+		}
+
+		/** {@link #run(Runnable)} for a check that returns what it authenticated. */
+		public <T> T run(Supplier<T> passwordCheck) {
+			T result;
+			try {
+				result = passwordCheck.get();
 			}
 			catch (ApiException e) {
 				if ("bad_credentials".equals(e.getCode())) {
@@ -107,6 +117,7 @@ public class RateLimits {
 				throw e;
 			}
 			succeeded();
+			return result;
 		}
 	}
 

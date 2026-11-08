@@ -2,15 +2,19 @@ package com.ricettine.media;
 
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.Tokens;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class MediaService {
@@ -31,6 +35,18 @@ public class MediaService {
 		this.blobs = blobs;
 		this.processor = processor;
 		this.limiter = limiter;
+	}
+
+	/** The upload's bytes, read only when the supplier is called (i.e. once a processing permit is held). */
+	public static Supplier<byte[]> bytesOf(MultipartFile file) {
+		return () -> {
+			try {
+				return file.getBytes();
+			}
+			catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		};
 	}
 
 	static String key(String mediaId, ImageVariant v) {
@@ -73,26 +89,63 @@ public class MediaService {
 		String id = Tokens.newToken();
 		List<String> written = new ArrayList<>();
 		try {
-			for (var e : upload.variants().entrySet()) {
-				String k = key(id, e.getKey());
-				blobs.put(k, e.getValue(), "image/jpeg");
-				written.add(k);
-			}
+			writeBlobs(id, upload, written);
 			repo.saveAndFlush(new Media(id, ownerId, kind, recipeIdOrNull, cookbookIdOrNull));
 		}
 		catch (RuntimeException ex) {
-			for (String k : written) {
-				try {
-					blobs.delete(k);
-				}
-				catch (RuntimeException suppressed) {
-					ex.addSuppressed(suppressed);
-				}
-			}
+			removeBlobs(written, ex);
 			throw ex;
 		}
 		after.afterRollback("delete orphaned media " + id, () -> deleteBlobs(id));
 		return id;
+	}
+
+	/**
+	 * Writes the blobs under a fresh media id with no transaction (and so no pooled connection or row lock) held,
+	 * then runs {@code registerRow}, which is expected to open a short transaction that locks the owning row,
+	 * re-checks access and limits, and inserts the row via {@link #registerStored}. If either step fails the blobs
+	 * are removed, so a failed write or a lost race leaves neither a row nor an orphaned blob. Throws
+	 * {@link IllegalStateException} when a transaction is active.
+	 */
+	public <T> T storeThen(ProcessedUpload upload, Function<String, T> registerRow) {
+		if (TransactionSynchronizationManager.isActualTransactionActive()) {
+			throw new IllegalStateException("MediaService.storeThen must not run inside a transaction");
+		}
+		String id = Tokens.newToken();
+		List<String> written = new ArrayList<>();
+		try {
+			writeBlobs(id, upload, written);
+			return registerRow.apply(id);
+		}
+		catch (RuntimeException ex) {
+			removeBlobs(written, ex);
+			throw ex;
+		}
+	}
+
+	/** Inserts the registry row for blobs already written by {@link #storeThen}; call inside its transaction. */
+	public void registerStored(String id, UUID ownerId, MediaKind kind, UUID recipeIdOrNull, UUID cookbookIdOrNull) {
+		repo.saveAndFlush(new Media(id, ownerId, kind, recipeIdOrNull, cookbookIdOrNull));
+	}
+
+	private void writeBlobs(String id, ProcessedUpload upload, List<String> written) {
+		for (var e : upload.variants().entrySet()) {
+			String k = key(id, e.getKey());
+			blobs.put(k, e.getValue(), "image/jpeg");
+			written.add(k);
+		}
+	}
+
+	/** Deletes {@code keys}, attaching any failure to {@code cause}. A put that threw may have left a partial blob. */
+	private void removeBlobs(List<String> keys, RuntimeException cause) {
+		for (String k : keys) {
+			try {
+				blobs.delete(k);
+			}
+			catch (RuntimeException suppressed) {
+				cause.addSuppressed(suppressed);
+			}
+		}
 	}
 
 	/** Deletes the row now (inside the caller's transaction, if any) and the blobs once it has committed. */

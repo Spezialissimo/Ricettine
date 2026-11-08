@@ -6,8 +6,6 @@ import com.ricettine.cookbook.CookbookDtos.CookbookDto;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaService;
 import com.ricettine.media.ProcessedUpload;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,8 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Cookbook cover upload. Deliberately not transactional: ownership is checked first (so a non-owner can't use a
- * processing slot), then the image is processed with no transaction held, then {@link CookbookService#setCover}
- * re-checks the owner and swaps the cover in one short transaction.
+ * processing slot), then the image is processed with no transaction held, then
+ * {@link CookbookService#setCover} writes the blobs with no transaction held and swaps the cover (re-checking the
+ * owner) in one short transaction.
  */
 @RestController
 @org.springframework.web.bind.annotation.RequestMapping("/api/cookbooks/{id}/cover")
@@ -47,14 +46,7 @@ class CookbookCoverController {
 		UUID cookbookId = CookbookController.parse(id);
 		cookbooks.requireOwner(cookbookId, userId);
 		limits.upload(userId);
-		ProcessedUpload upload = media.process(() -> {
-			try {
-				return file.getBytes();
-			}
-			catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-		}, VARIANTS);
+		ProcessedUpload upload = media.process(MediaService.bytesOf(file), VARIANTS);
 		return cookbooks.setCover(userId, cookbookId, upload);
 	}
 

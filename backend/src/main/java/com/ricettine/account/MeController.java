@@ -7,11 +7,10 @@ import com.ricettine.account.AccountDtos.ProfilePatch;
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.ApiException;
 import com.ricettine.common.RateLimits;
+import com.ricettine.media.MediaService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -56,14 +55,7 @@ public class MeController {
 	@PutMapping("/api/me/avatar")
 	public MeDto putAvatar(@RequestPart("file") MultipartFile file) {
 		limits.upload(currentUser.id());
-		byte[] bytes;
-		try {
-			bytes = file.getBytes();
-		}
-		catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-		return mapper.toDto(accounts.setAvatar(currentUser.id(), bytes));
+		return mapper.toDto(accounts.setAvatar(currentUser.id(), MediaService.bytesOf(file)));
 	}
 
 	@DeleteMapping("/api/me/avatar")

@@ -104,7 +104,7 @@
 - **Problem:** The security-critical rule ('bad_credentials keeps the reservation, success clears it, anything else refunds') exists twice: inline in AuthController.login (try/catch on ApiException and RuntimeException) and in RateLimits.LoginAttempt.run, which password change and account deletion use. If one copy is changed, the limits drift apart without anyone noticing.
 - **Fix:** Give LoginAttempt a value-returning `<T> T run(Supplier<T>)`, and have login use it to return the authenticated User (throwing bad_credentials inside). Then delete the inline try/catch. failed() can become private.
 - **Evidence:** Read both at AUDIT_SHA: AuthController.java:58-78 and RateLimits.java:91-110 have the same branching.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### ERR-1: Avatar upload reads the whole file onto the heap before waiting for a processing slot
 
@@ -113,7 +113,7 @@
 - **Problem:** MeController calls file.getBytes() (up to 15 MB) before MediaService.process waits up to 30 s for one of 2 decode permits. So every queued avatar upload holds a full copy on the heap. Recipe photos and cookbook covers use the Supplier overload, which reads only once a permit is held. The application.yml comment ('never held in heap') suggests this protection applies to every upload.
 - **Fix:** Make AccountService.setAvatar take Supplier<byte[]> and pass `() -> file.getBytes()` as RecipePhotoController does. A shared helper for the IOException wrapping would also remove the three copies.
 - **Evidence:** MediaService.java:54 documents the Supplier overload for exactly this reason. RecipePhotoController.java:51 and CookbookCoverController.java:50 use it, and MeController.java:61 does not.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### OPS-1: JVM heap sized to 75% of host RAM: no compose service sets a memory limit
 
@@ -228,7 +228,7 @@
 - **Fix:** Write the blobs first (outside the transaction, keyed by the new media id), then open the short transaction that locks the row and inserts the media row; on failure delete the blobs. The orphan cleanup already covers blobs without rows only for rows, so also delete blobs in the catch path.
 - **Evidence:** Code read: MediaService.register is called from inside the @Transactional RecipeService.addPhoto / CookbookService.setCover. Plan 2 follow-up already named the symptom.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Plan 5 (S3 timeouts / addPhoto holds a FOR SHARE lock)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### CONS-1: Account, admin and settings pages call HttpClient directly while feed/profile/recipes/cookbooks use *Api services
 

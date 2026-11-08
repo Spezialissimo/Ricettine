@@ -14,3 +14,9 @@
 - DATA-3: `conflictText()` appends portions only when not the default 1 (the store has no server copy to compare against), so a change back to 1 portion is not in the copy block. Group names are included as lines above their ingredients.
 - DATA-3: when text is typed while Load latest is fetching, the store now stays in the conflict (the typed text remains in the editor and backup) instead of replacing; the person presses Load latest again. A smarter merge on top of the fetched copy was not attempted.
 - SEC-2: the failed-logout error and Retry render inside the sticky top bar; the shell has no visual-polish pass yet (Plan 7).
+
+## PR D (backend robustness)
+- CONC-1: avatars still write their blobs inside the swap transaction (`AccountService.swapAvatar` -> `MediaService.register`). The finding names only recipe photos and covers; the same `storeThen` pattern would move avatars out of it. The old `register` is kept for avatars and tests.
+- CONC-1: `addPhoto` now takes `FOR UPDATE` on the recipe instead of `FOR SHARE`, so the photo cap re-check serialises concurrent uploads (two share-locked uploads could both pass a count of 149). Uploads to one recipe now queue for the short transaction only.
+- DUP-1: `LoginAttempt.failed()` stays public because `RateLimitsTest` calls it; making it private means changing that test.
+- If the JVM dies between a blob write and the row insert, the blobs are orphaned with no row. `OrphanMediaCleanup` covers rows without blobs, not blobs without rows; a sweep of `img/` keys with no `media` row is still open.
