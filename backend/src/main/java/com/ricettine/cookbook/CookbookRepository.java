@@ -19,7 +19,7 @@ public interface CookbookRepository extends JpaRepository<Cookbook, UUID> {
 	Optional<Cookbook> findByShareToken(String shareToken);
 
 	record SummaryRow(UUID id, String name, String visibility, UUID ownerId, long recipeCount, Instant updatedAt,
-			String coverMediaId) {
+			String coverMediaId, String shareToken) {
 	}
 
 	/**
@@ -30,23 +30,23 @@ public interface CookbookRepository extends JpaRepository<Cookbook, UUID> {
 		select new com.ricettine.cookbook.CookbookRepository$SummaryRow(c.id, c.name, str(c.visibility), c.ownerId,
 			count(case when e.recipeId is not null
 				and (:includeUnlisted = true or r.status = com.ricettine.recipe.RecipeStatus.PUBLISHED) then 1 end),
-			c.updatedAt, c.coverMediaId)
+			c.updatedAt, c.coverMediaId, c.shareToken)
 		from Cookbook c left join CookbookEntry e on e.cookbookId = c.id
 			left join Recipe r on r.id = e.recipeId
 		where c.ownerId = :ownerId
 			and (:includeUnlisted = true or c.visibility = com.ricettine.recipe.Visibility.PUBLIC)
-		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId
+		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId, c.shareToken
 		order by c.updatedAt desc, c.id asc""")
 	List<SummaryRow> ownedSummaries(UUID ownerId, boolean includeUnlisted);
 
 	/** Cookbooks the user owns or co-authors, with the entry count computed in SQL. */
 	@Query("""
 		select new com.ricettine.cookbook.CookbookRepository$SummaryRow(c.id, c.name, str(c.visibility), c.ownerId,
-			count(e.recipeId), c.updatedAt, c.coverMediaId)
+			count(e.recipeId), c.updatedAt, c.coverMediaId, c.shareToken)
 		from Cookbook c left join CookbookEntry e on e.cookbookId = c.id
 		where c.ownerId = :userId
 			or exists (select 1 from CookbookAuthor a where a.cookbookId = c.id and a.userId = :userId)
-		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId
+		group by c.id, c.name, c.visibility, c.ownerId, c.updatedAt, c.coverMediaId, c.shareToken
 		order by c.updatedAt desc, c.id asc""")
 	List<SummaryRow> summariesFor(UUID userId);
 }

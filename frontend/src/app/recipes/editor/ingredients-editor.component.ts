@@ -5,11 +5,7 @@ import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
 import { countingIngredients, countsIngredient, unnamedRows } from './completeness';
 import { uid } from '../../shared/sheet';
 import { EditorStore } from './editor-store';
-
-export const MAX_GROUPS = 20;
-export const MAX_INGREDIENTS = 200;
-export const MAX_INGREDIENT_NAME = 200;
-export const MAX_GROUP_NAME = 100;
+import { MAX_GROUPS, MAX_GROUP_NAME, MAX_INGREDIENTS, MAX_INGREDIENT_NAME } from '../recipe-limits';
 
 const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
 

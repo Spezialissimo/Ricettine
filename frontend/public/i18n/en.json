@@ -9,7 +9,6 @@
     "copied": "Copied",
     "share": "Share",
     "expiresOn": "Expires {{date}}",
-    "logout": "Log out",
     "retry": "Retry"
   },
   "titles": {
@@ -52,10 +51,8 @@
     "usernameHint": "Lowercase letters, digits and underscore, 3-30 characters.",
     "passwordHint": "At least 10 characters.",
     "newPassword": "New password",
-    "loggingIn": "Logging in...",
     "required": "This field is required.",
     "register": "Create account",
-    "creating": "Creating account...",
     "fillBoth": "Enter your email and password."
   },
   "setup": {
@@ -64,7 +61,6 @@
     "submit": "Create administrator"
   },
   "settings": {
-    "title": "Settings",
     "profileTitle": "Profile",
     "saved": "Saved.",
     "avatar": "Avatar",
@@ -94,7 +90,6 @@
     "activeInvites": "Active invites",
     "noInvites": "No active invites.",
     "revoke": "Revoke",
-    "createdOn": "Created {{date}}",
     "resetPassword": "Reset password",
     "resetReady": "Password reset link for {{name}}",
     "adminBadge": "Admin",
@@ -326,7 +321,6 @@
     "notes": "Notes",
     "photo": "Photo",
     "nextStep": "+ Next step",
-    "details": "Details",
     "chips": {
       "serves": "Serves {{n}}",
       "prep": "Prep {{time}}",

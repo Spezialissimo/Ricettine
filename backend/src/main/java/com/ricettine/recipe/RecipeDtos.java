@@ -11,6 +11,10 @@ public final class RecipeDtos {
 	private RecipeDtos() {
 	}
 
+	/** What a cookbook may take: exactly one of the two must be non-null (a blank token is a token, not absent). */
+	public record RecipeRef(UUID recipeId, String shareToken) {
+	}
+
 	public record IngredientDto(BigDecimal amount, String unit, String name, String note) {
 	}
 

@@ -1,5 +1,5 @@
 export type CookbookVisibility = 'PRIVATE' | 'PUBLIC';
-export type CookbookRole = 'OWNER' | 'AUTHOR';
+type CookbookRole = 'OWNER' | 'AUTHOR';
 
 /** A user as shown in a cookbook; the whole person is null when they deleted their account. */
 export type Person = { id?: string; username: string; displayName: string; avatarUrl: string | null };
@@ -50,7 +50,7 @@ export const MAX_DESCRIPTION = 1000;
 /** Length in Unicode code points, as the server counts. */
 export const codePoints = (s: string): number => [...s].length;
 
-export type PublicCookbookEntry = { recipeId: string; title: string; author: Person | null; coverThumbUrl: string | null };
+type PublicCookbookEntry = { recipeId: string; title: string; author: Person | null; coverThumbUrl: string | null };
 
 /** The anonymous view of a cookbook; `viewerRole` and `cookbookId` are set for members only. */
 export type PublicCookbook = {

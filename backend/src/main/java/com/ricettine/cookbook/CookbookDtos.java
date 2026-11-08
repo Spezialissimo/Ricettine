@@ -46,10 +46,6 @@ public final class CookbookDtos {
 	public record CookbookInput(String name, String description, String visibility) {
 	}
 
-	/** Exactly one of the two must be set. */
-	public record RecipeRef(UUID recipeId, String shareToken) {
-	}
-
 	public record PublicCookbookEntry(UUID recipeId, String title, PersonDto author, String coverThumbUrl) {
 	}
 

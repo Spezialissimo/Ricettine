@@ -5,9 +5,9 @@ import { Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 /** Same query as `$bp-desktop` in styles/_tokens.scss. */
-export const DESKTOP_QUERY = '(min-width: 768px)';
+const DESKTOP_QUERY = '(min-width: 768px)';
 
-export function isDesktop(): boolean {
+function isDesktop(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_QUERY).matches;
 }
 

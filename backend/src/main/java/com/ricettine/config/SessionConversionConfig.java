@@ -20,6 +20,8 @@ public class SessionConversionConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(SessionConversionConfig.class);
 
+	private final UnreadableSessionLog reported = new UnreadableSessionLog(1000);
+
 	@Bean
 	ConversionService springSessionConversionService() {
 		GenericConversionService service = new GenericConversionService();
@@ -30,8 +32,13 @@ public class SessionConversionConfig {
 				return deserializer.convert(bytes);
 			}
 			catch (Exception e) {
-				log.warn("Unreadable session attribute ignored, treating the session as logged out: {}",
-						e.toString());
+				String message = "Unreadable session attribute ignored, treating the session as logged out: {}";
+				if (reported.firstSighting(bytes)) {
+					log.warn(message, e.toString());
+				}
+				else {
+					log.debug(message, e.toString());
+				}
 				return null;
 			}
 		});

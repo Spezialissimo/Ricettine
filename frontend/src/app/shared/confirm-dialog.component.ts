@@ -41,7 +41,7 @@ export type ConfirmData = {
     </ng-container>
   `,
 })
-export class ConfirmDialogComponent {
+class ConfirmDialogComponent {
   protected readonly ref = inject<DialogRef<boolean>>(DialogRef);
   protected readonly data = inject<ConfirmData>(DIALOG_DATA);
   protected readonly titleId = uid('confirm-title');

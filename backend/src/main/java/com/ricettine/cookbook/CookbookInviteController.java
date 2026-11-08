@@ -6,6 +6,7 @@ import com.ricettine.cookbook.CookbookDtos.CookbookInviteDto;
 import com.ricettine.cookbook.CookbookDtos.CookbookInvitePreview;
 import com.ricettine.cookbook.CookbookDtos.CookbookSummary;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.Ids;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -43,11 +44,8 @@ public class CookbookInviteController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	void revoke(@PathVariable String id, @PathVariable String inviteId) {
 		UUID cookbookId = CookbookController.parse(id);
-		UUID invite;
-		try {
-			invite = UUID.fromString(inviteId);
-		}
-		catch (IllegalArgumentException e) {
+		UUID invite = Ids.tryParse(inviteId).orElse(null);
+		if (invite == null) {
 			cookbooks.requireOwner(cookbookId, currentUser.id());
 			throw new ApiException(HttpStatus.NOT_FOUND, "cookbook_invite_invalid");
 		}

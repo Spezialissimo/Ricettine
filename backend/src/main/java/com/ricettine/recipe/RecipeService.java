@@ -5,7 +5,6 @@ import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
 import com.ricettine.common.PublicUrls;
 import com.ricettine.common.Tokens;
-import com.ricettine.cookbook.CookbookDtos.RecipeRef;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaRepository;
@@ -20,6 +19,7 @@ import com.ricettine.recipe.RecipeDtos.PublicRecipe;
 import com.ricettine.recipe.RecipeDtos.PublicStepDto;
 import com.ricettine.recipe.RecipeDtos.RecipeDto;
 import com.ricettine.recipe.RecipeDtos.RecipeInput;
+import com.ricettine.recipe.RecipeDtos.RecipeRef;
 import com.ricettine.recipe.RecipeDtos.RecipeSummary;
 import com.ricettine.recipe.RecipeDtos.StepDto;
 import java.math.BigDecimal;
@@ -42,6 +42,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 @Transactional
 public class RecipeService {
+
+	/** Most media rows (orphans included) one recipe may hold; checked before an upload is decoded or stored. */
+	static final int MAX_PHOTOS = 150;
 
 	private final RecipeRepository recipes;
 	private final MediaService media;
@@ -105,9 +108,6 @@ public class RecipeService {
 		}
 	}
 
-	/** Most media rows (orphans included) one recipe may hold; checked before an upload is decoded or stored. */
-	static final int MAX_PHOTOS = 150;
-
 	/** Run before an upload is processed: a recipe already at the cap answers 409 {@code too_many_photos}. */
 	@Transactional(readOnly = true)
 	public void requirePhotoRoom(UUID id) {
@@ -148,7 +148,7 @@ public class RecipeService {
 		}
 		Set<String> after = referenced(in);
 		if (!after.isEmpty()) {
-			Set<String> ok = new java.util.HashSet<>(mediaRows.recipeMediaIdsAmong(r.getId(), after));
+			Set<String> ok = new HashSet<>(mediaRows.recipeMediaIdsAmong(r.getId(), after));
 			List<String> bad = after.stream().filter((m) -> !ok.contains(m)).sorted().toList();
 			if (!bad.isEmpty()) {
 				throw new ApiException(HttpStatus.BAD_REQUEST, "photo_not_in_recipe").with("mediaIds", bad);
@@ -207,27 +207,27 @@ public class RecipeService {
 		return publicView(r, photoQuery, viewerId, cookbookName);
 	}
 
-	private PublicRecipe publicView(Recipe r, String s, UUID viewerId, String cookbookName) {
+	private PublicRecipe publicView(Recipe r, String photoQuery, UUID viewerId, String cookbookName) {
 		User a = users.findById(r.getAuthorId())
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
 		AuthorDto author = new AuthorDto(a.getUsername(), a.getDisplayName(),
 				a.getAvatarKey() == null ? null : media.url(a.getAvatarKey(), ImageVariant.AVATAR));
 		List<PublicStepDto> steps = r.getSteps().stream()
-			.map(st -> new PublicStepDto(st.getText(), photo(st.getPhotoMediaId(), s))).toList();
+			.map(st -> new PublicStepDto(st.getText(), photo(st.getPhotoMediaId(), photoQuery))).toList();
 		boolean viewerIsAuthor = viewerId != null && viewerId.equals(r.getAuthorId());
 		return new PublicRecipe(r.getTitle(), author, r.getPortions(), r.getPrepMinutes(), r.getCookMinutes(),
-				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), s), groups(r), steps, r.getPublishedAt(),
+				r.getSource(), r.getNotes(), photo(r.getCoverMediaId(), photoQuery), groups(r), steps, r.getPublishedAt(),
 				viewerIsAuthor, viewerIsAuthor ? r.getId() : null, cookbookName);
 	}
 
 	/**
 	 * The recipe a cookbook may take for {@code ref}: PUBLISHED, and reachable by its share token, or by id when the
-	 * viewer is its author or it is PUBLIC. Exactly one ref field must be set (400); anything else, drafts
+	 * viewer is its author or it is PUBLIC. Exactly one ref field must be non-null (400); anything else, drafts
 	 * included, is 404.
 	 */
 	@Transactional(readOnly = true)
 	public UUID resolveAddable(RecipeRef ref, UUID viewerId) {
-		String token = RecipeValidator.clean(ref.shareToken());
+		String token = ref.shareToken();
 		if ((ref.recipeId() == null) == (token == null)) {
 			String code = ref.recipeId() == null ? RecipeValidator.REQUIRED : RecipeValidator.INVALID;
 			throw new ApiException(HttpStatus.BAD_REQUEST, "validation_failed",

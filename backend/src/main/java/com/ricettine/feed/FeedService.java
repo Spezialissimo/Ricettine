@@ -10,6 +10,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,7 +48,7 @@ class FeedService {
 			from recipe r join app_user u on u.id = r.author_id
 			where r.status = 'PUBLISHED' and r.visibility = 'PUBLIC' and r.published_at is not null
 			""");
-		java.util.ArrayList<Object> args = new java.util.ArrayList<>();
+		List<Object> args = new ArrayList<>();
 		if (key != null) {
 			sql.append(" and (r.published_at, r.id) < (?, ?)");
 			args.add(Timestamp.from(key.at()));

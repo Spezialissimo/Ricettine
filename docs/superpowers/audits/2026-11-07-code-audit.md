@@ -393,7 +393,7 @@
 - **Fix:** Move RecipeRef (and resolveAddable's contract) into the recipe package; test non-null shareToken as set (blank token is invalid, not absent).
 - **Evidence:** Code read.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Before a native Android client / RecipeRef package cycle, shareToken "" accepted
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### CONS-4: Token expiry mixes the JVM clock with the database now(); the Clock bean is ignored
 
@@ -413,7 +413,7 @@
 - **Fix:** Replace the FQNs with imports (alias Spring's User by importing User.withUsername statically or keep one FQN with a comment), sort the imports, use HttpStatus.CONTENT_TOO_LARGE and org.jspecify.annotations.Nullable.
 - **Evidence:** Read at AUDIT_SHA, plus javac -Xlint:all output from the input pack.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / Fully qualified names; import order in BeansConfig
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### CONS-6: Two fieldErrorKey functions map the same server codes to two parallel i18n key sets
 
@@ -560,7 +560,7 @@
 - **Fix:** Delete the six keys; drop `export` on the unused symbols; move the recipe limits into one recipe-limits.ts next to recipe.model.ts with a comment pointing at RecipeValidator.
 - **Evidence:** Script over en.json vs src; grep -rlw per symbol found only the defining file.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (unused i18n keys)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DEP-1: Prettier is installed and configured but never run; 122 files fail its own check
 
@@ -588,7 +588,7 @@
 - **Problem:** The README is the CLI template (mentions `ng e2e`, which does not exist; browser e2e is Playwright in /e2e); launch.json still debugs tests at the Karma URL localhost:9876 although unit tests run on Vitest.
 - **Fix:** Replace the README with a short project one (dev, test, build, i18n, link to e2e) or delete it; remove the Karma launch entry.
 - **Evidence:** Read both files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DOC-2: example.tfvars documents wrong defaults and omits variables
 
@@ -608,7 +608,7 @@
 - **Fix:** Update the package list (account, admin, auth, common, config, cookbook, feed, invite, media, profile, recipe, setup), list all scripts in CLAUDE.md, and merge README's Development/Tests into one section that lists every check and says which run in CI.
 - **Evidence:** `ls backend/src/main/java/com/ricettine/` shows 12 packages.
 - **Follow-up:** Input pack: Docs / CLAUDE.md package list
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-6: Malformed-UUID try/catch repeated six times
 
@@ -618,7 +618,7 @@
 - **Fix:** One helper, e.g. Ids.parse(String, String code) in common, returning a UUID or throwing the given 404; keep the requireMember-first calls explicit at the three call sites.
 - **Evidence:** Read all six sites.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Small cleanups / malformed-UUID try/catch
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-7: Constant-time token compare after an equality DB lookup, copied four times
 
@@ -627,7 +627,7 @@
 - **Problem:** Every site finds the row with WHERE share_token = ? (an index lookup, not constant time) and then compares the same token again with MessageDigest.isEqual. The second compare adds nothing and the UTF-8/MessageDigest boilerplate is copied four times. Tokens are 256-bit, so timing is not exploitable, but a reviewer will ask why the check exists. PublicRecipeController's lookup does not do it, so the code is also inconsistent.
 - **Fix:** Delete the redundant compares (the lookup is the check), or extract one Tokens.matches(a, b) and use it everywhere including recipes. Prefer deleting.
 - **Evidence:** Read the four sites and RecipeRepository.findByShareTokenAndStatus.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-8: Duplicated static/index.html lookup
 
@@ -637,7 +637,7 @@
 - **Fix:** Add one `static final String INDEX = "static/index.html"` (or a shared Resource) in SpaWebConfig and use it in both places.
 - **Evidence:** grep 'static/index.html'.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Duplicated static/index.html constant
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-9: Oversized-upload 413 contract tested twice over real HTTP with two different hand-rolled clients
 
@@ -751,7 +751,7 @@
 - **Fix:** Log at DEBUG, or WARN once per session id with a small bounded set. Better still, remove the unreadable attribute or the session so the log stops.
 - **Evidence:** Read at AUDIT_SHA. UnreadableSessionIT covers the logout behaviour, not the logging.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Sessions
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### OPS-4: cancel-in-progress also cancels a running publish on main
 
@@ -943,7 +943,7 @@
 - **Fix:** Move the constant to the top, import the types, rename the parameter, pass the Cookbook into entryDto, add shareToken to SummaryRow, delete the dead re-check, merge the constants, inline or move isProgressiveJpeg into the test.
 - **Evidence:** Read each site.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (MAX_PHOTOS); 2026-11-04-plan-3-followups.md: Small cleanups / Backend; 2026-11-05-plan-4-followups.md: Small cleanups / FeedService
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### VERB-2: Fully qualified names, duplicate and untidy imports in test sources
 

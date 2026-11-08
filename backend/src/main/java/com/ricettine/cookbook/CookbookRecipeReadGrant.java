@@ -2,8 +2,6 @@ package com.ricettine.cookbook;
 
 import com.ricettine.recipe.RecipeReadGrant;
 import jakarta.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -23,8 +21,6 @@ class CookbookRecipeReadGrant implements RecipeReadGrant {
 		if (c == null || c.isEmpty() || recipeId == null) {
 			return false;
 		}
-		return entries.grantingToken(c, recipeId)
-			.filter(t -> MessageDigest.isEqual(t.getBytes(StandardCharsets.UTF_8), c.getBytes(StandardCharsets.UTF_8)))
-			.isPresent();
+		return entries.grantingToken(c, recipeId).isPresent();
 	}
 }

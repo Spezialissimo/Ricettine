@@ -284,16 +284,21 @@ class ImageProcessorTest {
 				});
 	}
 
+	private static boolean isProgressiveJpeg(byte[] b) {
+		ImageProcessor.JpegFrame f = ImageProcessor.jpegFrame(b);
+		return f != null && f.progressive();
+	}
+
 	@Test
 	void progressiveSofVariantsAreDetected() {
 		for (int sof : new int[] {0xC2, 0xC6, 0xCA, 0xCE}) {
-			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isTrue();
+			assertThat(isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isTrue();
 		}
 		for (int sof : new int[] {0xC0, 0xC1, 0xC3, 0xC9}) {
-			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isFalse();
+			assertThat(isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isFalse();
 		}
-		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.progressiveJpeg(64, 48))).isTrue();
-		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegWithExif(64, 48, 6))).isFalse();
+		assertThat(isProgressiveJpeg(TestImages.progressiveJpeg(64, 48))).isTrue();
+		assertThat(isProgressiveJpeg(TestImages.jpegWithExif(64, 48, 6))).isFalse();
 	}
 
 	@Test
