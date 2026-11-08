@@ -68,6 +68,21 @@ Database migrations run automatically on startup. Your data stays in the `db-dat
 docker compose -f compose.yaml -f compose.build.yaml up -d --build
 ```
 
+## Backups
+
+The scripts live in `deploy/`. Run them from the repo root (`deploy/backup.sh`), or copy them next to `compose.yaml` and run them there; they use the compose files and `.env` in the current directory and honour `COMPOSE_FILE`.
+
+`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). A failed local run leaves no files behind; in S3 mode a failed run may leave a dump without its media partner, so use the newest complete pair. `RICETTINE_STORAGE_TYPE`, `BACKUP_S3_URI` and `BACKUP_DIR` are read from the environment or, if unset there, from `.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
+
+```sh
+# nightly at 03:15
+15 3 * * * cd /opt/ricettine && deploy/backup.sh >>backup.log 2>&1
+```
+
+To restore, replacing the current data: `deploy/restore.sh backups/ricettine-<UTC>.dump [backups/ricettine-<UTC>-media.tar.gz]`. The database restore is one transaction: if it fails, the database is unchanged and the app stays stopped (`docker compose up -d app` starts it again). The media directory is replaced by the archive. To restore from S3, `aws s3 cp` the dump (and media archive) down first.
+
+Restore onto the same or a newer app version. Restoring an older dump over a newer schema is not supported; restore into a fresh stack instead (`docker compose down -v`, `docker compose up -d`, then `deploy/restore.sh`). `scripts/backup-restore-check.sh` runs a full backup, wipe, restore and failed-restore drill.
+
 ## Development
 
 - Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
