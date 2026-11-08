@@ -22,4 +22,15 @@ class TokensTest {
 		assertThat(Tokens.hash("abc")).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 		assertThat(Tokens.hash("abc")).isNotEqualTo(Tokens.hash("abd"));
 	}
+
+	@Test
+	void matchesComparesStoredAndSuppliedTokens() {
+		assertThat(Tokens.matches("abc", "abc")).isTrue();
+		assertThat(Tokens.matches("abc", "abd")).isFalse();
+		assertThat(Tokens.matches("abc", "abcd")).isFalse();
+		assertThat(Tokens.matches("abc", "")).isFalse();
+		assertThat(Tokens.matches(null, "abc")).isFalse();
+		assertThat(Tokens.matches("abc", null)).isFalse();
+		assertThat(Tokens.matches(null, null)).isFalse();
+	}
 }

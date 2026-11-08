@@ -1,6 +1,7 @@
 package com.ricettine.cookbook;
 
 import com.ricettine.auth.CurrentUser;
+import com.ricettine.common.Tokens;
 import com.ricettine.media.Media;
 import com.ricettine.media.MediaAccessPolicy;
 import com.ricettine.media.MediaKind;
@@ -53,7 +54,7 @@ class CookbookMediaAccessPolicy implements MediaAccessPolicy {
 			return Optional.of(CACHE);
 		}
 		String token = req.getParameter("c");
-		if (token != null && !token.isEmpty() && c.getShareToken().equals(token)) {
+		if (token != null && !token.isEmpty() && Tokens.matches(c.getShareToken(), token)) {
 			return Optional.of(CACHE);
 		}
 		return Optional.empty();

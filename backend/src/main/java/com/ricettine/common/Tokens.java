@@ -21,6 +21,12 @@ public final class Tokens {
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(b);
 	}
 
+	/** Constant-time equality of a stored token and a supplied one; false when either is null. */
+	public static boolean matches(String stored, String supplied) {
+		return stored != null && supplied != null && MessageDigest.isEqual(
+				stored.getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8));
+	}
+
 	/** SHA-256 of the token, lowercase hex (64 chars). Only this is ever stored. */
 	public static String hash(String token) {
 		try {
