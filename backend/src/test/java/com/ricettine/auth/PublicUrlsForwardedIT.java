@@ -18,7 +18,8 @@ import tools.jackson.databind.JsonNode;
  * internal proxy (MockMvc has no remote-ip valve).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-		properties = "ricettine.storage.local.path=target/test-media")
+		properties = { "ricettine.storage.local.path=target/test-media",
+				"server.tomcat.remoteip.internal-proxies=127\\.0\\.0\\.1|::1|0:0:0:0:0:0:0:1" })
 class PublicUrlsForwardedIT extends IntegrationTest {
 
 	@LocalServerPort int port;

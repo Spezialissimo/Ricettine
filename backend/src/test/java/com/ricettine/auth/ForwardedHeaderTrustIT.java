@@ -21,7 +21,8 @@ import org.springframework.web.client.RestClient;
  * not a trusted proxy; the proxy test goes through the real Tomcat, whose loopback peer is an internal proxy.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-		properties = "ricettine.storage.local.path=target/test-media")
+		properties = { "ricettine.storage.local.path=target/test-media",
+				"server.tomcat.remoteip.internal-proxies=127\\.0\\.0\\.1|::1|0:0:0:0:0:0:0:1" })
 @TestPropertySource(properties = { "ricettine.limits.login-ip.limit=30", "ricettine.limits.anonymous-auth.limit=30" })
 class ForwardedHeaderTrustIT extends IntegrationTest {
 
