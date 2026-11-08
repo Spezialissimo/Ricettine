@@ -12,9 +12,9 @@
 
 ## How to decide
 
-Tick one box per finding: **fix**, **skip** or **later**. Unticked findings follow the bulk choice below, if you tick it.
+**Decided 2026-11-08 by the owner:** fix all High and Medium findings, plus 21 cheap, reader-visible Low findings (dead code, docs, imports and names, small duplications, log noise, tests that cannot fail, the Prettier pass). The other Low findings are **later**.
 
-- [ ] **Fix all Low findings** unless marked otherwise
+- [ ] Fix all Low findings (not chosen)
 
 ## Summary
 
@@ -65,7 +65,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** smoke.sh is the only stack script that sets no project name, so it uses compose's default (the directory name, `ricettine` in this checkout). README Quick start runs `docker compose up -d` in that same folder, which is the same project. Running scripts/smoke.sh (or multiarch-check.sh, which calls it twice) replaces the running app with a local build and its EXIT trap runs `docker compose down -v`, deleting the db-data and app-data volumes. That loses every recipe, user and photo. e2e.sh, https-smoke.sh and backup-restore-check.sh all set their own project name.
 - **Fix:** Add `export COMPOSE_PROJECT_NAME="${SMOKE_PROJECT:-ricettine-smoke}"` next to COMPOSE_FILE in smoke.sh, as backup-restore-check.sh does. Optionally add a guard to infra-check that every script calling `down -v` sets a project.
 - **Evidence:** `COMPOSE_FILE=compose.yaml:compose.build.yaml docker compose config` in the checkout prints `name: ricettine`. `grep COMPOSE_PROJECT\|-p scripts/*.sh` matches backup-restore-check, e2e and https-smoke but not smoke.sh.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-1: Per-IP rate limits can be bypassed with a spoofed Forwarded or X-Forwarded-For header
 
@@ -74,7 +74,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** server.forward-headers-strategy=framework installs Spring's ForwardedHeaderFilter. It trusts the RFC 7239 `Forwarded: for=` header and the leftmost X-Forwarded-For from any client and uses them as request.getRemoteAddr(), which keys the login-ip and anonymous-auth limiters. Caddy overwrites X-Forwarded-For but passes `Forwarded` through unchanged, and Spring reads `Forwarded` first. The default compose.yaml publishes :8080 directly, so there X-Forwarded-For alone is enough. So in every shipped deployment one client can rotate the header and get unlimited login attempts across accounts (password spraying). Only the 10/15 min per-account limit remains. The deploy/Caddyfile comment claims the IP is safe.
 - **Fix:** Use server.forward-headers-strategy=native, so Tomcat's RemoteIpValve trusts X-Forwarded-* only from server.tomcat.remoteip.internal-proxies and ignores `Forwarded`. Set internal-proxies to the compose network range. As defence in depth, add `header_up -Forwarded` (or `request_header -Forwarded`) to both Caddyfiles. Add an IT that sends 31 logins from one remote address with rotating `Forwarded`/X-Forwarded-For headers and expects a 429.
 - **Evidence:** Reproduced at AUDIT_SHA with a throwaway IT (IpRateLimitIT setup, login-ip limit 30, setRemoteAddr fixed at 10.77.0.1). 40 failed logins with rotating `Forwarded: for=192.0.2.N` all returned 401 and none returned 429. The same happened with rotating X-Forwarded-For. IpRateLimitIT.ipLimited shows the 31st attempt is 429 without the header. Spring Web 7.0.10 ForwardedHeaderUtils.parseForwardedFor checks `Forwarded` before X-Forwarded-For. Also reported independently by the ops reviewer (default compose exposes :8080 directly; deploy/Caddyfile does not strip Forwarded). Lead confirmed both in the code.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ## Medium (28)
 
@@ -86,7 +86,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Reject the ambiguous form: if the text matches /^\d{1,3}(,\d{3})+$/ either treat it as a thousands separator or return 'invalid' so the inline error shows. Add a spec for '1,000', '1,5' and '1,500.5'.
 - **Evidence:** Traced the regex: '1,000' -> m matches `\d*[.,]\d+` -> Number('1.000') = 1.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Editor state and input handling ('1,000' parses as 1)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DATA-2: Photos on AWS have no backup or versioning, and a restored dump can point at deleted objects
 
@@ -95,7 +95,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** On AWS backup.sh skips media because 'media already lives in S3'. The media bucket is unversioned on purpose, so that deleted photos really disappear. The instance role holds s3:DeleteObject on it. An app bug (for example in orphan cleanup), an operator mistake or a compromised container can therefore delete every photo with no way back. A DB restore after accidental deletion also brings back rows whose S3 objects are gone. The privacy reason does not hold up either: the DB dumps already keep deleted accounts' data for backup_retention_days.
 - **Fix:** Enable versioning on the media bucket with a lifecycle `noncurrent_version_expiration` equal to backup_retention_days, plus expired-delete-marker cleanup. Deletion then becomes final on the same schedule as the dumps. Document it in deploy-aws.md, and add tftest assertions.
 - **Evidence:** storage.tf:11 comment 'Versioning stays off on purpose'. backup.sh:61 skips media when storage type is s3. start.sh:36 forces RICETTINE_STORAGE_TYPE=s3.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-1: Login re-implements LoginAttempt.run's reserve/fail/refund logic
 
@@ -104,7 +104,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** The security-critical rule ('bad_credentials keeps the reservation, success clears it, anything else refunds') exists twice: inline in AuthController.login (try/catch on ApiException and RuntimeException) and in RateLimits.LoginAttempt.run, which password change and account deletion use. If one copy is changed, the limits drift apart without anyone noticing.
 - **Fix:** Give LoginAttempt a value-returning `<T> T run(Supplier<T>)`, and have login use it to return the authenticated User (throwing bad_credentials inside). Then delete the inline try/catch. failed() can become private.
 - **Evidence:** Read both at AUDIT_SHA: AuthController.java:58-78 and RateLimits.java:91-110 have the same branching.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### ERR-1: Avatar upload reads the whole file onto the heap before waiting for a processing slot
 
@@ -113,7 +113,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** MeController calls file.getBytes() (up to 15 MB) before MediaService.process waits up to 30 s for one of 2 decode permits. So every queued avatar upload holds a full copy on the heap. Recipe photos and cookbook covers use the Supplier overload, which reads only once a permit is held. The application.yml comment ('never held in heap') suggests this protection applies to every upload.
 - **Fix:** Make AccountService.setAvatar take Supplier<byte[]> and pass `() -> file.getBytes()` as RecipePhotoController does. A shared helper for the IOException wrapping would also remove the three copies.
 - **Evidence:** MediaService.java:54 documents the Supplier overload for exactly this reason. RecipePhotoController.java:51 and CookbookCoverController.java:50 use it, and MeController.java:61 does not.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### OPS-1: JVM heap sized to 75% of host RAM: no compose service sets a memory limit
 
@@ -122,7 +122,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Dockerfile sets MaxRAMPercentage=75 'from the container memory limit so it fits small hosts without OOM kills'. No compose file sets mem_limit or deploy.resources, so the container has no limit and the JVM sees the whole host. On the default t4g.small (2 GiB) the heap can grow to about 1.5 GiB. Add metaspace and threads, Postgres, Caddy, dockerd and the OS, and there is no room left. Under upload or decode load the kernel OOM killer can kill java or postgres. The smoke test checks only the flag value, not the effective max heap.
 - **Fix:** Set `mem_limit` on app (for example 1g in compose.aws.yaml, and a documented default or an env-driven `${RICETTINE_MEM_LIMIT:-1g}` in compose.yaml), so 75% applies to a real limit. Extend smoke.sh to assert MaxHeapSize under the limit (`-XX:+PrintFlagsFinal | grep MaxHeapSize`).
 - **Evidence:** `grep -n 'mem_limit\|resources' compose*.yaml` finds nothing. Dockerfile:31 comment states the intent.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-2: Logout signs the user out locally even when the server call failed
 
@@ -131,7 +131,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** AuthStore.logout() swallows every error from POST /api/auth/logout and then clears `me`. The comment only justifies a 401, but a network failure (status 0) or a 5xx also lands here. The UI then shows the login page while the server session cookie is still valid; reloading the page calls /api/me and signs the person straight back in. On a shared device the user believes they logged out and did not.
 - **Fix:** Swallow only a 401 (session already gone). For any other error keep `me` set, return/throw an ApiError and let the shell show errors.network_error with a retry. Add a spec for the status-0 and 500 cases.
 - **Evidence:** Code read: catch {} then finally { this._me.set(null) } with no status check.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-3: GitHub Actions pinned to mutable major tags, including the job that holds packages:write
 
@@ -141,7 +141,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Pin every `uses:` to a full commit SHA with a `# vX.Y.Z` comment, and add Dependabot (`package-ecosystem: github-actions`) to keep them current. Optionally add `provenance: mode=max` and `sbom: true` to build-push.
 - **Evidence:** `grep uses: .github/workflows/ci.yml` shows only @v3..@v6 tags. No .github/dependabot.yml.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / CI / Actions are pinned to major tags
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-4: .gitignore does not cover .env or backups/, though the README tells users to create both in the repo root
 
@@ -150,7 +150,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** README says to put settings, including POSTGRES_PASSWORD, in `.env` next to compose.yaml, and to run deploy/backup.sh from the repo root. The script's default BACKUP_DIR=./backups then fills with pg_dump files that hold emails and password hashes, plus media archives. Neither path is gitignored, so `git add -A` / `git commit -a` in a self-hosting checkout publishes secrets and personal data. .dockerignore also misses `.env`, `backups`, `e2e/node_modules`, `infra/terraform/.terraform`, `*.tfstate` and `.https-smoke-data.*` (BuildKit only sends COPY'd paths today, so that part is hygiene).
 - **Fix:** Add `.env`, `backups/` (and `*.dump`) to .gitignore. Mirror them, plus `infra/terraform/.terraform`, `*.tfstate*`, `e2e/node_modules` and `.https-smoke-data.*`, in .dockerignore.
 - **Evidence:** .gitignore lines 1-17 contain neither entry. backup.sh:30 `BACKUP_DIR="${BACKUP_DIR:-./backups}"`.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-1: csrf() post-processor leaks a session-backed CSRF repository into the shared filter chain
 
@@ -160,7 +160,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Restore the production repository after each test once, in IntegrationTest (@AfterEach calling WebTestUtils.setCsrfTokenRepository with CookieCsrfTokenRepository.withHttpOnlyFalse(), as the follow-up proposes), and drop the inline hack from PublicRecipeIT. Alternatively write a local csrf() RequestPostProcessor that only sets the X-XSRF-TOKEN header and cookie pair, which needs no filter mutation.
 - **Evidence:** Comment in PublicRecipeIT.anonymousRequestCreatesNoSession and in UploadTooLargeIT class javadoc; plan-2 follow-up lists the same item as open.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups / Test infrastructure (csrf() leak)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-2: Vacuous or missing-control assertions in profile, feed, robots and S3 timeout tests
 
@@ -170,7 +170,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** (1) publish a PUBLIC recipe as well and assert it is present while the draft is absent. (2) delete the contains("") term, keep the explicit doesNotContain branch. (3) add status().isOk(). (4) assert the cause is an SdkClientException/ApiCallTimeoutException (or message contains 'timed out'). (5) assert count(*) from app_user and the remaining admin flag. (6) pin the expected status per path.
 - **Evidence:** Read each assertion in context; (2) and (3) are open follow-ups, (1) is the Plan 4 follow-up, (4) the Plan 5 follow-up.
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Tests to add (FeedIT positive control, ProfileIT vacuous contains); 2026-11-07-plan-5-followups.md: Tests to add (actuator robots header, S3BlobStoreTimeoutTest isNotNull)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-3: Privacy-critical profile visibility has no raw-JSON leak guard and no self-view thumb test
 
@@ -180,7 +180,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** In visitorSeesOnlyPublic assert the raw response body does not contain privPublished, pubDraft, privDraft, aPrivateBook ids, nor their share tokens. Add a selfThumbsLoad test that GETs coverThumbUrl of a draft and a published recipe with the owner cookie and expects 200.
 - **Evidence:** ProfileIT has no assertion on getContentAsString of the visitor profile; thumbsLoadForVisitor uses profile(b, ...).
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Feed and profile (string-level IT guard); Tests to add (self-view thumbs)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-4: PublicUrls (configured base URL, X-Forwarded-* handling) and conditional-GET forms have no tests
 
@@ -190,7 +190,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add a PublicUrlsTest (unit, MockHttpServletRequest in RequestContextHolder) for blank vs configured base with and without trailing slash, and one IT that sends X-Forwarded-Proto: https and X-Forwarded-Host and asserts the shareUrl. Parameterise etagAndNotModified over 'W/"x"', '"a", "x"' and '*'.
 - **Evidence:** grep for base-url, X-Forwarded in backend/src/test returns nothing.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Tests to add (If-None-Match weak, list and * forms)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-5: Step-photo upload remapping on insert/remove/reorder has no unit test
 
@@ -199,7 +199,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** EditorStore.stepInserted/stepRemoved/stepMoved re-index in-flight and failed photo uploads so a photo lands on the step it was chosen for. remapIndex is also used for the active step. No spec calls any of them: steps-editor.component.spec uses fakeEditorStore, whose stepInserted/stepRemoved/stepMoved are empty stubs, and remapIndex has no spec at all. A sign error would attach an upload (or its Retry) to the wrong step, which the e2e reorder specs do not exercise because they never reorder with an upload pending.
 - **Fix:** Add a remapIndex table test (move down, move up, i == from, outside range) and EditorStore specs that start an upload on step 1, then call stepInserted(0), stepRemoved, stepMoved and assert uploadFor(slot) follows; for a removed step assert the upload is dropped.
 - **Evidence:** grep for stepMoved|stepInserted|stepRemoved|remapIndex across *.spec.ts finds nothing; the only hits are the empty stubs in editor-store.testing.ts.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-6: Frontend gaps from earlier follow-ups still untested: interceptor logout 401, ParamReuseStrategy config change, cookbook empty/error states, reset-link dialog Escape, feed re-entrancy
 
@@ -209,7 +209,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add one test per item (about 6 short tests). For (f), call more.click() twice synchronously and expect page toHaveBeenCalledTimes(2) including the initial load.
 - **Evidence:** grep for 'invites', 'Escape' in the cookbook specs finds nothing; feed.page.spec.ts:51 is the only loading test.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-3-followups.md: Tests to add / Frontend
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-7: Infra lint, Terraform tests, mount-data tests, the backup/restore drill and the HTTPS overlays never run in CI
 
@@ -218,7 +218,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** CI runs backend, frontend, e2e and two smokes only. These all exist but run only when someone remembers: actionlint, shellcheck, caddy validate, mount-data.test.sh, 29 terraform tests (infra-check.sh), the backup→wipe→restore drill and both Caddy overlays (https-smoke.sh, including the token-not-logged and X-Forwarded-For checks). A change to compose.yaml, the Caddyfiles, backup.sh or restore.sh can merge green and break production backups or the AWS origin. The PR-gate convention in CLAUDE.md ('automate checks instead of listing manual steps') is not applied to the ops layer.
 - **Fix:** Add CI jobs `infra` (scripts/infra-check.sh; it needs only Docker) and `ops-drills` (backup-restore-check.sh and https-smoke.sh on ubuntu-latest, where ports 80, 443 and 8080 are free). Mention them in CLAUDE.md's CI line.
 - **Evidence:** ci.yml jobs: backend, frontend, e2e, smoke, smoke-arm64, publish. infra-check.sh passed locally (exit 0, 'Success! 29 passed').
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONC-1: Photo and cover blobs are written to S3 while a row lock and a pooled connection are held
 
@@ -228,7 +228,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Write the blobs first (outside the transaction, keyed by the new media id), then open the short transaction that locks the row and inserts the media row; on failure delete the blobs. The orphan cleanup already covers blobs without rows only for rows, so also delete blobs in the catch path.
 - **Evidence:** Code read: MediaService.register is called from inside the @Transactional RecipeService.addPhoto / CookbookService.setCover. Plan 2 follow-up already named the symptom.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Plan 5 (S3 timeouts / addPhoto holds a FOR SHARE lock)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONS-1: Account, admin and settings pages call HttpClient directly while feed/profile/recipes/cookbooks use *Api services
 
@@ -237,7 +237,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Nine components/stores build URLs and declare their DTO types (`Invite`, `Created`, `User`, `Reset`) inline, with unit tests that must mock HttpClient, while four other features go through typed *Api services. Two conventions for the same job makes the codebase look unfinished and makes endpoint changes a hunt.
 - **Fix:** Add AuthApi/AccountApi (register, setup, reset, password, profile, avatar, delete) and AdminApi (invites, users) in the same shape as CookbookApi; move the DTO types into *.model.ts; keep the pages thin.
 - **Evidence:** grep inject(HttpClient) outside *.api.ts and core: 9 files.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DATA-3: Conflict 'copy your text' block omits most of the user's edits, and Load latest discards them (plus the edits typed during its fetch)
 
@@ -247,7 +247,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add ingredient lines (`amount unit name, note`), source, times and portions to conflictText(). In loadLatest(), after the fetch compare autosave.dirty()/rev with the value before it; if the user typed meanwhile, keep the backup (or re-apply on top of the fetched copy) instead of clearing it.
 - **Evidence:** Read conflictText() (editor-store.ts:39-43) and loadLatest() (433-438); replace() resets autosave and clearBackup() runs unconditionally after the awaited get.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup / The copyable conflict block ...; Text typed while "Load latest" is fetching ...
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-2: Recipe/cookbook/photo fixture helpers re-implemented in about a dozen ITs
 
@@ -256,7 +256,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Almost every IT carries its own copy of create-recipe, save-with-body, publish, upload-photo, publishedRecipe, shareToken lookup, createCookbook and blobExists, each with slightly different signatures and return types (String id, JsonNode, String[]). The recipe JSON body literal alone is written out at least 8 times. This is what produces most of the 80 jscpd clones (the import blocks and setUp blocks are also clones). A change to the recipe payload shape or an endpoint path has to be patched in a dozen places, and the copies have already drifted (some assert status 201/200, some do not, e.g. CookbookApiIT.publishedRecipe and draftRecipe call andReturn() without asserting the status, so a failed create surfaces later as an NPE).
 - **Fix:** Add one test-scope helper in com.ricettine (next to Sessions), e.g. RecipeFixtures/CookbookFixtures constructed with (MockMvc, ObjectMapper, JdbcTemplate): createDraft(cookie), save(cookie,id,version,visibility,cover,stepPhoto), publish(cookie,id,version), publishedRecipe(cookie,visibility), uploadPhoto(cookie,recipeId), shareToken(id), createCookbook(cookie,name), blobExists(BlobStore,mediaId). Every helper asserts the expected status. Keep per-test body customisation via an overload that takes the JSON string.
 - **Evidence:** Read all 12 files; 3 byte-identical blobExists(), 12 methods named create/published/publishedRecipe/recipe returning an id; jscpd pack lists 15+ clones between these files, all fixture or header text.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-3: Per-class DB reset and user bootstrap copy-pasted into 28 test classes
 
@@ -265,7 +265,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** 28 classes start with the same two statements (truncate table app_user, one_time_token, instance_setup cascade; delete from spring_session) and then create the same two or three accounts (me/other, a/b, owner/bea/carl) and log them in. The truncate list is a hard-coded table list: a new top-level table (or a table not reached by the cascade) silently leaks rows between classes until each of 28 copies is edited. A few classes forget the second statement (AccountServiceIT, SetupIT, MediaIT, MediaAccessIT, RobotsHeaderIT), so the reset is inconsistent. InviteIT also has its own login() that duplicates Sessions.login.
 - **Fix:** Move the reset into IntegrationTest as a @BeforeEach (one method, both statements, or truncate every public table except flyway_schema_history discovered from information_schema) and add a small TestUsers helper (create(email, username, admin) returning user plus cookie). Delete the 28 copies. Reuse Sessions.login in InviteIT.
 - **Evidence:** grep -rln 'truncate table app_user' backend/src/test returns 28 files; read each.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-4: Six near-identical confirm dialog components and eight copies of the open-sheet/await-closed boilerplate
 
@@ -274,7 +274,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Five dialogs are the same 30-line component (title, body, Cancel, a confirm button, a copied `.danger` style block and `uid()` title id) differing only in i18n keys; remove-member is the same plus a checkbox. Each caller repeats `openEditorSheet(...)` + `(await firstValueFrom(ref.closed, { defaultValue: undefined })) === true` (8 sites). Any change to dialog behaviour (focus, a11y, danger colour) needs six edits.
 - **Fix:** One ConfirmDialog component taking {titleKey, bodyKey, params, confirmKey, danger} through DIALOG_DATA, plus a helper `confirmSheet(dialog, injector, i18n, data): Promise<boolean>` next to openEditorSheet. Keep remove-member as the only specialised one (or give ConfirmDialog an optional checkbox).
 - **Evidence:** Diffed the five files: only i18n keys and uid prefix differ. grep: 12 openEditorSheet call sites, 8 `closed, { defaultValue` awaits.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-5: Duplicated e2e setup: step-photo/publish helpers, layout checks, login-as-admin-and-invite, FIXTURE path
 
@@ -283,7 +283,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** (1) addStepPhoto and the cover/step photo block are copied between share-link and cookbook-link specs (17-line jscpd clone). (2) newRecipeLink is defined identically in editor.spec and recipe-editor.spec, with the same Done-on-untouched-draft block (9-line clone). (3) The 'cards sit side by side on desktop, stack on mobile' bounding-box check is written four times (feed, profile, cookbooks, cookbook-link). (4) auth-a11y.spec repeats the admin login + createInvitePath prelude that newUserPage already holds. (5) FIXTURE is rebuilt in six files, one with a different mechanism (fileURLToPath vs import.meta.dirname); `saved` locator is redefined in two specs next to the literal 'Saved ✓' repeated about 20 times. Any change to the editor's status text or the photo buttons needs edits in many places.
 - **Fix:** Move addStepPhoto, addCoverPhoto, newRecipeLink, expectSideBySide(cards)/expectStacked, expectSaved(page), FIXTURE_PHOTO and an inviteAsAdmin(browser, testInfo) helper into helpers.ts and import them. Keep behaviour identical.
 - **Evidence:** jscpd pack: feed/profile 11 lines, editor/recipe-editor 9, cookbook-link/share-link 17 and 5; grep -n 'FIXTURE =' finds 6 definitions.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### OPS-2: Backup alerting only covers a run that fails: no alert when backups stop, and lifecycle then deletes the last good dump
 
@@ -293,7 +293,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add a staleness check that does not depend on the host. For example, a CloudWatch alarm on the backups bucket's PutRequests metric (request metrics on the db/ prefix), set to alarm on missing data for 26 h and wired to the existing SNS topic. Or a tiny scheduled Lambda that runs the aws-verify step 6 logic. Optionally keep the newest N noncurrent versions (`newer_noncurrent_versions`) so expiry never removes the last dumps.
 - **Evidence:** No CloudWatch alarm resources in infra/terraform. The OnFailure unit is the only alert path. The followup 'backup-failed.sh: a failed SNS publish only shows as a failed unit' is the same gap.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / backup-failed.sh SNS
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-5: Public, immutable media responses carry Set-Cookie: XSRF-TOKEN; CloudFront may cache it and serve one CSRF token to everyone
 
@@ -303,7 +303,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Don't issue CSRF cookies on /media/**. Either add a separate SecurityFilterChain for `/media/**` (GET only, csrf disabled, same session-based authentication), or use a request handler that skips token loading on safe requests to /media/**. Add the planned edge-caching IT: an avatar GET with no cookies and with a stale SESSION cookie must carry no Set-Cookie at all.
 - **Evidence:** Throwaway IT at AUDIT_SHA: GET of an avatar URL with no cookies returned 200, `Cache-Control: public, max-age=31536000, immutable` and `Set-Cookie: XSRF-TOKEN=<uuid>; Path=/`. With a stale SESSION cookie the result was the same (XSRF-TOKEN only, no SESSION cookie).
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Edge caching
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### SEC-6: No Content-Security-Policy (and no Referrer-Policy in self-hosted mode)
 
@@ -312,7 +312,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Neither the app nor the Caddy overlays send a CSP. The AWS Managed-SecurityHeadersPolicy doesn't add one either. Spring Security's defaults give nosniff and X-Frame-Options DENY only. If any XSS gets in through user-authored recipe content, nothing contains it. A reviewer checking the headers will notice right away. Self-hosted mode also sends no Referrer-Policy on pages whose URLs carry invite, reset and share tokens. Browser defaults strip the path on cross-origin requests, so it's low risk.
 - **Fix:** Add `headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")).referrerPolicy(r -> r.policy(SAME_ORIGIN)))` in SecurityConfig. Check it against the Angular build (critical-CSS inlining uses an inline onload handler, so set `inlineCritical: false` or use autoCsp). Assert the header in RobotsHeaderIT-style tests and run the e2e suite.
 - **Evidence:** Throwaway IT: GET /login returned `X-Frame-Options: DENY`, with no Content-Security-Policy and no Referrer-Policy. grep finds no CSP in deploy/ or backend.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-8: Cookbook invite, cap and removal edge cases from the Plan 3 follow-ups are still untested
 
@@ -322,7 +322,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add the seven small cases to CookbookInviteIT, CookbookApiIT, CookbookMemberIT and CookbookAccountDeletionIT using the existing CookbookIT helpers. For (d) use the race helper from the concurrency finding.
 - **Evidence:** Searched the cookbook tests for each scenario; none present.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Tests to add (co-author invites bullets, concurrency 500 cap, own draft by token, account deletion invite survival)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-9: Manually created Playwright contexts get no trace or screenshot on failure
 
@@ -331,7 +331,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** playwright.config sets trace: 'retain-on-failure' and screenshot: 'only-on-failure', but those options apply only to the built-in context/page fixtures. Almost every spec drives pages from newUserPage/newContext, which call browser.newContext() directly. When such a test fails in CI, the uploaded e2e-results artifact has no trace and no screenshot for the page that actually failed, so the config gives false assurance. The same specs mostly close the context only on the happy path (no try/finally), so a failing test leaks contexts and the single shared worker/browser keeps them.
 - **Fix:** Build contexts through the test fixtures instead of browser.newContext: add a fixture in helpers (test.extend) that creates contexts, starts tracing (context.tracing.start) and, on testInfo.status !== expected, saves trace and screenshots to testInfo.outputPath, and always closes the contexts in teardown. Specs then drop their manual context.close() calls.
 - **Evidence:** helpers.ts newContext() calls browser.newContext({baseURL, viewport,...}) and never starts tracing; 14 spec files use newUserPage; only session-expiry.spec.ts wraps the body in try/finally.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-10: Unsaved-text safety e2e gaps: session expiry to login to restore, logout failure, restored notice, conflict server check, step-photo retry
 
@@ -341,7 +341,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add a session-expiry spec on the editor (clear SESSION cookie, type, log in via next, expect text restored and saved), assert the server text in the conflict test with an expect.poll on GET /api/recipes/{id}, and parametrise the retry spec over cover and step slot.
 - **Evidence:** unsaved-safety.spec.ts has 4 tests (offline, close tab, retry cover, conflict); no test touches the logout failure path or /login?next with an open editor.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Unsaved-text backup Missing e2e; Unsaved-safety e2e
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ## Low (72)
 
@@ -353,7 +353,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Make the cleanup lock the recipe row with FOR UPDATE SKIP LOCKED (skip and retry next run), or have account deletion lock the user's recipes first. Optionally page by (created_at, id) so failing heads do not block the rest.
 - **Evidence:** Lock order read from the three call sites; not reproduced.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups / Orphan-cleanup job
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### CONC-3: lockAdmins has no ORDER BY and there is no last-admin concurrency test
 
@@ -363,7 +363,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add `order by u.id` to the query. Add an IT that demotes two admins (or deletes both) concurrently and asserts exactly one 409 last_admin.
 - **Evidence:** Read at AUDIT_SHA. AdminRoleIT has only sequential cases.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / lockAdmins has no ORDER BY
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### CONC-4: PageTitle can be set after the user already left the page
 
@@ -373,7 +373,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Give PageTitle.set an owner check (pass the page's ActivatedRouteSnapshot, ignore if it is no longer the primary leaf) or have the pages skip set() once their DestroyRef fired. One shared fix in PageTitle covers all three.
 - **Evidence:** Code read: no destroyed guard in any of the three load() methods; AppTitleStrategy.updateTitle clears `dynamic` on each navigation.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Feed and profile / If someone leaves /u/x before the response arrives ...
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### CONS-2: Recipe and cookbook validators duplicate helpers and count length differently
 
@@ -383,7 +383,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Move clean(), a codePoints(String) length helper and an enum check (Visibility.parse) into common/ or Visibility itself; use code points in RecipeValidator and update its tests.
 - **Evidence:** Read both files.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Before a native Android client / UTF-16 vs code points
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### CONS-3: RecipeRef lives in the cookbook package, creating a recipe to cookbook to recipe cycle; empty shareToken accepted
 
@@ -393,7 +393,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Move RecipeRef (and resolveAddable's contract) into the recipe package; test non-null shareToken as set (blank token is invalid, not absent).
 - **Evidence:** Code read.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Before a native Android client / RecipeRef package cycle, shareToken "" accepted
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONS-4: Token expiry mixes the JVM clock with the database now(); the Clock bean is ignored
 
@@ -403,7 +403,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Inject Clock into PasswordResetService and InviteService (and the entity constructors or factories), and pass `:now` from the Clock into the active/claim queries. Alternatively, compute expires_at in SQL (`now() + interval`). Pick one source.
 - **Evidence:** Read at AUDIT_SHA.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / app clock vs DB now() for expires_at
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### CONS-5: Fully qualified names, unsorted imports and deprecated APIs in the platform classes
 
@@ -413,7 +413,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Replace the FQNs with imports (alias Spring's User by importing User.withUsername statically or keep one FQN with a comment), sort the imports, use HttpStatus.CONTENT_TOO_LARGE and org.jspecify.annotations.Nullable.
 - **Evidence:** Read at AUDIT_SHA, plus javac -Xlint:all output from the input pack.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / Fully qualified names; import order in BeansConfig
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONS-6: Two fieldErrorKey functions map the same server codes to two parallel i18n key sets
 
@@ -422,7 +422,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** core/api-error.ts maps field codes to errors.field.*; recipe-editor.page.ts defines another exported fieldErrorKey with its own code list mapping to editor.field.*. Two lookups, two key trees with overlapping meaning, and the editor one is exported but used only in that file.
 - **Fix:** Extend errors.field.* with out_of_range/too_many/invalid_unit, use the single function, delete editor.field.* keys and the local copy.
 - **Evidence:** Both functions read; the editor copy has no other importer.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONS-7: Inconsistent fake-timer cleanup and heavy 'as unknown as' casts in specs
 
@@ -431,7 +431,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Fake timers are restored via afterEach in some files and via try/finally in individual tests in others (photos.spec, auth.store.spec); a future test added without the finally would leak fake timers into later tests in the file. fakeEditorStore returns an object cast with 'as unknown as EditorStore', so adding a member the components start using gives runtime undefined rather than a compile error in the specs.
 - **Fix:** Use one pattern: afterEach(() => vi.useRealTimers()) in every file that fakes timers. Type fakeEditorStore with Pick<EditorStore, ...> of the members it provides so missing members fail to compile.
 - **Evidence:** grep useFakeTimers/useRealTimers: 4 files use afterEach, 2 files use try/finally per test.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-2: Photo cap is checked outside the lock and can be overshot
 
@@ -441,7 +441,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Re-check countByRecipeId inside addPhoto after taking the lock (cheap, closes most of the gap), and document that the cap is approximate, or take the write lock for exactness.
 - **Evidence:** Code read.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Plan 6 / Photo cap
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-3: Session stays logged in for at most 30 days from login even though the server timeout slides
 
@@ -451,7 +451,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Pick one model. For a sliding session, drop setCookieMaxAge (browser-session cookie) or rewrite the cookie on activity via a custom HttpSessionIdResolver. For an absolute one, drop the sliding timeout and document it.
 - **Evidence:** DefaultCookieSerializer is configured once, and SessionRepositoryFilter writes the cookie only when the id changes.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / 30-day session cookie
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-4: HEAD on SPA paths returns 401 for anonymous users
 
@@ -461,7 +461,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Allow HEAD as well, either with a second regexMatcher(HttpMethod.HEAD, …) or with a method-agnostic matcher combined with the GET/HEAD check. Add a case to SpaFallbackIT.
 - **Evidence:** Throwaway IT: HEAD /login returned 401.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / HEAD requests on SPA paths
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-5: Revoking a used or expired instance invite returns 204 and marks it revoked
 
@@ -471,7 +471,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add `and used_at is null and expires_at > now()` to revoke(). It then returns 404 like the cookbook path. Add an InviteIT case.
 - **Evidence:** Read at AUDIT_SHA.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Revoking an already-used invite returns 204
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-6: Keep-screen-on leaks a wake-lock sentinel on a quick check, uncheck, check
 
@@ -481,7 +481,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Track the in-flight request (a token/counter) and discard a result whose token is stale, or release the previous sentinel before assigning the new one.
 - **Evidence:** Code read of acquire(); no in-flight tracking.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Recipe page / KeepScreenOnComponent
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-7: displayAmount: scaled kg/l can show 0, and unscaled amounts are snapped despite the documented 'exactly what the author wrote'
 
@@ -491,7 +491,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Clamp scaled kg/l to a minimum of 0.01 (as g/ml already clamp 0.1). For unscaled values use a tiny epsilon (1e-9) for the fraction match, else num(n, 3). Add specs for those inputs.
 - **Evidence:** Traced displayAmount for (0.004,'kg',scaled), (0.34,null,unscaled), (0.005,'tsp',unscaled).
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Recipe page / displayAmount
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-8: Deleting a recipe with a failed upload still asks 'Leave without this photo?'
 
@@ -501,7 +501,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Clear the uploads (and revoke previews) in remove()/removeIfUntouched() on success, or set a `leaving` flag that canLeave() honours.
 - **Evidence:** Code read: remove() only suspends/disposes autosave and clears the backup.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup / Logout with a failed or in-flight upload ...
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-9: Phone step photos force the camera and the bottom-bar photo logic disagrees with itself
 
@@ -511,7 +511,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Drop `capture` from the step slots (keep one explicit camera button if wanted); in rejectBarPhoto report on the step attachPhoto would create.
 - **Evidence:** Code read; capture attribute bound from [capture]="true" in both places.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Photos / Every step picker uses `capture`; With zero steps, the bar photo error shows on the cover slot
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### COR-10: New-recipe page is not cancelled on destroy and Retry can create a second draft
 
@@ -521,7 +521,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Keep a destroyed flag (DestroyRef) and skip the navigation when set; the leftover empty draft is already cleaned by Done/orphan rules. The idempotency key for retries stays a native-client item.
 - **Evidence:** Code read.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Editor state and input handling (new-recipe start() not cancelled)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DATA-4: Recipe delete is never version-checked by the only client
 
@@ -531,7 +531,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Make version required on DELETE (400 like publish/reset do) and send it from RecipeApi.remove; the delete already does the 409 check when given.
 - **Evidence:** Code read of both ends.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Before a native Android client / DELETE version optional race
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DATA-5: Outstanding invites and reset links die silently when the admin who created them deletes their account
 
@@ -541,7 +541,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** New migration: change the FK to ON DELETE SET NULL (the column is already nullable). Add an AccountDeletionIT case.
 - **Evidence:** Read at AUDIT_SHA.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / one_time_token.created_by ON DELETE CASCADE
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DEAD-1: RateLimiter.check() and hit() are used only by tests
 
@@ -550,7 +550,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Production code only calls tryHit, refund and clear. check() and hit() (jscpd flags hit as a clone of tryHit) are dead weight in a security class and are what RateLimiterTest mostly tests, so the paths production actually uses get less test coverage.
 - **Fix:** Delete check() and hit() and rewrite RateLimiterTest against tryHit/refund/clear.
 - **Evidence:** grep '\.(check|hit)\(' finds only RateLimiterTest.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DEAD-2: Dead code: six unused i18n keys and ~30 exports nothing imports
 
@@ -560,7 +560,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Delete the six keys; drop `export` on the unused symbols; move the recipe limits into one recipe-limits.ts next to recipe.model.ts with a comment pointing at RecipeValidator.
 - **Evidence:** Script over en.json vs src; grep -rlw per symbol found only the defining file.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (unused i18n keys)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DEP-1: Prettier is installed and configured but never run; 122 files fail its own check
 
@@ -570,7 +570,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Either run `prettier --write` once, add `format:check` to package.json and the CI frontend job, or remove prettier and .prettierrc. (The infra-check script is the natural home for the check.)
 - **Evidence:** npx prettier --check "src/**/*.{ts,scss,html}" -> 122 files with issues; grep of .github, scripts, CLAUDE.md shows no use.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Small cleanups / app.routes.ts has a long single-line entry
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DEP-2: Base and service images use mutable tags; the AWS host defaults to `latest`
 
@@ -579,7 +579,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** node:24-alpine, eclipse-temurin:25-jdk/jre, postgres:17-alpine and caddy:2.10-alpine are floating tags, so builds are not reproducible, and start.sh `docker compose pull` picks up new upstream images on every restart. image_tag defaults to `latest`, so a replacement host (`-replace=aws_instance.main`) can jump app versions, and with them schema migrations, without anyone deciding to.
 - **Fix:** Pin the base images by digest (`image@sha256:…  # tag`), with Dependabot `docker` ecosystem updates. Make `image_tag` a required variable, or default it to a released semver.
 - **Evidence:** Tags as listed. variables.tf:49 `default = "latest"`.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DOC-1: frontend/README.md and .vscode are Angular scaffolding that no longer match the project
 
@@ -588,7 +588,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** The README is the CLI template (mentions `ng e2e`, which does not exist; browser e2e is Playwright in /e2e); launch.json still debugs tests at the Karma URL localhost:9876 although unit tests run on Vitest.
 - **Fix:** Replace the README with a short project one (dev, test, build, i18n, link to e2e) or delete it; remove the Karma launch entry.
 - **Evidence:** Read both files.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DOC-2: example.tfvars documents wrong defaults and omits variables
 
@@ -598,7 +598,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Change it to 25 and add `# backup_retention_days = 30` and `# origin_subdomain = "origin"`.
 - **Evidence:** example.tfvars:12 vs variables.tf:60.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / example.tfvars comment
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DOC-3: CLAUDE.md package list and command list are stale; README repeats its test commands
 
@@ -608,7 +608,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Update the package list (account, admin, auth, common, config, cookbook, feed, invite, media, profile, recipe, setup), list all scripts in CLAUDE.md, and merge README's Development/Tests into one section that lists every check and says which run in CI.
 - **Evidence:** `ls backend/src/main/java/com/ricettine/` shows 12 packages.
 - **Follow-up:** Input pack: Docs / CLAUDE.md package list
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-6: Malformed-UUID try/catch repeated six times
 
@@ -618,7 +618,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** One helper, e.g. Ids.parse(String, String code) in common, returning a UUID or throwing the given 404; keep the requireMember-first calls explicit at the three call sites.
 - **Evidence:** Read all six sites.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Small cleanups / malformed-UUID try/catch
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-7: Constant-time token compare after an equality DB lookup, copied four times
 
@@ -627,7 +627,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Every site finds the row with WHERE share_token = ? (an index lookup, not constant time) and then compares the same token again with MessageDigest.isEqual. The second compare adds nothing and the UTF-8/MessageDigest boilerplate is copied four times. Tokens are 256-bit, so timing is not exploitable, but a reviewer will ask why the check exists. PublicRecipeController's lookup does not do it, so the code is also inconsistent.
 - **Fix:** Delete the redundant compares (the lookup is the check), or extract one Tokens.matches(a, b) and use it everywhere including recipes. Prefer deleting.
 - **Evidence:** Read the four sites and RecipeRepository.findByShareTokenAndStatus.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-8: Duplicated static/index.html lookup
 
@@ -637,7 +637,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add one `static final String INDEX = "static/index.html"` (or a shared Resource) in SpaWebConfig and use it in both places.
 - **Evidence:** grep 'static/index.html'.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Duplicated static/index.html constant
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-9: Oversized-upload 413 contract tested twice over real HTTP with two different hand-rolled clients
 
@@ -646,7 +646,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** AvatarUploadLimitIT (JDK HttpClient, 15 MB + 1 KB) and UploadTooLargeIT.oversizeUploadIs413 (Spring RestClient, 16 MB + 1) both assert that an oversized avatar PUT returns 413 with code file_too_large. Each re-implements the XSRF-cookie fetch, login and cookie parsing (cookieValue exists in three variants, lastCookie in a fourth), using two different HTTP client APIs. It costs about 30 MB of allocation per run twice and two places to update.
 - **Fix:** Keep one of them (UploadTooLargeIT also covers the spool-directory case), delete AvatarUploadLimitIT or fold its blob-count assertion in, and extract a shared 'RealHttpSession' helper (bootstrap XSRF, login, send with cookies) for the four real-HTTP ITs.
 - **Evidence:** Read both classes; same endpoint, same expectation, different client.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DUP-10: Concurrency harness (latch + pool + collect statuses) repeated 7 times, some without finally-shutdown
 
@@ -655,7 +655,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Each test builds an ExecutorService, a start latch and a list of Futures by hand. RecipeApiIT.concurrentSavesNeverProduce500 and concurrentSavesOfPopulatedRecipeGiveOne200AndOne409 are the same loop with a different setup (20+ line clone). SetupIT, IpRateLimitIT and RateLimiterTest call pool.shutdown() after the assertions rather than in finally, so a failing assertion or an exception from f.get() leaks threads into the rest of the suite.
 - **Fix:** Add a tiny helper, e.g. Concurrent.race(int n, IntFunction<Callable<T>> task) returning List<T>, which owns the pool, the latch and the try/finally shutdownNow. Merge the two RecipeApiIT concurrency tests into one parameterised by the prior number of saves.
 - **Evidence:** Read all seven; pattern identical.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-11: ImageProcessorTest: six near-identical orientation tests
 
@@ -665,7 +665,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** One @ParameterizedTest over (orientation, expectedWidth, expectedHeight, topLeftIsRed, ...) rows for 2-8, including 4.
 - **Evidence:** ImageProcessor.orient() has case 2..8; tests cover 2,3,5,6,7,8.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Still open from Plan 1 (orientations 5/7; now done, 4 never covered)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DUP-12: Admin tab navigation and invite create/revoke logic are copied between pages
 
@@ -675,7 +675,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** A tiny AdminTabsComponent (or an AdminLayout route with child routes) for the nav; an InviteList helper (or reuse one component with an input for the endpoint) for the invite handling.
 - **Evidence:** jscpd clones listed in the input pack, confirmed by reading.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (duplicated admin tab nav)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-13: Frontend spec boilerplate repeated across specs (btn, overlay, person, mount providers, overlay cleanup)
 
@@ -684,7 +684,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Five specs each define the same btn(root, text) query and overlay() lookup and the same afterEach that empties .cdk-overlay-container; person() is defined three times; register/setup/delete-account page specs repeat the same form-fill blocks (12-line clone); autosave.spec duplicates a block already in editor-store.testing.ts. A change in how buttons or overlays render touches each copy, and the copies already differ slightly (btn matches aria-label in some, not in others).
 - **Fix:** Add src/app/testing/dom.ts with btn, overlay, clearOverlays and a fillForm helper, export person() fixtures from one place, and import them. Move settle() out of testing/transloco.ts into the same dom helper file.
 - **Evidence:** jscpd: members-panel/cookbook.page 8 lines, cookbook-share-panel/share-panel 8, register/setup 12; grep '^const btn' hits 5 spec files.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### DUP-14: AWS restore is a hand-copied version of restore.sh in the docs
 
@@ -693,7 +693,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** restore.sh is not installed on the host, so deploy-aws.md repeats its commands by hand without the input checks, the ERR message and the wait-for-healthy loop. The two copies will drift (the doc already lacks the health wait).
 - **Fix:** Install deploy/restore.sh through cloud-init write_files (gzip leaves room) and reduce the doc to `sudo deploy/restore.sh /tmp/restore.dump`. Add it to the tftest round-trip map.
 - **Evidence:** deploy-aws.md:139 'the restore script is not installed there, so these are its steps'.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DUP-15: The two tftest files repeat about 110 lines of mocks and overrides
 
@@ -702,7 +702,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Both files declare the same mock providers, override_data and most override_resource blocks. Every new resource that needs a plan-time value has to be added twice.
 - **Fix:** Move the shared overrides into `tests/mocks/aws.tfmock.hcl` (`mock_provider "aws" { source = "./tests/mocks" }`; .tfmock.hcl files accept override_* blocks) and keep only file-specific overrides inline.
 - **Evidence:** `diff` of the first 125 lines shows only the header comment and a few ordering differences.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### ERR-2: Concurrent recipe delete during cookbook add surfaces as a 500
 
@@ -711,7 +711,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** addRecipe resolves the recipe in resolveAddable (no lock) and then inserts the cookbook_entry. RecipeService.delete row-locks the recipe and deletes it. If the delete commits between resolve and insert (the insert's FK check blocks on the recipe row lock, then fails), the insert raises DataIntegrityViolationException. ProblemAdvice has no handler for it, so the client gets 500 internal_error instead of 404 recipe_not_found. Narrow window, no data loss.
 - **Fix:** Catch DataIntegrityViolationException around the entry insert in addRecipe and rethrow ApiException 404 recipe_not_found, or take a share lock on the recipe row inside resolveAddable. Add a two-thread IT.
 - **Evidence:** Read from code; locking order traced against V6 FKs (cookbook_entry.recipe_id ON DELETE CASCADE, no cookbook lock in RecipeService.delete). Not reproduced.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### ERR-3: No Retry after a failed load on some pages, inconsistent with the rest; a failed add leaves a created cookbook out of the list
 
@@ -721,7 +721,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Reuse the retry button pattern on those four pages; on accept failure keep the preview and show the error beside it; in add-to-cookbook createNew() push the row whenever state.made is set (state 'idle' if the add failed).
 - **Evidence:** Templates read; only retry-capable pages bind (click)="load()".
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-3-followups.md: Small cleanups / Frontend (page load error has no Retry; accept page; inline create in Add dialog)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### ERR-4: Revoke and reset buttons have no in-flight guard; copy failure is silent
 
@@ -731,7 +731,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Track busy ids (a Set signal) and disable the row's button while its request runs; in copy() set a visible 'Copy failed, select the link' status.
 - **Evidence:** Code read.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (revoke in-flight guard; copy failure feedback)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### ERR-5: backup.sh/restore.sh edge cases: stale header, partial S3 uploads, same-second collisions, silent media-delete failure
 
@@ -741,7 +741,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** (1) Fix the header comment, or upload the media archive first and the dump last so the dump marks a complete pair. (2) Refuse when the target name exists (`set -o noclobber` / check before mv). (3) Use `find … -delete && tar …` (no `;` and no stderr suppression) so a delete failure takes the existing 'media restore failed' branch.
 - **Evidence:** Code as cited.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Backups (failed media delete, same-second names, header comment)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### OPS-3: Stale-session WARN logged on every request until the user logs in again
 
@@ -751,7 +751,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Log at DEBUG, or WARN once per session id with a small bounded set. Better still, remove the unreadable attribute or the session so the log stops.
 - **Evidence:** Read at AUDIT_SHA. UnreadableSessionIT covers the logout behaviour, not the logging.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Sessions
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### OPS-4: cancel-in-progress also cancels a running publish on main
 
@@ -761,7 +761,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`.
 - **Evidence:** ci.yml:9-11.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / CI / cancel-in-progress
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### OPS-5: S3 backups live about twice the stated retention, and delete markers are never cleaned
 
@@ -771,7 +771,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Set `noncurrent_days = 1` (versioning only has to cover the overwrite window), or document 2×. Add a second rule with `expiration { expired_object_delete_marker = true }`. Update the tftest.
 - **Evidence:** storage.tf:126-132.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Backups / 2x retention, delete markers
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### OPS-6: aws-verify.sh hard-codes the origin subdomain and region
 
@@ -780,7 +780,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** The script checks `https://origin.$domain` and defaults to eu-west-1, but both are Terraform variables (origin_subdomain, region). With a non-default value, check 3 passes vacuously (the host does not exist) and the bucket checks fail.
 - **Fix:** Read them from `terraform output` (add an `origin_domain` output) or accept ORIGIN_DOMAIN/AWS_REGION and document both.
 - **Evidence:** aws-verify.sh:37 literal `origin.`.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-7: Authenticated users can create unlimited drafts, cookbooks and photos-less rows; listings are unpaged
 
@@ -789,7 +789,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Only uploads and logins are rate-limited. POST /api/recipes and POST /api/cookbooks have no per-user cap or limit, and /mine, profile and cookbook listings return every row. A script (or a retry loop, creation is not idempotent) can bloat the DB and make /mine arbitrarily large. Accounts are invite-only, so the risk is low.
 - **Fix:** Add a per-user cap (e.g. 1000 recipes, 100 cookbooks, 409) or a write limit in RateLimits; page /mine if the cap is large.
 - **Evidence:** Code read; RateLimits has no create bucket.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-8: Removing a recipe from someone else's cookbook is impossible for its author; PRIVATE and link reset do not withdraw it
 
@@ -798,7 +798,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** A PUBLISHED recipe added to another user's cookbook stays readable (text and photos) through that cookbook's link even after its author sets it PRIVATE and resets its share link; only deleting the recipe removes it. This matches the spec's 'accepted under the unlisted model', but a reviewer will notice the author has no revoke short of deletion, and recipes cannot be unpublished.
 - **Fix:** Either state it in the user-facing sharing text, or let publishedRows/grantingToken also require visibility = PUBLIC or author-in-cookbook. Product decision; no code change needed if accepted.
 - **Evidence:** Spec lines 98-101 and 127 read; code confirms entries ignore visibility.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-9: Session revocation after role change, password reset or deletion is best-effort; a failure only logs WARN
 
@@ -807,7 +807,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** Authorities are snapshotted into the session, and the only thing that revokes them is an after-commit invalidateAllSessions, which AfterTransaction swallows on failure. If that delete fails, a demoted admin keeps ROLE_ADMIN, or an attacker's session survives the victim's password reset. Because the 30-day timeout slides, it can survive indefinitely.
 - **Fix:** Delete the user's spring_session rows inside the same transaction (same DataSource: `delete from spring_session where principal_name = ?` via JdbcTemplate), or log at ERROR and retry. Optionally keep a per-user `sessions_valid_after` and check it in CurrentUser.
 - **Evidence:** PostCommitFailureIT exists for the logging path. No test covers a failed invalidation keeping access.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-10: Rate-limiter edge cases: a refund can hit the next window, success clears parallel failures, and malformed bodies aren't counted
 
@@ -817,7 +817,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** (1) Return the window start (a generation) from tryHit and refund only if it still matches. (2) In succeeded(), refund this reservation instead of clearing the key, or accept the current behaviour and document it. (3) Move the anonymous-auth check into a HandlerInterceptor or filter on the four anonymous POST paths, so it runs before binding.
 - **Evidence:** Read at AUDIT_SHA.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Rate limiter (bullets 1, 3, 6)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-11: Unsynced recipe text stays in localStorage after logout on a shared browser
 
@@ -826,7 +826,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** After logout the sweep keeps fresh entries (7-day TTL), tagged by user id. That is a deliberate data-loss safety net, but the tag only stops the app from re-applying another user's text; the plain JSON (private recipe titles, notes, steps) is readable from DevTools by the next person on the browser.
 - **Fix:** Document the trade-off in the README/spec; optionally, on an explicit user-initiated logout that flushed cleanly there is nothing left to keep, and on an unclean one ask whether to keep the text.
 - **Evidence:** Code read of sweep(); no clearing of the logged-out user's entries.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-12: Containers run without read-only root filesystem, dropped capabilities or no-new-privileges
 
@@ -835,7 +835,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** The app image runs as non-root (good), but no service sets `read_only`, `cap_drop` or `security_opt: no-new-privileges`. A reviewer checking container hardening will note it. A compromise of app or Caddy keeps a writable rootfs and the default capability set.
 - **Fix:** app: `read_only: true`, `tmpfs: [/tmp]` (the upload spool lives in java.io.tmpdir), `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`. caddy: the same with `cap_add: [NET_BIND_SERVICE]`. Then run smoke and https-smoke.
 - **Evidence:** No read_only/cap_drop/security_opt keys in any compose file.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-11: Missing or weak tests in the security/platform area
 
@@ -845,7 +845,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Add a @MockitoSpyBean PasswordEncoder verify(never()) in LoginRateLimitIT.accountLimited. Add an RateLimitsTest case with a 400-char IP. Add `.andExpect(status().isOk())` on actuator. Count 503s as limited in the concurrency IT. Add a 405 case to SpaFallbackIT, a @TestPropertySource base-url case to InviteIT/PasswordResetIT, and a /main-x.js Cache-Control assertion (with a test resource).
 - **Evidence:** grep for method_not_allowed / base-url / immutable in backend/src/test found no hits for 405, base-url or bundle caching.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Tests to add; docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Missing tests
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-12: Rate-limit gaps: account-limited login path not checked for hashing, IP key truncation untested, 10/10 concurrency assertion can flake on 503
 
@@ -855,7 +855,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Move the spy-based check into LoginRateLimitIT.accountLimited (or add a spy to the shared base). Add an ipKey truncation case to RateLimitsTest. Make the concurrency assertion tolerate busy: assert 401 + 503 <= 10 hashes and 429 count >= 10, or raise max-concurrent-hashes for that class.
 - **Evidence:** Read all three; BeansConfig HASH_WAIT = 10 s, max-concurrent-hashes = 4.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Tests to add (LoginRateLimitIT spy, IP-key truncation, concurrency IT exactly 10 and 10)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-13: Timing-based negative assertions (fixed sleeps, 1 s lock-wait inference)
 
@@ -865,7 +865,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** In the lock test poll pg_stat_activity (wait_event_type = 'Lock', query like 'update cookbook%') until the waiter appears, bounded by a 10 s deadline, then release. For the limiter tests poll the queue length/permit count instead of sleeping, if exposed.
 - **Evidence:** Read the three tests; full suite runs in about 58 s with no failures.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Tests to add (row-lock test infers blocking from a 1 s timeout)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-14: MediaIT partial-write test uses reflection and nulls; migration backfill test misplaced and leaks its schema on failure
 
@@ -875,7 +875,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Make the failing BlobStore a named static class with a public map accessor; build MediaService with Mockito mocks instead of nulls. Move migrationBackfillsExistingAvatarKeys to BaselineMigrationIT (or a MigrationIT), use JdbcTemplate, and drop the schema in finally. Delete MediaIT.oversizedUploadRendersFileTooLarge (covered over real HTTP by UploadTooLargeIT).
 - **Evidence:** Read MediaIT and MediaAccessIT in full.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups (MediaIT nulls; media backfill schema drop not in finally)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-15: Image size-limit boundaries untested (only far-over-cap inputs)
 
@@ -885,7 +885,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Header-only fixtures at exactly cap pixels (accepted past the cap check) and cap+1 (image_too_large) for the four format/cap combinations, as a parameterised test (TestImages already has the header builders).
 - **Evidence:** ImageProcessor constants at lines 32-36 versus test dimensions 20000x20000, 8000x7000.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups (250 MP boundary test)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-16: Blob-count helper hard-codes the storage path in two classes; Sessions.login hides failed logins
 
@@ -894,7 +894,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** MeIT and AvatarUploadLimitIT count directories under the literal 'target/test-media/img' while IntegrationTest defines that path as a property and MediaIT reads it via @Value: changing the property breaks two tests silently (before == after == 0). The shared media dir is never cleaned between classes, so counts are only comparable before/after within one test. Sessions.login returns null without any status check when the login fails, so a broken fixture shows up later as a confusing 401 or NPE from cookie(null).
 - **Fix:** Put blobCount() in a test helper that takes the @Value path (or give IntegrationTest a protected mediaRoot field). Add a strict Sessions.loginOrFail variant that asserts 200 and a non-null SESSION cookie and use it in setUp methods; keep the lenient one for tests that expect failure.
 - **Evidence:** grep target/test-media shows the literal in MeIT:69 and AvatarUploadLimitIT:32.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-17: Sleep-based negative assertions in the titles e2e
 
@@ -904,7 +904,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Replace the first sleep with an expect.poll / toHaveTitle with a short stable window assertion after waiting for the specific request (page.waitForResponse of the recipe GET plus networkidle of the title effect), and replace the second with waiting for the recipe heading then the 'load' of the logo/image requests; keep the console collector from the start of navigation.
 - **Evidence:** grep -n waitForTimeout e2e/tests: titles.spec.ts:17 and :40 are the only fixed sleeps in the suite.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Tests to add / console-clean e2e
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-18: Tests that cannot fail or assert little
 
@@ -913,7 +913,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** 'the project viewport applies' tests Playwright's own device config, not the app. The logout-then-login navigation check uses every() over a list that may be empty, so it is true even if the listener never fires. step-reorder's 'Step 3 moved to position 2' uses toBeAttached on a live region that is always attached. Several shell/profile specs assert only toBeTruthy() on a selector match (existence of a link), which survives broken hrefs/labels beyond the selector itself.
 - **Fix:** Drop the viewport test or move it to a config sanity check; assert navigations.length >= 0 intent explicitly (e.g. expect no 'navigate' events beyond '/'); assert live-region text with toHaveText; assert hrefs/labels instead of truthiness.
 - **Evidence:** walkthrough.spec.ts:12 asserts viewportSize against the project's own settings; toBeTruthy count in frontend specs is about 25.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-19: cloud-init round-trip tftest compares three files to themselves; count assertion is stale
 
@@ -923,7 +923,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Spell out the expected config.env text (built from the mocked values), daemon.json and the drop-in. Assert `length(write_files) == 14` and fix the message.
 - **Evidence:** core.tftest.hcl:456-458 map those paths to f.content.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Tests to add / tftest YAML round-trip
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### TEST-20: Drill's avatar_info leaks its temp file when curl fails
 
@@ -933,7 +933,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Create the file under $BACKUPS (already removed by cleanup), or `trap 'rm -f "$out"' RETURN`.
 - **Evidence:** Lines 58-64.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Tests to add / drill avatar_info temp file
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### VERB-1: Small cleanups: FQNs, mid-class constant, redundant queries, duplicate constants, test-only method
 
@@ -943,7 +943,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Move the constant to the top, import the types, rename the parameter, pass the Cookbook into entryDto, add shareToken to SummaryRow, delete the dead re-check, merge the constants, inline or move isProgressiveJpeg into the test.
 - **Evidence:** Read each site.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (MAX_PHOTOS); 2026-11-04-plan-3-followups.md: Small cleanups / Backend; 2026-11-05-plan-4-followups.md: Small cleanups / FeedService
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### VERB-2: Fully qualified names, duplicate and untidy imports in test sources
 
@@ -953,7 +953,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Run an organise-imports pass (IntelliJ or google-java-format with import ordering) over backend/src/test and replace inline qualified names with imports. Optionally add the formatter plugin check to the Maven build so it stays clean.
 - **Evidence:** Visual read of each file; duplicate import at MediaAccessIT lines 14 and 18.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (FQNs in S3BlobStoreIT, RecipePhotoBusyIT, MediaAccessIT, duplicate import in MediaAccessIT); 2026-11-04-plan-3-followups.md: Small cleanups (FQNs in CookbookIT/CookbookApiIT)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### VERB-3: Backup is re-parsed and re-serialised in full on every keystroke
 
@@ -963,7 +963,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Throttle to one write per ~250 ms (trailing) and force a synchronous write on pagehide/visibilitychange and before any request is sent; keep the other tabs' entries cached instead of re-parsing.
 - **Evidence:** Code read; sizes from the validator limits (backend RecipeValidator MAX_* constants).
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup / write() re-parses and re-serialises ...
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### VERB-4: `errorKey(toApiError(e))` is repeated 35 times
 
@@ -972,7 +972,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** 35 catch blocks do the same two-call conversion from an unknown error to an i18n key.
 - **Fix:** Add `errorKeyOf(e: unknown): string` to api-error.ts and use it; keep toApiError for callers that need status/fields.
 - **Evidence:** grep count 35 in non-spec code.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix · [ ] skip · [ ] later
 
 ### CONC-5: Editor backup/upload edge cases still open: false conflicts, silent quota loss, late upload lands on the wrong step
 
@@ -982,7 +982,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** (1) keep writerId in sessionStorage and do not auto-apply an entry written in the last few seconds by a different writer. (2) write the response version into the backup base after each successful save, and treat baseVersion === server.version-1 with identical content as 'already saved'. (3) on quota failure sweep, retry once, then show a quiet hint. (5) drop uploads in replace() (or key them by an epoch).
 - **Evidence:** Read editor-store.ts restore()/uploadPhoto()/replace(), unsaved-backup.write(), autosave.send().
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup (takeover; failed takeover write; quota write; reload with save in flight); Photos (upload finishing during a conflict)
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DATA-6: Restoring an older dump over a newer schema leaves an unbootable app
 
@@ -992,7 +992,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Before stopping the app, compare the dump's max flyway version (restore just `flyway_schema_history` into a temp schema, or `pg_restore -a -t flyway_schema_history -f -`) with the live one, and refuse with a clear message when the dump is older. Or recreate schema `public` in the same transaction by piping `pg_restore -f -` into `psql -1` after `DROP SCHEMA public CASCADE; CREATE SCHEMA public`.
 - **Evidence:** README:88 documents it as unsupported.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Backups / older dump over a newer schema
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### DUP-16: Listing rule (PUBLISHED + PUBLIC) is written three times
 
@@ -1002,7 +1002,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Express the feed with a RecipeRepository keyset query (JPQL or a Specification shared with listedByAuthor), or at minimum share the predicate constants; drop the redundant filter.
 - **Evidence:** Read the three queries; ix_recipe_feed (V9) matches the feed order.
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Small cleanups / FeedService
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### OPS-7: CI builds the image three times per PR, with no Maven cache reuse
 
@@ -1012,7 +1012,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Build the amd64 image once in a job with docker/build-push-action (`cache-from/to: type=gha`, `outputs: type=docker,dest=…`), upload it as an artifact and `docker load` it in e2e and smoke. Or at least give the compose builds a gha cache. Drop the duplicate install from either the workflow or e2e.sh (skip when `CI` is set).
 - **Evidence:** Dockerfile:16/19 cache mounts. ci.yml:67 and e2e.sh:34-35 both install.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / CI / --mount=type=cache isn't exported
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-13: Image processing has no run-time bound
 
@@ -1022,7 +1022,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Fix:** Run the task on a bounded executor with a future timeout (e.g. 20 s), release the permit and answer 503/413 on timeout, or lower MAX_PIXELS for PNG toward the WebP cap.
 - **Evidence:** Code read. Not measured.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Plan 5 / Image processing has no time bound
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### SEC-14: Setup is open to whoever reaches a fresh instance first, and reopens when the last user deletes their account
 
@@ -1031,7 +1031,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** POST /api/setup/admin is anonymous and needs no secret, so on a newly deployed public instance (AWS) anyone who gets there before the owner becomes admin. AccountService.delete clears instance_setup when the last user leaves, which reopens that window on a live, public URL.
 - **Fix:** Optionally require a one-time setup token: generate it at startup when setup is required, log it once, and have the setup page ask for it. Or document the window in the deploy runbook. Owner decision.
 - **Evidence:** Read at AUDIT_SHA. SetupIT covers only the race between two setups, not who is allowed to do setup.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ### TEST-21: e2e coverage gap: no password-reset or admin user-management flow
 
@@ -1040,7 +1040,7 @@ Tick one box per finding: **fix**, **skip** or **later**. Unticked findings foll
 - **Problem:** The reset-password page and admin users page (disable/delete actions) are exercised only by mocked unit specs; e2e only checks a non-admin cannot reach /admin/users. A wiring break between SPA, CSRF and backend (the kind the walkthrough already caught once for logout) would pass CI.
 - **Fix:** Add one e2e: admin creates a reset link for a user from /admin/users, the user opens it, sets a password and logs in with it; and one for an admin action on a user.
 - **Evidence:** grep -il 'reset' e2e/tests finds only walkthrough/auth-a11y mentions of the login form; no spec opens /admin/users as admin.
-- **Decision:** [ ] fix · [ ] skip · [ ] later
+- **Decision:** [ ] fix · [ ] skip · [x] later
 
 ## Closed or dismissed follow-ups (110)
 
