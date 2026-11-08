@@ -13,7 +13,8 @@ Self-hosted recipe app: Spring Boot 4 (Java 25) backend + Angular 22 frontend, s
 - Backend tests: `cd backend && ./mvnw verify` (needs Docker)
 - Frontend tests / build: `cd frontend && npx ng test --watch=false` / `npx ng build`
 - Frontend dev: `cd frontend && npx ng serve` (proxies `/api` to `localhost:8080`)
-- Browser e2e: `scripts/e2e.sh` · Smoke: `scripts/smoke.sh`
+- Browser e2e: `scripts/e2e.sh` · Smoke: `scripts/smoke.sh` · Multi-arch: `scripts/multiarch-check.sh`
+- `compose.yaml` is image-only (published image); scripts export `COMPOSE_FILE=compose.yaml:compose.build.yaml` to build locally
 - Locally Docker runs on Colima: `export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`
 
 CI (`.github/workflows/ci.yml`) runs backend, frontend, e2e and smoke on every PR.

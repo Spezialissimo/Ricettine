@@ -15,8 +15,7 @@ services:
       retries: 10
 
   app:
-    build: .
-    image: ghcr.io/spezialissimo/ricettine:latest
+    image: ghcr.io/spezialissimo/ricettine:${RICETTINE_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       db:

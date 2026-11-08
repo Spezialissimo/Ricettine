@@ -13,7 +13,7 @@ FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk AS backend
 WORKDIR /backend
 COPY backend/.mvn .mvn
 COPY backend/mvnw backend/pom.xml ./
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:resolve || true
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:go-offline
 COPY backend/src src
 COPY --from=frontend /frontend/dist/frontend/browser/ src/main/resources/static/
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -DskipTests package \
@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -DskipTests package \
 
 # --- Stage 3: runtime ---
 FROM eclipse-temurin:25-jre
+LABEL org.opencontainers.image.source="https://github.com/Spezialissimo/Ricettine"
 RUN useradd --system --uid 10001 --home-dir /app --create-home ricettine \
  && mkdir -p /data/media && chown -R ricettine:ricettine /data
 COPY --from=backend /app.jar /app/app.jar

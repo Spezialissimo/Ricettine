@@ -7,8 +7,10 @@ cd "$(dirname "$0")/.."
 export BASE_URL="${E2E_BASE_URL:-http://localhost:8080}"
 export E2E_COMPOSE_PROJECT="${E2E_COMPOSE_PROJECT:-ricettine-e2e}"
 TIMEOUT="${E2E_TIMEOUT:-180}"
-# compose.e2e.yaml lifts the per-IP rate limits (all browsers share one gateway IP)
-COMPOSE=(docker compose -f compose.yaml -f e2e/compose.e2e.yaml -p "$E2E_COMPOSE_PROJECT")
+# Exported so every nested compose call (including the restart spec) sees the same files.
+# compose.e2e.yaml lifts the per-IP rate limits (all browsers share one gateway IP).
+export COMPOSE_FILE=compose.yaml:compose.build.yaml:e2e/compose.e2e.yaml
+COMPOSE=(docker compose -p "$E2E_COMPOSE_PROJECT")
 
 cleanup() { "${COMPOSE[@]}" down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
