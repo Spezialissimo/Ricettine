@@ -125,22 +125,6 @@ button[disabled] {
   align-items: center;
   color: t.$accent;
 }
-.tabs {
-  display: flex;
-  gap: t.$space-2;
-  margin-bottom: t.$space-4;
-}
-.tabs a {
-  @include t.touch-target;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 t.$space-3;
-  color: t.$muted;
-}
-.tabs a.active {
-  color: t.$accent;
-  font-weight: 600;
-}
 ul.list {
   list-style: none;
   padding: 0;
