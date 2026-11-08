@@ -53,6 +53,21 @@ max_heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev
 [[ "$max_heap" =~ ^[0-9]+$ ]] || fail "could not read the JVM MaxHeapSize: $max_heap"
 [ $((max_heap * 100)) -le $((limit_bytes * 80)) ] || fail "JVM MaxHeapSize $max_heap exceeds 80% of the $limit_bytes byte memory limit"
 
+# Direct :8080 has no trusted proxy: a rotating X-Forwarded-For must not dodge the per-IP login limit (30).
+jar="$(mktemp)"
+curl -fsS -c "$jar" -o /dev/null "$BASE/api/setup/status"
+xsrf="$(awk '$6=="XSRF-TOKEN"{print $7}' "$jar")"
+rm -f "$jar"
+[ -n "$xsrf" ] || fail "no XSRF-TOKEN cookie"
+last=""
+for i in $(seq 1 31); do
+  last="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/auth/login" \
+    -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $xsrf" -H "Cookie: XSRF-TOKEN=$xsrf" \
+    -H "X-Forwarded-For: 192.0.2.$i" -H "Forwarded: for=198.51.100.$i" \
+    -d '{"email":"nobody-'"$i"'@example.com","password":"wrong-password-1"}')"
+done
+[ "$last" = 429 ] || fail "31st login with rotating X-Forwarded-For returned $last, expected 429 (forwarded headers trusted on direct :8080)"
+
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
     linux/arm64) want=aarch64 ;;

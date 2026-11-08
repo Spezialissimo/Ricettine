@@ -1,4 +1,4 @@
 # Plan 6 follow-ups
 
 ## PR A (security and ops quick wins)
-- Default `compose.yaml` publishes `:8080` directly. On Docker Desktop and Colima (VM networking) the app sees the VM gateway (RFC 1918) as the peer, so it counts as a trusted proxy and a client could still set `X-Forwarded-For` there. On native Linux Docker the real client address is preserved and the header is ignored. Local development only; production goes through Caddy. Consider documenting it in the README.
+- Trust in forwarded headers now follows the compose topology (`RICETTINE_TRUSTED_PROXIES`): direct `:8080` trusts no proxy; the Caddy overlays trust RFC 1918. The application.yml default (RFC 1918) still applies to dev and a bare `java -jar` run that is published directly, so do not expose that to the internet without a proxy. Native Linux is not safe by itself: IPv6 clients (docker-proxy), rootless Docker and localhost traffic arrive from a gateway address.

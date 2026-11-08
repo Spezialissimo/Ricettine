@@ -28,6 +28,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ricettine}
       # Set to your public URL in production, e.g. https://recipes.example.com
       RICETTINE_BASE_URL: ${RICETTINE_BASE_URL:-}
+      # Peers whose X-Forwarded-For is believed (regex). Default `(?!)` matches nothing: :8080 is published directly, so
+      # the peer is Docker's gateway, not a proxy. The Caddy overlays trust the Docker networks instead.
+      SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: ${RICETTINE_TRUSTED_PROXIES:-(?!)}
     volumes:
       - app-data:/data
     ports:
