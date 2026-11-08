@@ -25,7 +25,8 @@ class S3BlobStoreIT {
 		System.setProperty("aws.accessKeyId", "test");
 		System.setProperty("aws.secretAccessKey", "test");
 		String endpoint = "http://" + s3.getHost() + ":" + s3.getMappedPort(9090);
-		store = S3BlobStore.create("test", "us-east-1", endpoint, true);
+		store = S3BlobStore.create("test", "us-east-1", endpoint, true,
+				new S3BlobStore.S3Timeouts(java.time.Duration.ofSeconds(30), java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5)));
 		try (S3Client admin = S3Client.builder().region(software.amazon.awssdk.regions.Region.US_EAST_1)
 				.endpointOverride(java.net.URI.create(endpoint)).forcePathStyle(true).build()) {
 			admin.createBucket(CreateBucketRequest.builder().bucket("test").build());

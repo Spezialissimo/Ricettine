@@ -12,6 +12,10 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 16MB
+      # Uploads stream straight to disk (never held in heap) in a dedicated directory; UploadDirectoryConfig creates it
+      # at startup and re-creates it before each multipart request.
+      file-size-threshold: 0
+      location: ${java.io.tmpdir}/ricettine-uploads
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,6 +31,9 @@ spring:
     jdbc:
       initialize-schema: never
 server:
+  tomcat:
+    # Lets Tomcat drain an oversize upload so the client sees 413 instead of a broken pipe.
+    max-swallow-size: 16MB
   forward-headers-strategy: framework
   servlet:
     session:
@@ -59,3 +66,6 @@ ricettine:
       path: ./data/media
     s3:
       path-style: false
+      api-call-timeout: PT30S
+      api-call-attempt-timeout: PT10S
+      connection-timeout: PT5S
