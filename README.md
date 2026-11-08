@@ -20,6 +20,7 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | --- | --- | --- |
 | `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
 | `RICETTINE_VERSION` | `latest` | Image tag to run, e.g. `1.2.0`. See Upgrading. |
+| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 75% of it, so raise it for a large library rather than removing it. |
 | `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. **Only applied when the `db-data` volume is first created**: changing it later does not change the existing database's password (change it inside Postgres with `ALTER USER ricettine PASSWORD '...'` and then update the variable). |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/ricettine` | JDBC URL, if you use your own Postgres. |
 | `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `ricettine` | Database credentials. |

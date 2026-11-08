@@ -65,7 +65,7 @@
 - **Problem:** smoke.sh is the only stack script that sets no project name, so it uses compose's default (the directory name, `ricettine` in this checkout). README Quick start runs `docker compose up -d` in that same folder, which is the same project. Running scripts/smoke.sh (or multiarch-check.sh, which calls it twice) replaces the running app with a local build and its EXIT trap runs `docker compose down -v`, deleting the db-data and app-data volumes. That loses every recipe, user and photo. e2e.sh, https-smoke.sh and backup-restore-check.sh all set their own project name.
 - **Fix:** Add `export COMPOSE_PROJECT_NAME="${SMOKE_PROJECT:-ricettine-smoke}"` next to COMPOSE_FILE in smoke.sh, as backup-restore-check.sh does. Optionally add a guard to infra-check that every script calling `down -v` sets a project.
 - **Evidence:** `COMPOSE_FILE=compose.yaml:compose.build.yaml docker compose config` in the checkout prints `name: ricettine`. `grep COMPOSE_PROJECT\|-p scripts/*.sh` matches backup-restore-check, e2e and https-smoke but not smoke.sh.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ### SEC-1: Per-IP rate limits can be bypassed with a spoofed Forwarded or X-Forwarded-For header
 
@@ -74,7 +74,7 @@
 - **Problem:** server.forward-headers-strategy=framework installs Spring's ForwardedHeaderFilter. It trusts the RFC 7239 `Forwarded: for=` header and the leftmost X-Forwarded-For from any client and uses them as request.getRemoteAddr(), which keys the login-ip and anonymous-auth limiters. Caddy overwrites X-Forwarded-For but passes `Forwarded` through unchanged, and Spring reads `Forwarded` first. The default compose.yaml publishes :8080 directly, so there X-Forwarded-For alone is enough. So in every shipped deployment one client can rotate the header and get unlimited login attempts across accounts (password spraying). Only the 10/15 min per-account limit remains. The deploy/Caddyfile comment claims the IP is safe.
 - **Fix:** Use server.forward-headers-strategy=native, so Tomcat's RemoteIpValve trusts X-Forwarded-* only from server.tomcat.remoteip.internal-proxies and ignores `Forwarded`. Set internal-proxies to the compose network range. As defence in depth, add `header_up -Forwarded` (or `request_header -Forwarded`) to both Caddyfiles. Add an IT that sends 31 logins from one remote address with rotating `Forwarded`/X-Forwarded-For headers and expects a 429.
 - **Evidence:** Reproduced at AUDIT_SHA with a throwaway IT (IpRateLimitIT setup, login-ip limit 30, setRemoteAddr fixed at 10.77.0.1). 40 failed logins with rotating `Forwarded: for=192.0.2.N` all returned 401 and none returned 429. The same happened with rotating X-Forwarded-For. IpRateLimitIT.ipLimited shows the 31st attempt is 429 without the header. Spring Web 7.0.10 ForwardedHeaderUtils.parseForwardedFor checks `Forwarded` before X-Forwarded-For. Also reported independently by the ops reviewer (default compose exposes :8080 directly; deploy/Caddyfile does not strip Forwarded). Lead confirmed both in the code.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ## Medium (28)
 
@@ -122,7 +122,7 @@
 - **Problem:** Dockerfile sets MaxRAMPercentage=75 'from the container memory limit so it fits small hosts without OOM kills'. No compose file sets mem_limit or deploy.resources, so the container has no limit and the JVM sees the whole host. On the default t4g.small (2 GiB) the heap can grow to about 1.5 GiB. Add metaspace and threads, Postgres, Caddy, dockerd and the OS, and there is no room left. Under upload or decode load the kernel OOM killer can kill java or postgres. The smoke test checks only the flag value, not the effective max heap.
 - **Fix:** Set `mem_limit` on app (for example 1g in compose.aws.yaml, and a documented default or an env-driven `${RICETTINE_MEM_LIMIT:-1g}` in compose.yaml), so 75% applies to a real limit. Extend smoke.sh to assert MaxHeapSize under the limit (`-XX:+PrintFlagsFinal | grep MaxHeapSize`).
 - **Evidence:** `grep -n 'mem_limit\|resources' compose*.yaml` finds nothing. Dockerfile:31 comment states the intent.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ### SEC-2: Logout signs the user out locally even when the server call failed
 
@@ -141,7 +141,7 @@
 - **Fix:** Pin every `uses:` to a full commit SHA with a `# vX.Y.Z` comment, and add Dependabot (`package-ecosystem: github-actions`) to keep them current. Optionally add `provenance: mode=max` and `sbom: true` to build-push.
 - **Evidence:** `grep uses: .github/workflows/ci.yml` shows only @v3..@v6 tags. No .github/dependabot.yml.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / CI / Actions are pinned to major tags
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ### SEC-4: .gitignore does not cover .env or backups/, though the README tells users to create both in the repo root
 
@@ -150,7 +150,7 @@
 - **Problem:** README says to put settings, including POSTGRES_PASSWORD, in `.env` next to compose.yaml, and to run deploy/backup.sh from the repo root. The script's default BACKUP_DIR=./backups then fills with pg_dump files that hold emails and password hashes, plus media archives. Neither path is gitignored, so `git add -A` / `git commit -a` in a self-hosting checkout publishes secrets and personal data. .dockerignore also misses `.env`, `backups`, `e2e/node_modules`, `infra/terraform/.terraform`, `*.tfstate` and `.https-smoke-data.*` (BuildKit only sends COPY'd paths today, so that part is hygiene).
 - **Fix:** Add `.env`, `backups/` (and `*.dump`) to .gitignore. Mirror them, plus `infra/terraform/.terraform`, `*.tfstate*`, `e2e/node_modules` and `.https-smoke-data.*`, in .dockerignore.
 - **Evidence:** .gitignore lines 1-17 contain neither entry. backup.sh:30 `BACKUP_DIR="${BACKUP_DIR:-./backups}"`.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ### TEST-1: csrf() post-processor leaks a session-backed CSRF repository into the shared filter chain
 
@@ -550,7 +550,7 @@
 - **Problem:** Production code only calls tryHit, refund and clear. check() and hit() (jscpd flags hit as a clone of tryHit) are dead weight in a security class and are what RateLimiterTest mostly tests, so the paths production actually uses get less test coverage.
 - **Fix:** Delete check() and hit() and rewrite RateLimiterTest against tryHit/refund/clear.
 - **Evidence:** grep '\.(check|hit)\(' finds only RateLimiterTest.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR A) · [ ] skip · [ ] later
 
 ### DEAD-2: Dead code: six unused i18n keys and ~30 exports nothing imports
 

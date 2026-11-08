@@ -11,6 +11,8 @@ PLATFORM="${SMOKE_PLATFORM:-}"
 [ -z "$PLATFORM" ] || export DOCKER_DEFAULT_PLATFORM="$PLATFORM"
 # the local build overlay; the published compose.yaml alone is checked below
 export COMPOSE_FILE=compose.yaml:compose.build.yaml
+# own project name: `down -v` below must never touch a developer's real stack (and its volumes)
+export COMPOSE_PROJECT_NAME="${SMOKE_PROJECT:-ricettine-smoke}"
 
 cleanup() { docker compose down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -43,6 +45,13 @@ curl -fsS "$BASE/r/anything" | grep -q '<app-root' || fail "/r/anything is not i
 
 heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxRAMPercentage || true)"
 [[ "$heap" == *"= 75"* ]] || fail "JVM MaxRAMPercentage is not 75: $heap"
+
+# the JVM heap must leave headroom inside the container memory limit (mem_limit on app in compose.yaml)
+limit_bytes="$(docker inspect --format '{{.HostConfig.Memory}}' "$(docker compose ps -q app)")"
+[ "$limit_bytes" -gt 0 ] || fail "app has no memory limit (mem_limit)"
+max_heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxHeapSize | awk '{print $4}')"
+[[ "$max_heap" =~ ^[0-9]+$ ]] || fail "could not read the JVM MaxHeapSize: $max_heap"
+[ $((max_heap * 100)) -le $((limit_bytes * 80)) ] || fail "JVM MaxHeapSize $max_heap exceeds 80% of the $limit_bytes byte memory limit"
 
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in

@@ -17,6 +17,8 @@ services:
   app:
     image: ghcr.io/spezialissimo/ricettine:${RICETTINE_VERSION:-latest}
     restart: unless-stopped
+    # The JVM sizes its heap at 75% of this limit (MaxRAMPercentage); without a limit it would use the whole host.
+    mem_limit: ${RICETTINE_MEM_LIMIT:-1g}
     depends_on:
       db:
         condition: service_healthy

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 /**
  * In-memory fixed-window counter per key. Keys live in an access-ordered LRU capped at {@code maxKeys}, so key churn
- * (e.g. random emails or IPs) cannot exhaust memory. {@link #check} does not count; {@link #hit} does.
+ * (e.g. random emails or IPs) cannot exhaust memory. {@link #tryHit} counts a hit unless the key is at its limit.
  */
 public final class RateLimiter {
 
@@ -41,18 +41,6 @@ public final class RateLimiter {
 		};
 	}
 
-	/** Time until the window resets when {@code key} is at its limit, else empty. Does not count. */
-	public Optional<Duration> check(String key) {
-		synchronized (windows) {
-			long now = clock.millis();
-			Window w = windows.get(key);
-			if (w == null || expired(w, now) || w.count < limit) {
-				return Optional.empty();
-			}
-			return Optional.of(Duration.ofMillis(w.startMillis + windowMillis - now));
-		}
-	}
-
 	/** Atomically counts a hit unless {@code key} is at its limit; then returns the wait and does not count. */
 	public Optional<Duration> tryHit(String key) {
 		synchronized (windows) {
@@ -77,18 +65,6 @@ public final class RateLimiter {
 			if (w != null && !expired(w, clock.millis()) && w.count > 0) {
 				w.count--;
 			}
-		}
-	}
-
-	public void hit(String key) {
-		synchronized (windows) {
-			long now = clock.millis();
-			Window w = windows.get(key);
-			if (w == null || expired(w, now)) {
-				w = new Window(now);
-				windows.put(key, w);
-			}
-			w.count++;
 		}
 	}
 
