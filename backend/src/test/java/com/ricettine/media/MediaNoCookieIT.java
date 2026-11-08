@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.User;
 import jakarta.servlet.http.Cookie;
 import java.util.Set;
@@ -24,7 +23,7 @@ class MediaNoCookieIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		User u = accounts.create(new NewAccountRequest("o@x.com", Sessions.PASSWORD, "owner", "Owner"), true);
+		User u = data.account("o@x.com", "owner", "Owner", true);
 		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), u.getId(),
 				MediaKind.AVATAR, null);
 		url = media.url(id, ImageVariant.AVATAR);

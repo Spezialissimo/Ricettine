@@ -9,8 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.ProcessingLimiter;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -50,8 +48,7 @@ class RecipePhotoBusyIT extends IntegrationTest {
 
 	@Test
 	void uploadBytesAreNotReadUntilAPermitIsHeld() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		Cookie me = Sessions.login(mvc, "me@x.com");
+		Cookie me = data.user("me@x.com", "mario", "Me", true);
 		String id = json.readTree(mvc.perform(post("/api/recipes").with(csrf()).cookie(me))
 			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
 
@@ -86,8 +83,7 @@ class RecipePhotoBusyIT extends IntegrationTest {
 
 	@Test
 	void uploadWhileAllPermitsAreHeldIs503Busy() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		Cookie me = Sessions.login(mvc, "me@x.com");
+		Cookie me = data.user("me@x.com", "mario", "Me", true);
 		String id = json.readTree(mvc.perform(post("/api/recipes").with(csrf()).cookie(me))
 			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
 

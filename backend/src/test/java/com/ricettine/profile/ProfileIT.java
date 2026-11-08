@@ -12,8 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
@@ -41,10 +39,8 @@ class ProfileIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice A"), true);
-		accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bob", "Bob B"), false);
-		a = Sessions.login(mvc, "a@x.com");
-		b = Sessions.login(mvc, "b@x.com");
+		a = data.user("a@x.com", "alice", "Alice A", true);
+		b = data.user("b@x.com", "bob", "Bob B", false);
 
 		pubPublished = recipe(a, "PUBLIC", true);
 		privPublished = recipe(a, "PRIVATE", true);

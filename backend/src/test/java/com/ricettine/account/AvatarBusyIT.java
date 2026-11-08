@@ -7,8 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.ProcessingLimiter;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -46,8 +44,7 @@ class AvatarBusyIT extends IntegrationTest {
 
 	@Test
 	void avatarUploadWaitsForSlotBeforeReading() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		Cookie me = Sessions.login(mvc, "me@x.com");
+		Cookie me = data.user("me@x.com", "mario", "Me", true);
 
 		CountDownLatch held = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);

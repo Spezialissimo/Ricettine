@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.User;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +44,7 @@ class MediaAccessIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		owner = accounts.create(new NewAccountRequest("o@x.com", Sessions.PASSWORD, "owner", "Owner"), true);
+		owner = data.account("o@x.com", "owner", "Owner", true);
 	}
 
 	@Test
@@ -60,7 +59,7 @@ class MediaAccessIT extends IntegrationTest {
 	/** RECIPE media: the owner gets it privately cached; another user and an anonymous caller get 404. */
 	@Test
 	void recipeMediaIsOwnerOnly() throws Exception {
-		accounts.create(new NewAccountRequest("x@x.com", Sessions.PASSWORD, "xother", "X"), false);
+		data.account("x@x.com", "xother", "X", false);
 		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.THUMB)), owner.getId(), MediaKind.RECIPE, null);
 		var ownerCookie = Sessions.login(mvc, "o@x.com");
 		mvc.perform(get(media.url(id, ImageVariant.THUMB)).cookie(ownerCookie)).andExpect(status().isOk())

@@ -6,8 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +14,8 @@ class ProfileRateLimitIT extends IntegrationTest {
 
 	@Test
 	void profileReadsLimitedPerUser() throws Exception {
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), true);
-		accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bob", "Bob"), false);
-		Cookie a = Sessions.login(mvc, "a@x.com");
-		Cookie b = Sessions.login(mvc, "b@x.com");
+		Cookie a = data.user("a@x.com", "alice", "Alice", true);
+		Cookie b = data.user("b@x.com", "bob", "Bob", false);
 		for (int i = 0; i < 120; i++) {
 			mvc.perform(get("/api/users/bob/profile").cookie(a)).andExpect(status().isOk());
 		}

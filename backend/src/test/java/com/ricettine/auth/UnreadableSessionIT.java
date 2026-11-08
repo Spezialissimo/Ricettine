@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +15,7 @@ class UnreadableSessionIT extends IntegrationTest {
 
 	@Test
 	void unreadableSessionMeansLoggedOut() throws Exception {
-		accounts.create(new NewAccountRequest("u@x.com", Sessions.PASSWORD, "unreadable", "U"), false);
-		Cookie cookie = Sessions.login(mvc, "u@x.com");
+		Cookie cookie = data.user("u@x.com", "unreadable", "U", false);
 		mvc.perform(get("/api/me").cookie(cookie)).andExpect(status().isOk());
 
 		int rows = jdbc.update("update spring_session_attributes set attribute_bytes = ?", new byte[] {0, 1});

@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,12 +26,9 @@ abstract class CookbookIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUpUsers() throws Exception {
-		accounts.create(new NewAccountRequest("owner@x.com", Sessions.PASSWORD, "mario", "Mario"), true);
-		accounts.create(new NewAccountRequest("bea@x.com", Sessions.PASSWORD, "bea1", "Bea"), false);
-		accounts.create(new NewAccountRequest("carl@x.com", Sessions.PASSWORD, "carl1", "Carl"), false);
-		owner = Sessions.login(mvc, "owner@x.com");
-		bea = Sessions.login(mvc, "bea@x.com");
-		carl = Sessions.login(mvc, "carl@x.com");
+		owner = data.user("owner@x.com", "mario", "Mario", true);
+		bea = data.user("bea@x.com", "bea1", "Bea", false);
+		carl = data.user("carl@x.com", "carl1", "Carl", false);
 	}
 
 	JsonNode read(MvcResult r) throws Exception {

@@ -11,8 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,10 +35,8 @@ class PublicRecipeIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Mario R"), true);
-		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "other1", "Other"), false);
-		me = Sessions.login(mvc, "me@x.com");
-		other = Sessions.login(mvc, "other@x.com");
+		me = data.user("me@x.com", "mario", "Mario R", true);
+		other = data.user("other@x.com", "other1", "Other", false);
 	}
 
 	JsonNode recipe(MvcResult r) throws Exception {

@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.QuietSqlErrors;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -39,9 +38,8 @@ class MeIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "taken", "Other"), false);
-		cookie = Sessions.login(mvc, "admin@x.com");
+		cookie = data.user("admin@x.com", "boss", "Boss", true);
+		data.account("other@x.com", "taken", "Other", false);
 	}
 
 	private static String key(String url) {

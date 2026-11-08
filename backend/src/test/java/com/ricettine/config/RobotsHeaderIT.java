@@ -6,8 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.User;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
@@ -46,7 +44,7 @@ class RobotsHeaderIT extends IntegrationTest {
 
 	@Test
 	void mediaAndActuatorCarryIt() throws Exception {
-		User u = accounts.create(new NewAccountRequest("o@x.com", Sessions.PASSWORD, "owner", "Owner"), true);
+		User u = data.account("o@x.com", "owner", "Owner", true);
 		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), u.getId(),
 				MediaKind.AVATAR, null);
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isOk())

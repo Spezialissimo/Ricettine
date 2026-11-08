@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -41,8 +40,8 @@ class PostCommitFailureIT extends IntegrationTest {
 
 	@Test
 	void deletionSucceedsAndSessionsDieEvenIfBlobDeleteThrows() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		User u = accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "boss2", "Boss2"), true);
+		data.account("admin@x.com", "boss", "Boss", true);
+		User u = data.account("b@x.com", "boss2", "Boss2", true);
 		Cookie c = Sessions.login(mvc, "b@x.com");
 		Cookie c2 = Sessions.login(mvc, "b@x.com");
 		upload(c, TestImages.orientation6(), 200);
@@ -60,8 +59,7 @@ class PostCommitFailureIT extends IntegrationTest {
 
 	@Test
 	void avatarReplaceSucceedsEvenIfOldBlobDeleteThrows() throws Exception {
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), true);
-		Cookie c = Sessions.login(mvc, "a@x.com");
+		Cookie c = data.user("a@x.com", "alice", "Alice", true);
 		upload(c, TestImages.orientation6(), 200);
 		doThrow(new IllegalStateException("s3 down")).when(blobs).delete(anyString());
 		mvc.perform(multipart("/api/me/avatar").file(new MockMultipartFile("file", "b.png", "image/png",

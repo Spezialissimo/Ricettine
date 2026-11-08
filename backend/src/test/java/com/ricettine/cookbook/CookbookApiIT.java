@@ -11,8 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import jakarta.servlet.http.Cookie;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -32,10 +30,8 @@ class CookbookApiIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "other1", "Other"), false);
-		me = Sessions.login(mvc, "me@x.com");
-		other = Sessions.login(mvc, "other@x.com");
+		me = data.user("me@x.com", "mario", "Me", true);
+		other = data.user("other@x.com", "other1", "Other", false);
 	}
 
 	JsonNode read(MvcResult r) throws Exception {

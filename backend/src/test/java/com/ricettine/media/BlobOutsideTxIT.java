@@ -13,8 +13,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -49,8 +47,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		me = Sessions.login(mvc, "me@x.com");
+		me = data.user("me@x.com", "mario", "Me", true);
 	}
 
 	@AfterEach

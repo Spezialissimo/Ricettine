@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.QuietSqlErrors;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.common.Tokens;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ class InviteIT extends IntegrationTest {
 
 	@BeforeEach
 	void clean() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", "correct-horse-1", "boss", "Boss"), true);
+		data.account("admin@x.com", "boss", "Boss", true);
 		admin = login("admin@x.com");
 	}
 

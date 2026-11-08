@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.User;
 import com.ricettine.common.OneTimeToken;
 import com.ricettine.common.OneTimeTokenRepository;
@@ -35,9 +34,8 @@ class PasswordResetIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		member = accounts.create(new NewAccountRequest("m@x.com", Sessions.PASSWORD, "member", "Member"), false);
-		admin = Sessions.login(mvc, "admin@x.com");
+		admin = data.user("admin@x.com", "boss", "Boss", true);
+		member = data.account("m@x.com", "member", "Member", false);
 	}
 
 	private String createLink(UUID userId) throws Exception {
@@ -89,7 +87,7 @@ class PasswordResetIT extends IntegrationTest {
 		String other = Tokens.newToken();
 		tokenRepo.saveAndFlush(new OneTimeToken(TokenPurpose.PASSWORD_RESET.name(), Tokens.hash(other),
 				member.getId(), null, Instant.now().plusSeconds(3600)));
-		User bystander = accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bystander", "B"), false);
+		User bystander = data.account("b@x.com", "bystander", "B", false);
 		String bystanderLink = createLink(bystander.getId());
 
 		assertThat(redeem(used, "fresh-password-9").getResponse().getStatus()).isEqualTo(204);

@@ -11,8 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -38,12 +36,9 @@ class CookbookCoverIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Mario"), true);
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "author1", "Author"), false);
-		accounts.create(new NewAccountRequest("s@x.com", Sessions.PASSWORD, "stranger", "Stranger"), false);
-		owner = Sessions.login(mvc, "me@x.com");
-		author = Sessions.login(mvc, "a@x.com");
-		stranger = Sessions.login(mvc, "s@x.com");
+		owner = data.user("me@x.com", "mario", "Mario", true);
+		author = data.user("a@x.com", "author1", "Author", false);
+		stranger = data.user("s@x.com", "stranger", "Stranger", false);
 		cb = json.readTree(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(owner)
 			.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Dinners\"}"))
 			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();

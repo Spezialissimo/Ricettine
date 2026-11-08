@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -41,7 +40,7 @@ class AvatarUploadLimitIT extends IntegrationTest {
 
 	@Test
 	void oversizedAvatarIs413WithCodeAndNoBlob() throws Exception {
-		accounts.create(new NewAccountRequest("big@x.com", Sessions.PASSWORD, "bigger", "Big"), false);
+		data.account("big@x.com", "bigger", "Big", false);
 		HttpClient http = HttpClient.newHttpClient();
 		String base = "http://localhost:" + port;
 

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -55,7 +54,7 @@ class UploadTooLargeIT extends IntegrationTest {
 	}
 
 	private String upload(byte[] bytes) {
-		accounts.create(new NewAccountRequest("big@x.com", Sessions.PASSWORD, "bigupload", "Big"), false);
+		data.account("big@x.com", "bigupload", "Big", false);
 		RestClient client = RestClient.builder().baseUrl("http://localhost:" + port).build();
 
 		String xsrf = cookieValue(client.get().uri("/api/setup/status")

@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.account.User;
 import com.ricettine.account.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -32,8 +31,8 @@ class AdminRoleIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		boss = accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		member = accounts.create(new NewAccountRequest("m@x.com", Sessions.PASSWORD, "member", "Member"), false);
+		boss = data.account("admin@x.com", "boss", "Boss", true);
+		member = data.account("m@x.com", "member", "Member", false);
 		admin = Sessions.login(mvc, "admin@x.com");
 	}
 
