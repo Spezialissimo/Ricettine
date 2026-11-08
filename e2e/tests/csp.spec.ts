@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { apiPublishRecipe, createRecipe, newUserPage, test, pickPhoto } from '../helpers';
+import { apiPublishRecipe, createRecipe, newUserPage, pickPhoto, test } from '../helpers';
 
 // Chromium words violations "... violates the following Content Security Policy directive ..."; the header name is hyphenated.
 const CSP_MESSAGE = /Content[- ]Security[- ]Policy/i;

@@ -1,8 +1,7 @@
-import { Browser, Page, TestInfo, expect } from '@playwright/test';
-import { newContext } from './test';
+import { Browser, BrowserContext, Page, TestInfo, expect } from '@playwright/test';
 import { expectSaved } from './ui';
 
-export { newContext, test } from './test';
+export { test } from './test';
 export * from './ui';
 
 /** The administrator created once by auth.setup.ts and shared by every project. */
@@ -26,6 +25,16 @@ export function person(testInfo: TestInfo, tag: string): Person {
     displayName: `${tag} ${project} ${stamp}`,
     password: 'e2e-user-password-1',
   };
+}
+
+/**
+ * A fresh browser context configured exactly like the current project (viewport, touch, UA). Every spec
+ * makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
+ * made through `browser.newContext`; `test` (./test.ts) closes them when the test ends.
+ */
+export function newContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
+  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
+  return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
 }
 
 /** "Landed on home": the feed at `/` and the user's display name in the shell. */

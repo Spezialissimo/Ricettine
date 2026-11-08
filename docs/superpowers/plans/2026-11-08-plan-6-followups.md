@@ -28,3 +28,8 @@
 - OPS-2: S3 request metrics on `db/` bill as custom CloudWatch metrics (about 0.30 USD per month); inside the 25 USD budget default but not zero.
 - DATA-2: versioning also applies to avatars and photos replaced in place; storage grows by what is deleted within `backup_retention_days`. There is no tested restore procedure for photos beyond the documented `list-object-versions` steps (never run against real AWS).
 - The Terraform has still never been applied; the `aws_s3_bucket_metric` resource and the alarm dimensions (`BucketName`, `FilterId`) are checked by mock tests only.
+
+## PR G (frontend and e2e quality)
+
+- TEST-9's premise is only half true on Playwright 1.64: `trace: 'retain-on-failure'` and `screenshot: 'only-on-failure'` already cover contexts made with `browser.newContext` (checked with a throwaway spec: a failing test with a manual context keeps `trace.zip` and a screenshot, and starting tracing again by hand throws "Tracing has been already started"). What was real is the leak: such contexts are never closed. PR G adds a `test` in `e2e/helpers/test.ts` whose auto fixture closes the contexts a test opened, pass or fail, and drops the manual end-of-test `close()` calls.
+- CONS-6: the editor used to map an unknown field code to "This value is not valid"; it now uses the shared `fieldErrorKey`, which maps it to `errors.validation_failed`. Server field codes are all in `KNOWN_FIELD_ERROR_CODES`, so this only matters for a future code.

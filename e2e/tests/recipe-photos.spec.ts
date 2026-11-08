@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Locator, expect } from '@playwright/test';
-import { FIXTURE_PHOTO, createRecipe, pickPhoto, expectSaved, newContext, newUserPage, test } from '../helpers';
+import { FIXTURE_PHOTO, createRecipe, expectSaved, newContext, newUserPage, pickPhoto, test } from '../helpers';
 
 /** Desktop drop: dragenter/dragover/drop with a DataTransfer carrying the fixture bytes. */
 async function dropFile(target: Locator) {
