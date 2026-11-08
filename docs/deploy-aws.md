@@ -195,7 +195,16 @@ Not built yet, in rough order of value:
    aws s3 rm s3://ricettine-media-<account> --recursive
    aws s3 rm s3://ricettine-backups-<account> --recursive
    ```
-   The backups bucket is versioned: also remove old versions and delete markers (S3 console "Empty bucket" does this).
+   Both buckets are versioned, and `--recursive` only adds delete markers: `terraform destroy` still fails with `BucketNotEmpty` while old versions and delete markers remain. Empty each bucket completely (the S3 console "Empty bucket" does this, versions included), or remove every version and delete marker of both the media and the backups bucket:
+   ```
+   for b in ricettine-media-<account> ricettine-backups-<account>; do
+     aws s3api list-object-versions --bucket "$b" --output json \
+       --query '{Objects: [Versions, DeleteMarkers][][].{Key: Key, VersionId: VersionId}}' > /tmp/versions.json
+     # skip a bucket whose list is empty ("Objects": null), then:
+     aws s3api delete-objects --bucket "$b" --delete file:///tmp/versions.json
+   done
+   ```
+   `delete-objects` takes at most 1000 keys per call: repeat until `list-object-versions` returns nothing.
 3. The data volume has `prevent_destroy = true`. Remove that line from `aws_ebs_volume.data` in `compute.tf` (and the matching check in `scripts/infra-check.sh` if you keep the change), then `terraform destroy -var-file=terraform.tfvars`.
 4. At the registrar, remove the custom nameservers (or let the domain expire).
 5. Check the Billing console the next day: nothing should still be charging (Route 53 zone, Elastic IP, EBS snapshots, CloudFront).
