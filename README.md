@@ -52,6 +52,10 @@ Caddy has **no access logs on purpose**: invite, password-reset and share tokens
 
 If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, and disable access logs for the same reason.
 
+## Hosting on AWS
+
+`infra/terraform/` builds a small, EU-hosted stack (EC2, Route 53, CloudFront, S3) from scratch. Setup, first deploy, upgrades, restore and teardown are in [docs/deploy-aws.md](docs/deploy-aws.md).
+
 ## Upgrading
 
 Images are published by CI to `ghcr.io/spezialissimo/ricettine` on every push to `main` (`latest`, `sha-...`) and on `v*` tags (semver), for amd64 and arm64. To upgrade:

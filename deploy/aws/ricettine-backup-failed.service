@@ -1,0 +1,7 @@
+[Unit]
+Description=Email an alert that the Ricettine backup failed
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/ricettine/config.env
+ExecStart=/opt/ricettine/deploy/aws/backup-failed.sh
