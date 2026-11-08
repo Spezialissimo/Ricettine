@@ -13,41 +13,38 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
-import com.ricettine.Sessions;
 import jakarta.servlet.http.Cookie;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
-import tools.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 class MediaAccessIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired MediaService media;
 	@Autowired BlobStore blobs;
-	@Autowired ObjectMapper json;
 
 	User owner;
 
 	@BeforeEach
 	void setUp() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 		owner = accounts.create(new NewAccountRequest("o@x.com", Sessions.PASSWORD, "owner", "Owner"), true);
 	}
 
@@ -115,7 +112,7 @@ class MediaAccessIT extends IntegrationTest {
 		mvc.perform(get(url).param("s", shareToken(r[0])).header("If-None-Match", etag))
 				.andExpect(status().isNotModified()).andExpect(header().string("ETag", etag))
 				.andExpect(header().string("Cache-Control", "private, no-cache"))
-				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes(new byte[0]));
+				.andExpect(MockMvcResultMatchers.content().bytes(new byte[0]));
 		mvc.perform(get(url).param("s", shareToken(r[0]))).andExpect(status().isNotFound());
 	}
 
@@ -160,14 +157,14 @@ class MediaAccessIT extends IntegrationTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"shareToken\":\"" + token + "\"}"))
 				.andExpect(status().isCreated());
 		String cbToken = jdbc.queryForObject("select share_token from cookbook where id = ?::uuid", String.class, cb);
-		java.util.List<String> cacheControls = new java.util.ArrayList<>();
+		List<String> cacheControls = new ArrayList<>();
 		cacheControls.add(mvc.perform(get(url).cookie(cookie)).andExpect(status().isOk()).andReturn().getResponse()
 				.getHeader("Cache-Control"));
 		cacheControls.add(mvc.perform(get(url).param("s", token)).andExpect(status().isOk()).andReturn().getResponse()
 				.getHeader("Cache-Control"));
 		cacheControls.add(mvc.perform(get(url).param("c", cbToken)).andExpect(status().isOk()).andReturn()
 				.getResponse().getHeader("Cache-Control"));
-		mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
+		mvc.perform(multipart(HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
 				.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
 				.with(csrf()).cookie(cookie)).andExpect(status().isOk());
 		String cover = jdbc.queryForObject("select cover_media_id from cookbook where id = ?::uuid", String.class, cb);
@@ -180,7 +177,7 @@ class MediaAccessIT extends IntegrationTest {
 		String avatar = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)),
 				owner.getId(), MediaKind.AVATAR, null);
 		mvc.perform(get(media.url(avatar, ImageVariant.AVATAR))).andExpect(header().string("Cache-Control",
-				org.hamcrest.Matchers.startsWith("public")));
+				Matchers.startsWith("public")));
 	}
 
 	@Test
@@ -202,7 +199,7 @@ class MediaAccessIT extends IntegrationTest {
 	void twoPoliciesForOneKindFailFast() {
 		MediaAccessPolicy p = new MediaAccessPolicy() {
 			public MediaKind kind() { return MediaKind.AVATAR; }
-			public Optional<String> cacheControl(Media m, jakarta.servlet.http.HttpServletRequest req) { return Optional.empty(); }
+			public Optional<String> cacheControl(Media m, HttpServletRequest req) { return Optional.empty(); }
 		};
 		assertThatThrownBy(() -> MediaController.policiesByKind(List.of(p, new AvatarAccessPolicy())))
 				.isInstanceOf(IllegalStateException.class).hasMessageContaining("AVATAR");

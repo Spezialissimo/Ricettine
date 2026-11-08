@@ -13,33 +13,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.web.support.WebTestUtils;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class PublicRecipeIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
-	@Autowired org.springframework.web.context.WebApplicationContext wac;
+	@Autowired WebApplicationContext wac;
 
 	Cookie me;
 	Cookie other;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Mario R"), true);
 		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "other1", "Other"), false);
 		me = Sessions.login(mvc, "me@x.com");
@@ -81,7 +78,7 @@ class PublicRecipeIT extends IntegrationTest {
 		return jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, id);
 	}
 
-	org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder reset(String id, Cookie who, long v) {
+	MockHttpServletRequestBuilder reset(String id, Cookie who, long v) {
 		var req = post("/api/recipes/" + id + "/share-link/reset").with(csrf())
 			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + v + "}");
 		return who == null ? req : req.cookie(who);
@@ -157,9 +154,9 @@ class PublicRecipeIT extends IntegrationTest {
 		String t = token(published("PRIVATE"));
 		// csrf() in earlier requests leaves a session-backed CSRF repository in the shared filter chain
 		// (test-support artifact); put the production cookie repository back before measuring.
-		org.springframework.security.test.web.support.WebTestUtils.setCsrfTokenRepository(
-				new org.springframework.mock.web.MockHttpServletRequest(wac.getServletContext()),
-				org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse());
+		WebTestUtils.setCsrfTokenRepository(
+				new MockHttpServletRequest(wac.getServletContext()),
+				CookieCsrfTokenRepository.withHttpOnlyFalse());
 		int sessions = jdbc.queryForObject("select count(*) from spring_session", Integer.class);
 		MvcResult r = mvc.perform(get("/api/r/" + t)).andExpect(status().isOk()).andReturn();
 		assertThat(r.getResponse().getCookie("SESSION")).isNull();

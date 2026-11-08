@@ -15,33 +15,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import tools.jackson.databind.ObjectMapper;
 
 class UploadLimitsIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@MockitoSpyBean BlobStore blobs;
 
 	byte[] jpeg = TestImages.plainJpeg(1, 1);
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 	}
 
 	Cookie user(String tag, boolean admin) throws Exception {

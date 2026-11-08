@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -22,18 +21,14 @@ import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class CookbookCoverIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@Autowired BlobStore blobs;
 
 	Cookie owner;
@@ -43,8 +38,6 @@ class CookbookCoverIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Mario"), true);
 		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "author1", "Author"), false);
 		accounts.create(new NewAccountRequest("s@x.com", Sessions.PASSWORD, "stranger", "Stranger"), false);
@@ -59,7 +52,7 @@ class CookbookCoverIT extends IntegrationTest {
 	}
 
 	ResultActions put(Cookie who, byte[] bytes) throws Exception {
-		return mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
+		return mvc.perform(multipart(HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
 			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", bytes)).with(csrf()).cookie(who));
 	}
 

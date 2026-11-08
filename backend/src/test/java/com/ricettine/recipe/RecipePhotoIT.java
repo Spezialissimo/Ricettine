@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -24,17 +23,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class RecipePhotoIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@Autowired BlobStore blobs;
 	@Autowired OrphanMediaCleanup orphans;
 
@@ -43,8 +37,6 @@ class RecipePhotoIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
 		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "other1", "Other"), false);
 		me = Sessions.login(mvc, "me@x.com");

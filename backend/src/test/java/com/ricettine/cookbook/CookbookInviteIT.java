@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ricettine.Sessions;
+import com.ricettine.account.AccountDtos;
 import com.ricettine.common.Tokens;
 import java.util.ArrayList;
 import java.util.List;
@@ -123,8 +125,8 @@ class CookbookInviteIT extends CookbookIT {
 	void authorsFullKeepsInvite() throws Exception {
 		String id = cookbook(owner);
 		for (int i = 0; i < 20; i++) {
-			accounts.create(new com.ricettine.account.AccountDtos.NewAccountRequest("a" + i + "@x.com",
-					com.ricettine.Sessions.PASSWORD, "author" + i, "A" + i), false);
+			accounts.create(new AccountDtos.NewAccountRequest("a" + i + "@x.com",
+					Sessions.PASSWORD, "author" + i, "A" + i), false);
 			jdbc.update("insert into cookbook_author (cookbook_id, user_id, joined_at) values (?, ?, now())",
 					UUID.fromString(id), userId("author" + i));
 		}

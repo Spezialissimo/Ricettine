@@ -19,16 +19,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class SetupIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
 	@Autowired UserRepository userRepository;
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 	}
 
 	private static String body(String email, String username, String password) {

@@ -9,18 +9,13 @@ import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.common.ApiException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class AccountServiceIT extends IntegrationTest {
 
-	@Autowired AccountService accounts;
-	@Autowired JdbcTemplate jdbc;
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 	}
 
 	private static NewAccountRequest req(String email, String username) {

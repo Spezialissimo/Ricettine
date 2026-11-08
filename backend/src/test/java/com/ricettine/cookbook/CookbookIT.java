@@ -10,24 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /** Shared setup for the co-author ITs: owner "mario", users "bea" and "carl". */
 abstract class CookbookIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 
 	Cookie owner;
 	Cookie bea;
@@ -35,8 +28,6 @@ abstract class CookbookIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUpUsers() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("owner@x.com", Sessions.PASSWORD, "mario", "Mario"), true);
 		accounts.create(new NewAccountRequest("bea@x.com", Sessions.PASSWORD, "bea1", "Bea"), false);
 		accounts.create(new NewAccountRequest("carl@x.com", Sessions.PASSWORD, "carl1", "Carl"), false);

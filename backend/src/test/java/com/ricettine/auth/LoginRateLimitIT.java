@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.common.MutableClock;
 import java.time.Duration;
 import java.util.UUID;
@@ -20,7 +19,6 @@ import org.springframework.test.web.servlet.MvcResult;
 /** Per-account login limit: 10 failures per 15 minutes, counted for unknown emails too. */
 class LoginRateLimitIT extends IntegrationTest {
 
-	@Autowired AccountService accounts;
 	@Autowired MutableClock clock;
 
 	@AfterEach

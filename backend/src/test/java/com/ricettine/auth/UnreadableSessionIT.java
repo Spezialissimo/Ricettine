@@ -8,21 +8,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class UnreadableSessionIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 
 	@Test
 	void unreadableSessionMeansLoggedOut() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("u@x.com", Sessions.PASSWORD, "unreadable", "U"), false);
 		Cookie cookie = Sessions.login(mvc, "u@x.com");
 		mvc.perform(get("/api/me").cookie(cookie)).andExpect(status().isOk());

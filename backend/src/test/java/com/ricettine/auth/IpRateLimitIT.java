@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
@@ -35,7 +33,6 @@ import org.springframework.test.web.servlet.MvcResult;
 class IpRateLimitIT extends IntegrationTest {
 
 	@MockitoSpyBean PasswordEncoder encoder;
-	@Autowired AccountService accounts;
 
 	private MvcResult login(String email, String ip) throws Exception {
 		return mvc.perform(post("/api/auth/login").with(csrf()).with(r -> {

@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 
@@ -29,8 +28,6 @@ import org.springframework.test.context.TestPropertySource;
 		"ricettine.media.processing-wait=50ms" })
 class AvatarBusyIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired ProcessingLimiter limiter;
 
 	static class CountingFile extends MockMultipartFile {
@@ -49,8 +46,6 @@ class AvatarBusyIT extends IntegrationTest {
 
 	@Test
 	void avatarUploadWaitsForSlotBeforeReading() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
 		Cookie me = Sessions.login(mvc, "me@x.com");
 

@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
@@ -18,20 +17,16 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Every response, whatever its status or who wrote it, tells crawlers not to index or follow. */
 class RobotsHeaderIT extends IntegrationTest {
 
 	static final String NOINDEX = "noindex, nofollow";
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired MediaService media;
 
 	@BeforeEach
 	void setUp() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 	}
 
 	@Test

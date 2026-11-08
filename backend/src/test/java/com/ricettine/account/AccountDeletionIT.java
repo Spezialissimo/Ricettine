@@ -24,9 +24,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import tools.jackson.databind.ObjectMapper;
 
 @Import(AccountDeletionIT.Hooks.class)
 class AccountDeletionIT extends IntegrationTest {
@@ -41,16 +39,11 @@ class AccountDeletionIT extends IntegrationTest {
 		}
 	}
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired BlobStore blobs;
-	@Autowired ObjectMapper json;
 
 	@BeforeEach
 	void clean() {
 		called.clear();
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 	}
 
 	private static String body(String pw) {

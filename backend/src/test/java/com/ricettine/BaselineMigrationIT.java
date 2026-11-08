@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 class BaselineMigrationIT extends IntegrationTest {
 
@@ -24,6 +25,6 @@ class BaselineMigrationIT extends IntegrationTest {
 	@Test
 	void otherEndpointsAreDeniedByDefault() throws Exception {
 		mvc.perform(get("/api/anything")).andExpect(status().isUnauthorized())
-			.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("not_authenticated"));
+			.andExpect(MockMvcResultMatchers.jsonPath("$.code").value("not_authenticated"));
 	}
 }

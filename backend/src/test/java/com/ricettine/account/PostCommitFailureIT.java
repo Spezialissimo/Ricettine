@@ -18,23 +18,17 @@ import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /** Post-commit cleanup (blob deletion) failing must not undo or error a committed change. */
 class PostCommitFailureIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@MockitoSpyBean BlobStore blobs;
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 	}
 
 	private void upload(Cookie c, byte[] data, int expected) throws Exception {

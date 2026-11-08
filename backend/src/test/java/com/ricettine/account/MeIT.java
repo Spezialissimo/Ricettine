@@ -28,24 +28,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
-import tools.jackson.databind.ObjectMapper;
 
 class MeIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired BlobStore blobs;
-	@Autowired ObjectMapper json;
 
 	Cookie cookie;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
 		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "taken", "Other"), false);
 		cookie = Sessions.login(mvc, "admin@x.com");

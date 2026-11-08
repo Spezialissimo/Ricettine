@@ -15,18 +15,14 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Real Tomcat multipart parsing: MockMvc does not enforce the servlet container's upload limits. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AvatarUploadLimitIT extends IntegrationTest {
 
 	@LocalServerPort int port;
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 
 	private static long blobCount() throws Exception {
 		Path dir = Path.of("target/test-media/img");
@@ -45,8 +41,6 @@ class AvatarUploadLimitIT extends IntegrationTest {
 
 	@Test
 	void oversizedAvatarIs413WithCodeAndNoBlob() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 		accounts.create(new NewAccountRequest("big@x.com", Sessions.PASSWORD, "bigger", "Big"), false);
 		HttpClient http = HttpClient.newHttpClient();
 		String base = "http://localhost:" + port;

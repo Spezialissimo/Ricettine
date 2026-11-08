@@ -11,8 +11,10 @@ import com.drew.metadata.exif.GpsDirectory;
 import com.ricettine.common.ApiException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.util.Base64;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
 class ImageProcessorTest {
@@ -119,7 +121,7 @@ class ImageProcessorTest {
 
 	@Test
 	void decodesWebp() throws Exception {
-		byte[] webp = java.util.Base64.getDecoder().decode(TINY_WEBP);
+		byte[] webp = Base64.getDecoder().decode(TINY_WEBP);
 		BufferedImage img = decode(processor.process(webp, Set.of(ImageVariant.THUMB)).get(ImageVariant.THUMB));
 		assertThat(img.getWidth()).isEqualTo(1);
 		assertThat(img.getHeight()).isEqualTo(1);
@@ -230,7 +232,7 @@ class ImageProcessorTest {
 			}
 		}
 		inMean /= (double) raster.getWidth() * raster.getHeight();
-		assertThat(meanLuma(out)).isCloseTo(inMean, org.assertj.core.data.Offset.offset(3.0));
+		assertThat(meanLuma(out)).isCloseTo(inMean, Offset.offset(3.0));
 	}
 
 	@Test

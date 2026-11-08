@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 
 class RateLimiterTest {
@@ -76,9 +79,9 @@ class RateLimiterTest {
 	@Test
 	void tryHitIsAtomicUnderConcurrency() throws Exception {
 		RateLimiter l = new RateLimiter(10, Duration.ofMinutes(15), 100, clock);
-		var pool = java.util.concurrent.Executors.newFixedThreadPool(32);
-		var start = new java.util.concurrent.CountDownLatch(1);
-		List<java.util.concurrent.Future<Boolean>> results = new ArrayList<>();
+		var pool = Executors.newFixedThreadPool(32);
+		var start = new CountDownLatch(1);
+		List<Future<Boolean>> results = new ArrayList<>();
 		for (int i = 0; i < 32; i++) {
 			results.add(pool.submit(() -> {
 				start.await();
