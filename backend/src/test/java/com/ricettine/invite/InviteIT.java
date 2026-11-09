@@ -8,48 +8,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import com.ricettine.IntegrationTest;
 import com.ricettine.QuietSqlErrors;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.common.Tokens;
+import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
 
 class InviteIT extends IntegrationTest {
-
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 
 	Cookie admin;
 
 	@BeforeEach
 	void clean() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("admin@x.com", "correct-horse-1", "boss", "Boss"), true);
-		admin = login("admin@x.com");
-	}
-
-	private Cookie login(String email) throws Exception {
-		MvcResult r = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-				.content("{\"email\":\"%s\",\"password\":\"correct-horse-1\"}".formatted(email))).andReturn();
-		return r.getResponse().getCookie("SESSION");
+		admin = data.user("admin@x.com", "boss", "Boss", true);
 	}
 
 	private JsonNode createInvite() throws Exception {
@@ -110,26 +88,10 @@ class InviteIT extends IntegrationTest {
 	@Test
 	void concurrentRegistrationUsesInviteOnce() throws Exception {
 		String token = tokenOf(createInvite());
-		CountDownLatch gate = new CountDownLatch(1);
-		ExecutorService pool = Executors.newFixedThreadPool(2);
-		try {
-			List<Future<Integer>> results = new ArrayList<>();
-			for (String n : new String[] { "one", "two" }) {
-				results.add(pool.submit(() -> {
-					gate.await();
-					return register(token, n + "@x.com", "user" + n).getResponse().getStatus();
-				}));
-			}
-			gate.countDown();
-			List<Integer> codes = new ArrayList<>();
-			for (Future<Integer> f : results) {
-				codes.add(f.get());
-			}
-			assertThat(codes).containsExactlyInAnyOrder(201, 404);
-		}
-		finally {
-			pool.shutdownNow();
-		}
+		List<Integer> codes = Concurrently.run(2,
+				i -> () -> register(token, (i == 0 ? "one" : "two") + "@x.com", "user" + (i == 0 ? "one" : "two"))
+					.getResponse().getStatus());
+		assertThat(codes).containsExactlyInAnyOrder(201, 404);
 		assertThat(jdbc.queryForObject("select count(*) from app_user where not is_admin", Integer.class)).isEqualTo(1);
 	}
 

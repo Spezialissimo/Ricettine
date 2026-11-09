@@ -11,14 +11,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.ProblemAdvice;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 class MediaIT extends IntegrationTest {
@@ -32,19 +44,11 @@ class MediaIT extends IntegrationTest {
 	@Value("${ricettine.storage.local.path}")
 	String root;
 
-	@Autowired
-	org.springframework.jdbc.core.JdbcTemplate jdbc;
+	UUID owner;
 
-	@Autowired
-	com.ricettine.account.AccountService accounts;
-
-	java.util.UUID owner;
-
-	@org.junit.jupiter.api.BeforeEach
+	@BeforeEach
 	void owner() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		owner = accounts.create(new com.ricettine.account.AccountDtos.NewAccountRequest("m@x.com",
-				com.ricettine.Sessions.PASSWORD, "mediaowner", "Media"), true).getId();
+		owner = data.account("m@x.com", "mediaowner", "Media", true).getId();
 	}
 
 	@Test
@@ -62,12 +66,12 @@ class MediaIT extends IntegrationTest {
 	}
 
 	@Autowired
-	org.springframework.transaction.PlatformTransactionManager txManager;
+	PlatformTransactionManager txManager;
 
 	@Test
 	void processRefusesToRunInsideATransaction() {
 		// The limiter wait and the decode must never hold a pooled DB connection.
-		var tx = new org.springframework.transaction.support.TransactionTemplate(txManager);
+		var tx = new TransactionTemplate(txManager);
 		assertThatThrownBy(() -> tx.execute(s -> media.process(TestImages.plainJpeg(50, 50), Set.of(ImageVariant.THUMB))))
 				.isInstanceOf(IllegalStateException.class).hasMessageContaining("transaction");
 	}
@@ -76,7 +80,7 @@ class MediaIT extends IntegrationTest {
 	void registeredBlobsAreRemovedWhenTheTransactionRollsBack() throws Exception {
 		ProcessedUpload upload = media.process(TestImages.plainJpeg(50, 50), Set.of(ImageVariant.THUMB));
 		long before = countBlobs();
-		String id = new org.springframework.transaction.support.TransactionTemplate(txManager).execute(s -> {
+		String id = new TransactionTemplate(txManager).execute(s -> {
 			String registered = media.register(upload, owner, MediaKind.RECIPE, null);
 			s.setRollbackOnly();
 			return registered;
@@ -103,7 +107,7 @@ class MediaIT extends IntegrationTest {
 	@Test
 	void partialWriteFailureCleansUp() {
 		BlobStore failing = new BlobStore() {
-			final java.util.Map<String, byte[]> m = new java.util.HashMap<>();
+			final Map<String, byte[]> m = new HashMap<>();
 			int puts;
 
 			public void put(String key, byte[] data, String ct) {
@@ -113,19 +117,19 @@ class MediaIT extends IntegrationTest {
 				m.put(key, data);
 			}
 
-			public java.util.Optional<byte[]> get(String key) {
-				return java.util.Optional.ofNullable(m.get(key));
+			public Optional<byte[]> get(String key) {
+				return Optional.ofNullable(m.get(key));
 			}
 
 			public void delete(String key) {
 				m.remove(key);
 			}
 		};
-		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, java.time.Duration.ofSeconds(30)), null, null);
+		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, Duration.ofSeconds(30)), null, null);
 		ProcessedUpload upload = svc.process(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values()));
 		assertThatThrownBy(() -> svc.register(upload, owner, MediaKind.AVATAR, null))
 				.isInstanceOf(IllegalStateException.class);
-		assertThat(((java.util.Map<?, ?>) readField(failing)).isEmpty()).isTrue();
+		assertThat(((Map<?, ?>) readField(failing)).isEmpty()).isTrue();
 	}
 
 	private static Object readField(BlobStore b) {
@@ -139,9 +143,9 @@ class MediaIT extends IntegrationTest {
 		}
 	}
 
-	@org.springframework.web.bind.annotation.RestController
+	@RestController
 	static class ThrowingController {
-		@org.springframework.web.bind.annotation.PostMapping("/boom")
+		@PostMapping("/boom")
 		void boom() {
 			throw new MaxUploadSizeExceededException(15L * 1024 * 1024);
 		}
@@ -150,9 +154,9 @@ class MediaIT extends IntegrationTest {
 	@Test
 	void oversizedUploadRendersFileTooLarge() throws Exception {
 		// Boot 4 / Spring 7 raises MaxUploadSizeExceededException (an ErrorResponse) for oversized multipart bodies.
-		var standalone = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new ThrowingController())
-				.setControllerAdvice(new com.ricettine.common.ProblemAdvice()).build();
-		standalone.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/boom"))
+		var standalone = MockMvcBuilders.standaloneSetup(new ThrowingController())
+				.setControllerAdvice(new ProblemAdvice()).build();
+		standalone.perform(MockMvcRequestBuilders.post("/boom"))
 				.andExpect(status().isPayloadTooLarge()).andExpect(jsonPath("$.code").value("file_too_large"));
 	}
 

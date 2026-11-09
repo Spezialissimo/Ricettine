@@ -9,26 +9,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.account.UserRepository;
-import java.util.ArrayList;
+import com.ricettine.testsupport.Concurrently;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class SetupIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
 	@Autowired UserRepository userRepository;
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 	}
 
 	private static String body(String email, String username, String password) {
@@ -64,22 +57,8 @@ class SetupIT extends IntegrationTest {
 	@Test
 	void concurrentSetupCreatesOneAdmin() throws Exception {
 		int n = 5;
-		ExecutorService pool = Executors.newFixedThreadPool(n);
-		CountDownLatch start = new CountDownLatch(1);
-		List<Future<Integer>> results = new ArrayList<>();
-		for (int i = 0; i < n; i++) {
-			String json = body("admin" + i + "@x.com", "admin_" + i, "correct-horse-1");
-			results.add(pool.submit(() -> {
-				start.await();
-				return postStatus(json);
-			}));
-		}
-		start.countDown();
-		List<Integer> statuses = new ArrayList<>();
-		for (Future<Integer> f : results) {
-			statuses.add(f.get());
-		}
-		pool.shutdown();
+		List<Integer> statuses = Concurrently.run(n,
+				i -> () -> postStatus(body("admin" + i + "@x.com", "admin_" + i, "correct-horse-1")));
 		assertThat(statuses.stream().filter(s -> s == 201).count()).isEqualTo(1);
 		assertThat(statuses.stream().filter(s -> s == 409).count()).isEqualTo(n - 1);
 		assertThat(userRepository.count()).isEqualTo(1);

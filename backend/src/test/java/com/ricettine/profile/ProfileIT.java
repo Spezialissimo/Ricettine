@@ -3,38 +3,23 @@ package com.ricettine.profile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
-import com.ricettine.media.TestImages;
+import com.ricettine.testsupport.TestData.RecipeBody;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class ProfileIT extends IntegrationTest {
-
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 
 	Cookie a;
 	Cookie b;
@@ -48,56 +33,33 @@ class ProfileIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice A"), true);
-		accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bob", "Bob B"), false);
-		a = Sessions.login(mvc, "a@x.com");
-		b = Sessions.login(mvc, "b@x.com");
+		a = data.user("a@x.com", "alice", "Alice A", true);
+		b = data.user("b@x.com", "bob", "Bob B", false);
 
 		pubPublished = recipe(a, "PUBLIC", true);
 		privPublished = recipe(a, "PRIVATE", true);
 		pubDraft = recipe(a, "PUBLIC", false);
 		privDraft = recipe(a, "PRIVATE", false);
-		aPublicBook = cookbook(a, "A public", "PUBLIC");
-		aPrivateBook = cookbook(a, "A private", "PRIVATE");
-		bPublicBook = cookbook(b, "B public", "PUBLIC");
+		aPublicBook = data.createCookbookWithCover(a, "A public", "PUBLIC");
+		aPrivateBook = data.createCookbookWithCover(a, "A private", "PRIVATE");
+		bPublicBook = data.createCookbookWithCover(b, "B public", "PUBLIC");
 		jdbc.update("insert into cookbook_author (cookbook_id, user_id, joined_at) "
 				+ "select ?::uuid, id, now() from app_user where username = 'alice'", bPublicBook);
 	}
 
-	JsonNode tree(MvcResult r) throws Exception {
-		return json.readTree(r.getResponse().getContentAsString());
-	}
-
+	/** A recipe with a cover photo, titled "T-{id}", PUBLIC or PRIVATE, published or left as a draft. */
 	String recipe(Cookie who, String visibility, boolean publish) throws Exception {
-		String id = tree(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andExpect(status().isCreated())
-			.andReturn()).get("id").asText();
-		String cover = tree(mvc.perform(multipart("/api/recipes/" + id + "/photos")
-			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
-			.with(csrf()).cookie(who)).andExpect(status().isCreated()).andReturn()).get("mediaId").asText();
-		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content("""
-				{"version":0,"title":"T-%s","portions":2,"visibility":"%s","coverMediaId":"%s",
-				 "groups":[{"name":"","ingredients":[{"name":"flour","amount":1,"unit":"g"}]}],
-				 "steps":[{"text":"mix","photoMediaId":null}]}""".formatted(id, visibility, cover)))
-			.andExpect(status().isOk());
+		String id = data.draft(who);
+		String cover = data.uploadPhoto(who, id);
+		data.save(who, id, RecipeBody.of(0).title("T-" + id).visibility(visibility).cover(cover));
 		if (publish) {
-			mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
-				.contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}")).andExpect(status().isOk());
+			data.publish(who, id, 1);
 		}
 		return id;
 	}
 
-	String cookbook(Cookie who, String name, String visibility) throws Exception {
-		String id = tree(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON)
-			.content("{\"name\":\"" + name + "\",\"visibility\":\"" + visibility + "\"}"))
-			.andExpect(status().isCreated()).andReturn()).get("id").asText();
-		mvc.perform(multipart(HttpMethod.PUT, "/api/cookbooks/" + id + "/cover")
-			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
-			.with(csrf()).cookie(who)).andExpect(status().isOk());
-		return id;
+	JsonNode tree(MvcResult r) throws Exception {
+		return json.readTree(r.getResponse().getContentAsString());
 	}
 
 	JsonNode profile(Cookie who, String username) throws Exception {
@@ -124,6 +86,30 @@ class ProfileIT extends IntegrationTest {
 		assertThat(p.get("cookbooks").get(0).get("shareToken").asText()).isNotEmpty();
 	}
 
+	/** String-level guard: nothing private, draft or tokenised-private leaks through any field of the visitor view. */
+	@Test
+	void visitorProfileJsonContainsNoPrivateIdsOrTokens() throws Exception {
+		String raw = mvc.perform(get("/api/users/alice/profile").cookie(b)).andExpect(status().isOk()).andReturn()
+			.getResponse().getContentAsString();
+		assertThat(raw).contains(pubPublished).contains(aPublicBook); // positive control
+		assertThat(raw).doesNotContain(privPublished, pubDraft, privDraft, aPrivateBook)
+			.doesNotContain(data.recipeShareToken(privPublished), data.recipeShareToken(pubDraft),
+					data.recipeShareToken(privDraft), data.cookbookShareToken(aPrivateBook));
+	}
+
+	@Test
+	void selfViewThumbsAreServed() throws Exception {
+		JsonNode p = profile(a, "alice");
+		assertThat(p.get("recipes")).hasSize(4);
+		for (JsonNode r : p.get("recipes")) {
+			mvc.perform(get(r.get("coverThumbUrl").asText()).cookie(a)).andExpect(status().isOk());
+		}
+		assertThat(p.get("cookbooks")).hasSize(2);
+		for (JsonNode c : p.get("cookbooks")) {
+			mvc.perform(get(c.get("coverThumbUrl").asText()).cookie(a)).andExpect(status().isOk());
+		}
+	}
+
 	@Test
 	void selfSeesAllMarked() throws Exception {
 		JsonNode p = profile(a, "alice");
@@ -138,9 +124,11 @@ class ProfileIT extends IntegrationTest {
 			assertThat(r.get("visibility").asText())
 				.isEqualTo(id.equals(pubPublished) || id.equals(pubDraft) ? "PUBLIC" : "PRIVATE");
 			assertThat(r.get("shareToken").isNull()).isEqualTo(draft);
-			assertThat(r.get("coverThumbUrl").asText()).contains(draft ? "" : "?s=");
 			if (draft) {
 				assertThat(r.get("coverThumbUrl").asText()).doesNotContain("?s=");
+			}
+			else {
+				assertThat(r.get("coverThumbUrl").asText()).contains("?s=");
 			}
 		}
 	}
@@ -152,12 +140,7 @@ class ProfileIT extends IntegrationTest {
 			.contentType(MediaType.APPLICATION_JSON).content("{\"visibility\":\"PRIVATE\"}"))
 			.andExpect(status().isOk());
 		long version = jdbc.queryForObject("select version from recipe where id = ?::uuid", Long.class, pubPublished);
-		mvc.perform(put("/api/recipes/" + pubPublished).with(csrf()).cookie(a)
-			.contentType(MediaType.APPLICATION_JSON).content("""
-				{"version":%d,"title":"T","portions":2,"visibility":"PRIVATE",
-				 "groups":[{"name":"","ingredients":[{"name":"flour","amount":1,"unit":"g"}]}],
-				 "steps":[{"text":"mix","photoMediaId":null}]}""".formatted(version)))
-			.andExpect(status().isOk());
+		data.save(a, pubPublished, RecipeBody.of(version).title("T").visibility("PRIVATE"));
 		JsonNode p = profile(b, "alice");
 		assertThat(p.get("recipes")).isEmpty();
 		assertThat(p.get("cookbooks")).isEmpty();

@@ -4,93 +4,54 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
-import com.ricettine.media.TestImages;
+import com.ricettine.testsupport.TestData.RecipeBody;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class FeedIT extends IntegrationTest {
-
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 
 	Cookie a;
 	Cookie b;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice A"), true);
-		accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bob", "Bob B"), false);
-		a = Sessions.login(mvc, "a@x.com");
-		b = Sessions.login(mvc, "b@x.com");
+		a = data.user("a@x.com", "alice", "Alice A", true);
+		b = data.user("b@x.com", "bob", "Bob B", false);
 	}
 
 	JsonNode tree(MvcResult r) throws Exception {
 		return json.readTree(r.getResponse().getContentAsString());
 	}
 
-	String create(Cookie who) throws Exception {
-		return tree(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andExpect(status().isCreated())
-			.andReturn()).get("id").asText();
-	}
-
+	/** Saves with the title "T-{id}", so a feed item can be tied back to its recipe. */
 	void save(Cookie who, String id, long version, String visibility, String cover) throws Exception {
-		mvc.perform(put("/api/recipes/" + id).with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content("""
-				{"version":%d,"title":"T-%s","portions":2,"visibility":"%s","coverMediaId":%s,
-				 "groups":[{"name":"","ingredients":[{"name":"flour","amount":1,"unit":"g"}]}],
-				 "steps":[{"text":"mix","photoMediaId":null}]}""".formatted(version, id, visibility,
-					cover == null ? "null" : "\"" + cover + "\"")))
-			.andExpect(status().isOk());
-	}
-
-	void publish(Cookie who, String id, long version) throws Exception {
-		mvc.perform(post("/api/recipes/" + id + "/publish").with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":" + version + "}"))
-			.andExpect(status().isOk());
-	}
-
-	String cover(Cookie who, String id) throws Exception {
-		return tree(mvc.perform(multipart("/api/recipes/" + id + "/photos")
-			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", TestImages.plainJpeg(800, 600)))
-			.with(csrf()).cookie(who)).andExpect(status().isCreated()).andReturn()).get("mediaId").asText();
+		data.save(who, id, RecipeBody.of(version).title("T-" + id).visibility(visibility).cover(cover));
 	}
 
 	/** A published recipe with the given visibility. */
 	String published(Cookie who, String visibility) throws Exception {
-		String id = create(who);
-		save(who, id, 0, visibility, null);
-		publish(who, id, 1);
+		String id = draft(who, visibility);
+		data.publish(who, id, 1);
 		return id;
 	}
 
 	String draft(Cookie who, String visibility) throws Exception {
-		String id = create(who);
+		String id = data.draft(who);
 		save(who, id, 0, visibility, null);
 		return id;
 	}
@@ -148,7 +109,8 @@ class FeedIT extends IntegrationTest {
 	@Test
 	void publicDraftNeverListed() throws Exception {
 		String d = draft(a, "PUBLIC");
-		assertThat(walk(b, 50)).doesNotContain(d);
+		String listed = published(a, "PUBLIC"); // positive control: the walk does return recipes
+		assertThat(walk(b, 50)).contains(listed).doesNotContain(d);
 	}
 
 	@Test
@@ -207,10 +169,10 @@ class FeedIT extends IntegrationTest {
 
 	@Test
 	void coverThumbLoadsWithItsToken() throws Exception {
-		String id = create(a);
-		String media = cover(a, id);
+		String id = data.draft(a);
+		String media = data.uploadPhoto(a, id);
 		save(a, id, 0, "PUBLIC", media);
-		publish(a, id, 1);
+		data.publish(a, id, 1);
 		JsonNode item = feed(b, "").get("items").get(0);
 		assertThat(item.get("id").asText()).isEqualTo(id);
 		String url = item.get("coverThumbUrl").asText();
@@ -251,6 +213,6 @@ class FeedIT extends IntegrationTest {
 	void anonymousIs401AndResponseIsNoStore() throws Exception {
 		mvc.perform(get("/api/feed")).andExpect(status().isUnauthorized());
 		mvc.perform(get("/api/feed").cookie(a)).andExpect(status().isOk())
-			.andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+			.andExpect(header().string("Cache-Control", Matchers.containsString("no-store")));
 	}
 }

@@ -14,16 +14,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
+import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
@@ -35,7 +30,6 @@ import org.springframework.test.web.servlet.MvcResult;
 class IpRateLimitIT extends IntegrationTest {
 
 	@MockitoSpyBean PasswordEncoder encoder;
-	@Autowired AccountService accounts;
 
 	private MvcResult login(String email, String ip) throws Exception {
 		return mvc.perform(post("/api/auth/login").with(csrf()).with(r -> {
@@ -96,25 +90,9 @@ class IpRateLimitIT extends IntegrationTest {
 	void concurrentWrongPasswordsReachTheHashAtMostTenTimes() throws Exception {
 		String email = newAccount();
 		clearInvocations(encoder);
-		var pool = Executors.newFixedThreadPool(20);
-		List<Future<Integer>> results = new ArrayList<>();
-		for (int i = 0; i < 20; i++) {
-			String ip = "10.8.0." + i;
-			Callable<Integer> c = () -> login(email, ip).getResponse().getStatus();
-			results.add(pool.submit(c));
-		}
-		int unauthorized = 0;
-		int limited = 0;
-		for (Future<Integer> f : results) {
-			int status = f.get();
-			if (status == 401) {
-				unauthorized++;
-			}
-			else if (status == 429) {
-				limited++;
-			}
-		}
-		pool.shutdown();
+		List<Integer> statuses = Concurrently.run(20, i -> () -> login(email, "10.8.0." + i).getResponse().getStatus());
+		long unauthorized = statuses.stream().filter(status -> status == 401).count();
+		long limited = statuses.stream().filter(status -> status == 429).count();
 		assertThat(unauthorized).isEqualTo(10);
 		assertThat(limited).isEqualTo(10);
 		verify(encoder, atMost(10)).matches(any(), any());

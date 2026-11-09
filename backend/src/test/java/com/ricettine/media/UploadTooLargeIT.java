@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
@@ -27,22 +27,20 @@ import org.springframework.web.client.RestClient;
 class UploadTooLargeIT extends IntegrationTest {
 
 	@LocalServerPort int port;
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 
 	private static String cookieValue(List<String> setCookies, String name) {
 		String c = setCookies.stream().filter(s -> s.startsWith(name + "=")).findFirst().orElseThrow();
 		return c.substring(name.length() + 1, c.indexOf(';'));
 	}
 
-	@org.springframework.beans.factory.annotation.Value("${spring.servlet.multipart.location}")
+	@Value("${spring.servlet.multipart.location}")
 	String uploadDir;
 
 	@Test
 	void uploadStillWorksAfterTheSpoolDirectoryIsDeleted() throws Exception {
-		java.nio.file.Path dir = java.nio.file.Path.of(uploadDir);
-		try (var files = java.nio.file.Files.walk(dir)) {
-			files.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
+		Path dir = Path.of(uploadDir);
+		try (var files = Files.walk(dir)) {
+			files.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
 		}
 		assertThat(dir).doesNotExist();
 		String result = upload(TestImages.plainJpeg(50, 50));
@@ -56,8 +54,7 @@ class UploadTooLargeIT extends IntegrationTest {
 	}
 
 	private String upload(byte[] bytes) {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		accounts.create(new NewAccountRequest("big@x.com", Sessions.PASSWORD, "bigupload", "Big"), false);
+		data.account("big@x.com", "bigupload", "Big", false);
 		RestClient client = RestClient.builder().baseUrl("http://localhost:" + port).build();
 
 		String xsrf = cookieValue(client.get().uri("/api/setup/status")

@@ -9,13 +9,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -30,15 +26,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Photo and cover blobs are written with no transaction, row lock or pooled connection held; a short transaction
@@ -46,9 +39,6 @@ import tools.jackson.databind.ObjectMapper;
  */
 class BlobOutsideTxIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@MockitoSpyBean BlobStore blobs;
 
 	Cookie me;
@@ -56,23 +46,12 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		me = Sessions.login(mvc, "me@x.com");
+		me = data.user("me@x.com", "mario", "Me", true);
 	}
 
 	@AfterEach
 	void tearDown() {
 		pool.shutdownNow();
-	}
-
-	String create(String path, String body) throws Exception {
-		var req = post(path).with(csrf()).cookie(me);
-		if (body != null) {
-			req = req.contentType(MediaType.APPLICATION_JSON).content(body);
-		}
-		return json.readTree(mvc.perform(req).andReturn().getResponse().getContentAsString()).get("id").asText();
 	}
 
 	MockMultipartFile file() {
@@ -122,7 +101,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void slowBlobWriteDoesNotBlockRecipeSave() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -145,7 +124,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void slowBlobWriteDoesNotBlockCookbookWrites() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -164,7 +143,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void failedBlobWriteLeavesNoRowAndNoBlob() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		failSecondPut();
 		assertThat(uploadPhoto(recipe).andReturn().getResponse().getStatus()).isEqualTo(500);
 		assertThat(attemptedKeys()).hasSize(2);
@@ -183,7 +162,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void putThatLandsButReportsFailureLeavesNoBlob() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		// stored on the server, but the client saw a failure (e.g. an S3 call timeout)
 		doAnswer(inv -> {
 			inv.callRealMethod();
@@ -197,7 +176,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void failedCoverBlobWriteLeavesNoRowAndNoBlob() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		failSecondPut();
 		assertThat(uploadCover(cookbook).andReturn().getResponse().getStatus()).isEqualTo(500);
 		assertThat(attemptedKeys()).hasSize(2);
@@ -212,7 +191,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void recipeDeletedBetweenBlobWriteAndTransactionLeavesNothing() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -233,7 +212,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void cookbookDeletedBetweenBlobWriteAndTransactionLeavesNothing() throws Exception {
-		String cookbook = create("/api/cookbooks", "{\"name\":\"Dinners\"}");
+		String cookbook = data.createCookbook(me);
 		CountDownLatch entered = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
 		blockPuts(entered, release);
@@ -253,7 +232,7 @@ class BlobOutsideTxIT extends IntegrationTest {
 
 	@Test
 	void concurrentUploadsNearThePhotoCapCannotOvershootIt() throws Exception {
-		String recipe = create("/api/recipes", null);
+		String recipe = data.draft(me);
 		jdbc.update("insert into media (id, owner_id, kind, recipe_id, created_at) "
 				+ "select 'seed' || g, (select id from app_user limit 1), 'RECIPE', ?::uuid, now() "
 				+ "from generate_series(1, 149) g", recipe);

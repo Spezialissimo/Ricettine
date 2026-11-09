@@ -160,7 +160,7 @@
 - **Fix:** Restore the production repository after each test once, in IntegrationTest (@AfterEach calling WebTestUtils.setCsrfTokenRepository with CookieCsrfTokenRepository.withHttpOnlyFalse(), as the follow-up proposes), and drop the inline hack from PublicRecipeIT. Alternatively write a local csrf() RequestPostProcessor that only sets the X-XSRF-TOKEN header and cookie pair, which needs no filter mutation.
 - **Evidence:** Comment in PublicRecipeIT.anonymousRequestCreatesNoSession and in UploadTooLargeIT class javadoc; plan-2 follow-up lists the same item as open.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups / Test infrastructure (csrf() leak)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-2: Vacuous or missing-control assertions in profile, feed, robots and S3 timeout tests
 
@@ -170,7 +170,7 @@
 - **Fix:** (1) publish a PUBLIC recipe as well and assert it is present while the draft is absent. (2) delete the contains("") term, keep the explicit doesNotContain branch. (3) add status().isOk(). (4) assert the cause is an SdkClientException/ApiCallTimeoutException (or message contains 'timed out'). (5) assert count(*) from app_user and the remaining admin flag. (6) pin the expected status per path.
 - **Evidence:** Read each assertion in context; (2) and (3) are open follow-ups, (1) is the Plan 4 follow-up, (4) the Plan 5 follow-up.
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Tests to add (FeedIT positive control, ProfileIT vacuous contains); 2026-11-07-plan-5-followups.md: Tests to add (actuator robots header, S3BlobStoreTimeoutTest isNotNull)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-3: Privacy-critical profile visibility has no raw-JSON leak guard and no self-view thumb test
 
@@ -180,7 +180,7 @@
 - **Fix:** In visitorSeesOnlyPublic assert the raw response body does not contain privPublished, pubDraft, privDraft, aPrivateBook ids, nor their share tokens. Add a selfThumbsLoad test that GETs coverThumbUrl of a draft and a published recipe with the owner cookie and expects 200.
 - **Evidence:** ProfileIT has no assertion on getContentAsString of the visitor profile; thumbsLoadForVisitor uses profile(b, ...).
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Feed and profile (string-level IT guard); Tests to add (self-view thumbs)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-4: PublicUrls (configured base URL, X-Forwarded-* handling) and conditional-GET forms have no tests
 
@@ -190,7 +190,7 @@
 - **Fix:** Add a PublicUrlsTest (unit, MockHttpServletRequest in RequestContextHolder) for blank vs configured base with and without trailing slash, and one IT that sends X-Forwarded-Proto: https and X-Forwarded-Host and asserts the shareUrl. Parameterise etagAndNotModified over 'W/"x"', '"a", "x"' and '*'.
 - **Evidence:** grep for base-url, X-Forwarded in backend/src/test returns nothing.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Tests to add (If-None-Match weak, list and * forms)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-5: Step-photo upload remapping on insert/remove/reorder has no unit test
 
@@ -256,7 +256,7 @@
 - **Problem:** Almost every IT carries its own copy of create-recipe, save-with-body, publish, upload-photo, publishedRecipe, shareToken lookup, createCookbook and blobExists, each with slightly different signatures and return types (String id, JsonNode, String[]). The recipe JSON body literal alone is written out at least 8 times. This is what produces most of the 80 jscpd clones (the import blocks and setUp blocks are also clones). A change to the recipe payload shape or an endpoint path has to be patched in a dozen places, and the copies have already drifted (some assert status 201/200, some do not, e.g. CookbookApiIT.publishedRecipe and draftRecipe call andReturn() without asserting the status, so a failed create surfaces later as an NPE).
 - **Fix:** Add one test-scope helper in com.ricettine (next to Sessions), e.g. RecipeFixtures/CookbookFixtures constructed with (MockMvc, ObjectMapper, JdbcTemplate): createDraft(cookie), save(cookie,id,version,visibility,cover,stepPhoto), publish(cookie,id,version), publishedRecipe(cookie,visibility), uploadPhoto(cookie,recipeId), shareToken(id), createCookbook(cookie,name), blobExists(BlobStore,mediaId). Every helper asserts the expected status. Keep per-test body customisation via an overload that takes the JSON string.
 - **Evidence:** Read all 12 files; 3 byte-identical blobExists(), 12 methods named create/published/publishedRecipe/recipe returning an id; jscpd pack lists 15+ clones between these files, all fixture or header text.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-3: Per-class DB reset and user bootstrap copy-pasted into 28 test classes
 
@@ -265,7 +265,7 @@
 - **Problem:** 28 classes start with the same two statements (truncate table app_user, one_time_token, instance_setup cascade; delete from spring_session) and then create the same two or three accounts (me/other, a/b, owner/bea/carl) and log them in. The truncate list is a hard-coded table list: a new top-level table (or a table not reached by the cascade) silently leaks rows between classes until each of 28 copies is edited. A few classes forget the second statement (AccountServiceIT, SetupIT, MediaIT, MediaAccessIT, RobotsHeaderIT), so the reset is inconsistent. InviteIT also has its own login() that duplicates Sessions.login.
 - **Fix:** Move the reset into IntegrationTest as a @BeforeEach (one method, both statements, or truncate every public table except flyway_schema_history discovered from information_schema) and add a small TestUsers helper (create(email, username, admin) returning user plus cookie). Delete the 28 copies. Reuse Sessions.login in InviteIT.
 - **Evidence:** grep -rln 'truncate table app_user' backend/src/test returns 28 files; read each.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-4: Six near-identical confirm dialog components and eight copies of the open-sheet/await-closed boilerplate
 
@@ -322,7 +322,7 @@
 - **Fix:** Add the seven small cases to CookbookInviteIT, CookbookApiIT, CookbookMemberIT and CookbookAccountDeletionIT using the existing CookbookIT helpers. For (d) use the race helper from the concurrency finding.
 - **Evidence:** Searched the cookbook tests for each scenario; none present.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Tests to add (co-author invites bullets, concurrency 500 cap, own draft by token, account deletion invite survival)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-9: Manually created Playwright contexts get no trace or screenshot on failure
 
@@ -655,7 +655,7 @@
 - **Problem:** Each test builds an ExecutorService, a start latch and a list of Futures by hand. RecipeApiIT.concurrentSavesNeverProduce500 and concurrentSavesOfPopulatedRecipeGiveOne200AndOne409 are the same loop with a different setup (20+ line clone). SetupIT, IpRateLimitIT and RateLimiterTest call pool.shutdown() after the assertions rather than in finally, so a failing assertion or an exception from f.get() leaks threads into the rest of the suite.
 - **Fix:** Add a tiny helper, e.g. Concurrent.race(int n, IntFunction<Callable<T>> task) returning List<T>, which owns the pool, the latch and the try/finally shutdownNow. Merge the two RecipeApiIT concurrency tests into one parameterised by the prior number of saves.
 - **Evidence:** Read all seven; pattern identical.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-11: ImageProcessorTest: six near-identical orientation tests
 
@@ -953,7 +953,7 @@
 - **Fix:** Run an organise-imports pass (IntelliJ or google-java-format with import ordering) over backend/src/test and replace inline qualified names with imports. Optionally add the formatter plugin check to the Maven build so it stays clean.
 - **Evidence:** Visual read of each file; duplicate import at MediaAccessIT lines 14 and 18.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (FQNs in S3BlobStoreIT, RecipePhotoBusyIT, MediaAccessIT, duplicate import in MediaAccessIT); 2026-11-04-plan-3-followups.md: Small cleanups (FQNs in CookbookIT/CookbookApiIT)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### VERB-3: Backup is re-parsed and re-serialised in full on every keystroke
 
