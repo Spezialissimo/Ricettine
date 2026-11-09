@@ -25,6 +25,9 @@ function parseValue(s: string): number | null {
     const den = Number(m[3]);
     return den === 0 ? null : (m[1] ? Number(m[1]) : 0) + Number(m[2]) / den;
   }
+  // '1,000' reads as one thousand to an English reader and as one to a decimal-comma one: ask rather than guess.
+  // A leading 0 ('0,500') cannot be a thousands group, so that stays a decimal.
+  if (/^[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) return null;
   m = /^(\d+|\d*[.,]\d+)$/.exec(s);
   return m ? Number(s.replace(',', '.')) : null;
 }

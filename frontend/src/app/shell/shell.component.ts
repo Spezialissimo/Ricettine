@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { ApiError, errorKey } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 
@@ -41,6 +42,12 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
             <button type="button" class="logout" (click)="logout()">{{ t('auth.logout') }}</button>
           </div>
         </div>
+        @if (logoutError(); as key) {
+          <div class="logout-error" role="alert">
+            <span>{{ t(key) }}</span>
+            <button type="button" class="logout-retry" (click)="logout()">{{ t('common.retry') }}</button>
+          </div>
+        }
       </header>
       <main><router-outlet /></main>
       <nav class="bottom-nav" [attr.aria-label]="t('nav.sections')">
@@ -64,8 +71,16 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly backup = inject(UnsavedBackup);
 
+  protected readonly logoutError = signal<string | null>(null);
+
   async logout(): Promise<void> {
-    await this.auth.logout();
+    this.logoutError.set(null);
+    try {
+      await this.auth.logout();
+    } catch (e) {
+      this.logoutError.set(errorKey(e as ApiError)); // AuthStore.logout rejects with an ApiError
+      return;
+    }
     this.backup.sweep();
     await this.router.navigateByUrl('/login');
   }

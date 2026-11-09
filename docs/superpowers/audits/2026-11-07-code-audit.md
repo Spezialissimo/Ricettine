@@ -86,7 +86,7 @@
 - **Fix:** Reject the ambiguous form: if the text matches /^\d{1,3}(,\d{3})+$/ either treat it as a thousands separator or return 'invalid' so the inline error shows. Add a spec for '1,000', '1,5' and '1,500.5'.
 - **Evidence:** Traced the regex: '1,000' -> m matches `\d*[.,]\d+` -> Number('1.000') = 1.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Editor state and input handling ('1,000' parses as 1)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### DATA-2: Photos on AWS have no backup or versioning, and a restored dump can point at deleted objects
 
@@ -131,7 +131,7 @@
 - **Problem:** AuthStore.logout() swallows every error from POST /api/auth/logout and then clears `me`. The comment only justifies a 401, but a network failure (status 0) or a 5xx also lands here. The UI then shows the login page while the server session cookie is still valid; reloading the page calls /api/me and signs the person straight back in. On a shared device the user believes they logged out and did not.
 - **Fix:** Swallow only a 401 (session already gone). For any other error keep `me` set, return/throw an ApiError and let the shell show errors.network_error with a retry. Add a spec for the status-0 and 500 cases.
 - **Evidence:** Code read: catch {} then finally { this._me.set(null) } with no status check.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### SEC-3: GitHub Actions pinned to mutable major tags, including the job that holds packages:write
 
@@ -247,7 +247,7 @@
 - **Fix:** Add ingredient lines (`amount unit name, note`), source, times and portions to conflictText(). In loadLatest(), after the fetch compare autosave.dirty()/rev with the value before it; if the user typed meanwhile, keep the backup (or re-apply on top of the fetched copy) instead of clearing it.
 - **Evidence:** Read conflictText() (editor-store.ts:39-43) and loadLatest() (433-438); replace() resets autosave and clearBackup() runs unconditionally after the awaited get.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup / The copyable conflict block ...; Text typed while "Load latest" is fetching ...
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### DUP-2: Recipe/cookbook/photo fixture helpers re-implemented in about a dozen ITs
 

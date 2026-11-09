@@ -212,7 +212,11 @@ export class RecipeEditorPage {
       ? 'errors.recipe_incomplete'
       : null;
   });
-  protected readonly conflictCopy = computed(() => conflictText(this.store.recipe()));
+  protected readonly conflictCopy = computed(() => conflictText(this.store.recipe(), {
+    prep: (n) => this.i18n.translate('editor.conflictPrep', { n }),
+    cook: (n) => this.i18n.translate('editor.conflictCook', { n }),
+    portions: (n) => this.i18n.translate('editor.conflictPortions', { n }),
+  }));
   protected readonly badge = computed(() => {
     const s = this.store.server();
     if (!s || s.status === 'DRAFT') return 'draft';

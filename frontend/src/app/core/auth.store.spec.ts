@@ -94,4 +94,14 @@ describe('AuthStore', () => {
     await p;
     expect(store.me()).toBeNull();
   });
+
+  it.each([0, 500])('logout keeps me set and rejects with an ApiError when the request fails with %i', async (status) => {
+    store.setMe(me);
+    const p = store.logout();
+    const rejected = p.then(() => null, (e: unknown) => e);
+    await new Promise((r) => setTimeout(r));
+    http.expectOne('/api/auth/logout').flush(null, { status, statusText: 'x' });
+    expect(await rejected).toMatchObject({ status, code: status === 0 ? 'network_error' : 'unknown' });
+    expect(store.me()).toEqual(me);
+  });
 });

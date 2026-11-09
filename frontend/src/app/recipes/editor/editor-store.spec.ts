@@ -87,6 +87,34 @@ describe('EditorStore', () => {
     expect(store.recipe()).toMatchObject({ title: 'Theirs', version: 5 });
   });
 
+  it('conflictText includes ingredient lines, source, times and portions', () => {
+    const r = emptyInput({
+      title: 'Pie', notes: 'Note', portions: 4, prepMinutes: 10, cookMinutes: 45, source: 'Nonna',
+      groups: [{ name: null, ingredients: [
+        { amount: 1.5, unit: 'cup', name: 'flour', note: 'sifted' },
+        { amount: null, unit: null, name: 'salt', note: null },
+        { amount: 2, unit: null, name: 'eggs', note: null },
+      ] }],
+      steps: [{ text: 'Stir', photoMediaId: null }],
+    });
+    const text = conflictText(r);
+    for (const part of ['Pie', 'Note', 'Stir', '1.5 cup flour, sifted', 'salt', '2 eggs', 'Nonna', '10', '45', '4']) {
+      expect(text).toContain(part);
+    }
+    expect(text).not.toContain('null');
+  });
+
+  it('an ingredient-only edit still shows up in the conflict block', async () => {
+    const get = vi.fn().mockResolvedValue(serverRecipe());
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const store = setup({ get, save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, groups: [{ name: null, ingredients: [{ amount: 300, unit: 'g', name: 'butter', note: null }] }] }));
+    await store.flush();
+    expect(store.status()).toBe('conflict');
+    expect(conflictText(store.recipe())).toContain('300 g butter');
+  });
+
   it('keeps an edit typed while publish is in flight and saves it with the published version', async () => {
     let resolvePublish!: (r: Recipe) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolvePublish = r)));
@@ -318,6 +346,25 @@ describe('EditorStore unsaved backup', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(store.status()).toBe('saved');
     expect(stored()).toBeNull();
+  });
+
+  it('loadLatest keeps text typed while the fetch is pending: still in the editor and in the backup', async () => {
+    let resolveGet!: (r: Recipe) => void;
+    const get = vi.fn().mockResolvedValueOnce(serverRecipe())
+      .mockReturnValueOnce(new Promise<Recipe>((r) => (resolveGet = r)));
+    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const store = setupAs({ get, save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Mine' }));
+    await store.flush();
+    expect(store.status()).toBe('conflict');
+    const pending = store.loadLatest();
+    await vi.advanceTimersByTimeAsync(0);
+    store.update((r) => ({ ...r, notes: 'typed meanwhile' }));
+    resolveGet(serverRecipe({ title: 'Theirs', version: 5 }));
+    await pending;
+    expect(store.recipe().notes).toBe('typed meanwhile');
+    expect(stored()?.input.notes).toBe('typed meanwhile');
   });
 
   it('a backup with the same base version is applied at load and saved', async () => {

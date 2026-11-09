@@ -35,9 +35,32 @@ export function withoutBlankIngredients(r: RecipeInput): RecipeInput {
   return { ...r, groups: r.groups.map((g) => ({ ...g, ingredients: g.ingredients.filter((i) => !blank(i.name)) })) };
 }
 
-/** The user's own words, for the copyable block shown on a conflict: title, notes, then steps. */
-export function conflictText(r: RecipeInput): string {
-  return [r.title, r.notes, ...r.steps.map((s) => s.text)]
+/** Wording of the details lines in the conflict block (the page passes translated ones). */
+export type ConflictLabels = { prep: (n: number) => string; cook: (n: number) => string; portions: (n: number) => string };
+const ENGLISH: ConflictLabels = { prep: (n) => `Prep: ${n} min`, cook: (n) => `Cook: ${n} min`, portions: (n) => `Portions: ${n}` };
+
+/**
+ * The user's own words, for the copyable block shown on a conflict: title, notes, steps, then what
+ * "Load latest" would otherwise throw away: ingredient lines (`amount unit name, note`), source, times
+ * and portions (when not the default of 1).
+ */
+export function conflictText(r: RecipeInput, labels: ConflictLabels = ENGLISH): string {
+  const ingredients = r.groups.flatMap((g) => [
+    ...(blank(g.name) ? [] : [g.name!.trim()]),
+    ...g.ingredients
+      .map((i) => {
+        const head = [i.amount, i.unit, i.name.trim()].filter((p) => p !== null && p !== '').join(' ');
+        return blank(i.note) ? head : head ? `${head}, ${i.note!.trim()}` : i.note!.trim();
+      })
+      .filter((l) => l !== ''),
+  ]);
+  const details = [
+    r.portions !== 1 ? labels.portions(r.portions) : null,
+    r.prepMinutes !== null ? labels.prep(r.prepMinutes) : null,
+    r.cookMinutes !== null ? labels.cook(r.cookMinutes) : null,
+    r.source,
+  ].filter((t): t is string => !blank(t));
+  return [r.title, r.notes, ...r.steps.map((s) => s.text), ingredients.join('\n'), details.join('\n')]
     .filter((t): t is string => !blank(t))
     .join('\n\n');
 }
@@ -433,7 +456,13 @@ export class EditorStore {
   async loadLatest(): Promise<void> {
     if (!this._id) return;
     await this.autosave.settled();
-    this.replace(await this.api.get(this._id));
+    const before = this._recipe();
+    const beforeTexts = this._invalidTexts();
+    const latest = await this.api.get(this._id);
+    // Typed while the fetch was pending: replacing now would wipe it unseen. Keep it (editor and backup)
+    // and stay in the conflict; the banner's copy block shows it and Load latest can be pressed again.
+    if (this._recipe() !== before || this._invalidTexts() !== beforeTexts) return;
+    this.replace(latest);
     this.clearBackup(); // the person chose the server copy (the banner showed their text to copy)
   }
 

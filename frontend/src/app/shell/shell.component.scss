@@ -151,3 +151,16 @@ main {
     padding: t.$space-6 t.$space-4;
   }
 }
+
+.logout-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: t.$space-2;
+  padding: 0 t.$space-4;
+  color: #b3261e;
+
+  button {
+    @include t.touch-target;
+  }
+}

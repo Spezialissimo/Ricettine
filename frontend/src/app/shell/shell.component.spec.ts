@@ -96,6 +96,37 @@ describe('ShellComponent', () => {
     expect(nav).toHaveBeenCalledWith('/login');
   });
 
+  it('a failed logout keeps the user signed in, shows the network error, and the button retries', async () => {
+    TestBed.configureTestingModule({
+      imports: [ShellComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+    });
+    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false });
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const http = TestBed.inject(HttpTestingController);
+    const f = TestBed.createComponent(ShellComponent);
+    await f.whenStable();
+    const el = f.nativeElement as HTMLElement;
+    (el.querySelector('button.logout') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    http.expectOne('/api/auth/logout').error(new ProgressEvent('error'), { status: 0 });
+    await f.whenStable();
+    await new Promise((r) => setTimeout(r));
+    f.detectChanges();
+    expect(TestBed.inject(AuthStore).me()).not.toBeNull();
+    expect(nav).not.toHaveBeenCalled();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.network_error);
+    (el.querySelector('button.logout-retry') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'x' });
+    await f.whenStable();
+    await new Promise((r) => setTimeout(r));
+    f.detectChanges();
+    expect(TestBed.inject(AuthStore).me()).toBeNull();
+    expect(nav).toHaveBeenCalledWith('/login');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('marks the link of the current section with aria-current="page"', async () => {
     @Component({ template: '' })
     class Blank {}
