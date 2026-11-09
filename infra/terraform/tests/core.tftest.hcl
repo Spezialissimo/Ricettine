@@ -265,6 +265,64 @@ run "backups_expire_after_retention_days" {
   }
 }
 
+run "media_is_versioned_and_deleted_photos_expire_with_the_dumps" {
+  command = plan
+
+  variables {
+    backup_retention_days = 45
+  }
+
+  assert {
+    condition     = aws_s3_bucket_versioning.media.versioning_configuration[0].status == "Enabled"
+    error_message = "media bucket must be versioned so a deleted photo can be recovered"
+  }
+
+  assert {
+    condition     = one(flatten([for r in aws_s3_bucket_lifecycle_configuration.media.rule : [for n in r.noncurrent_version_expiration : n.noncurrent_days]])) == 45
+    error_message = "noncurrent media versions must expire after var.backup_retention_days"
+  }
+
+  assert {
+    condition     = one(flatten([for r in aws_s3_bucket_lifecycle_configuration.media.rule : [for e in r.expiration : e.expired_object_delete_marker]])) == true
+    error_message = "expired delete markers must be cleaned up"
+  }
+}
+
+run "stale_backup_alarm_watches_db_puts_and_treats_missing_data_as_breaching" {
+  command = plan
+
+  assert {
+    condition     = aws_s3_bucket_metric.backups_db.filter[0].prefix == "db/"
+    error_message = "request metrics must be enabled for the db/ prefix of the backups bucket"
+  }
+
+  assert {
+    condition = (
+      aws_cloudwatch_metric_alarm.backup_stale.namespace == "AWS/S3" &&
+      aws_cloudwatch_metric_alarm.backup_stale.metric_name == "PutRequests" &&
+      aws_cloudwatch_metric_alarm.backup_stale.dimensions["BucketName"] == local.backups_bucket_name &&
+      aws_cloudwatch_metric_alarm.backup_stale.dimensions["FilterId"] == aws_s3_bucket_metric.backups_db.name
+    )
+    error_message = "the alarm must watch PutRequests of the db/ request-metrics filter"
+  }
+
+  assert {
+    condition = (
+      aws_cloudwatch_metric_alarm.backup_stale.treat_missing_data == "breaching" &&
+      aws_cloudwatch_metric_alarm.backup_stale.period * aws_cloudwatch_metric_alarm.backup_stale.evaluation_periods == 26 * 3600 &&
+      aws_cloudwatch_metric_alarm.backup_stale.datapoints_to_alarm == aws_cloudwatch_metric_alarm.backup_stale.evaluation_periods &&
+      aws_cloudwatch_metric_alarm.backup_stale.comparison_operator == "LessThanThreshold" &&
+      aws_cloudwatch_metric_alarm.backup_stale.threshold == 1
+    )
+    error_message = "the alarm must fire when no dump arrived for 26 hours (missing data is breaching)"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.backup_stale.alarm_actions == toset([aws_sns_topic.alerts.arn])
+    error_message = "the alarm must notify the existing alerts topic"
+  }
+}
+
 run "backup_role_cannot_delete_backups" {
   command = plan
 
@@ -453,17 +511,17 @@ run "cloud_init_is_valid_yaml_with_exact_file_contents" {
         "/etc/systemd/system/ricettine-backup-failed.service"      = file("../../deploy/aws/ricettine-backup-failed.service")
         "/etc/systemd/system/ricettine-backup.timer"               = file("../../deploy/aws/ricettine-backup.timer")
         "/etc/systemd/system/ricettine-backup.service"             = replace(replace(file("../../deploy/aws/ricettine-backup.service"), "__BACKUPS_BUCKET__", "ricettine-backups-123456789012"), "__REGION__", "eu-west-1")
-        "/etc/systemd/system/docker.service.d/ricettine-data.conf" = f.content
-        "/opt/ricettine/config.env"                                = f.content
-        "/etc/docker/daemon.json"                                  = f.content
+        "/etc/systemd/system/docker.service.d/ricettine-data.conf" = "[Unit]\n# Containers must never start before the data volume is mounted\nRequiresMountsFor=/srv/ricettine\n"
+        "/opt/ricettine/config.env"                                = "REGION=eu-west-1\nDOMAIN_NAME=recipes.example.com\nORIGIN_DOMAIN=origin.recipes.example.com\nMEDIA_BUCKET=ricettine-media-123456789012\nIMAGE_TAG=latest\nALERT_TOPIC_ARN=arn:aws:sns:eu-west-1:123456789012:ricettine-alerts\n"
+        "/etc/docker/daemon.json"                                  = "{\n  \"log-driver\": \"json-file\",\n  \"log-opts\": { \"max-size\": \"10m\", \"max-file\": \"3\" }\n}\n"
       }, f.path, "__missing__")
     ])
     error_message = "every write_files entry must equal its source file exactly"
   }
 
   assert {
-    condition     = length(yamldecode(local.cloud_init).write_files) >= 11 && length(yamldecode(local.cloud_init).runcmd) == 1
-    error_message = "expected the 9 embedded files plus config.env and the docker drop-in, and one runcmd script"
+    condition     = length(yamldecode(local.cloud_init).write_files) == 14 && length(yamldecode(local.cloud_init).runcmd) == 1
+    error_message = "expected exactly 14 write_files entries (11 embedded files, config.env, daemon.json, the docker drop-in) and one runcmd script"
   }
 }
 

@@ -8,9 +8,43 @@ locals {
   backups_bucket_arn = "arn:aws:s3:::${local.backups_bucket_name}"
 }
 
-# Recipe photos. Versioning stays off on purpose: a deleted account's photos must really disappear.
+# Recipe photos. Versioned so an app bug, operator mistake or compromised host cannot destroy every photo for good.
+# A deleted photo stays recoverable for backup_retention_days, the same window the database dumps keep that data.
 resource "aws_s3_bucket" "media" {
   bucket = local.media_bucket_name
+}
+
+resource "aws_s3_bucket_versioning" "media" {
+  bucket = aws_s3_bucket.media.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "media" {
+  bucket     = aws_s3_bucket.media.id
+  depends_on = [aws_s3_bucket_versioning.media]
+
+  rule {
+    id     = "expire-deleted-photos"
+    status = "Enabled"
+
+    filter {}
+
+    # Current versions never expire; only what was deleted or replaced goes after the retention window.
+    noncurrent_version_expiration {
+      noncurrent_days = var.backup_retention_days
+    }
+
+    expiration {
+      expired_object_delete_marker = true
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "media" {
@@ -134,5 +168,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
     }
+  }
+}
+
+# Request metrics for the db/ prefix feed the staleness alarm in alerts.tf (S3 emits them once requests occur).
+resource "aws_s3_bucket_metric" "backups_db" {
+  bucket = aws_s3_bucket.backups.id
+  name   = "db-dumps"
+
+  filter {
+    prefix = "db/"
   }
 }

@@ -95,7 +95,7 @@
 - **Problem:** On AWS backup.sh skips media because 'media already lives in S3'. The media bucket is unversioned on purpose, so that deleted photos really disappear. The instance role holds s3:DeleteObject on it. An app bug (for example in orphan cleanup), an operator mistake or a compromised container can therefore delete every photo with no way back. A DB restore after accidental deletion also brings back rows whose S3 objects are gone. The privacy reason does not hold up either: the DB dumps already keep deleted accounts' data for backup_retention_days.
 - **Fix:** Enable versioning on the media bucket with a lifecycle `noncurrent_version_expiration` equal to backup_retention_days, plus expired-delete-marker cleanup. Deletion then becomes final on the same schedule as the dumps. Document it in deploy-aws.md, and add tftest assertions.
 - **Evidence:** storage.tf:11 comment 'Versioning stays off on purpose'. backup.sh:61 skips media when storage type is s3. start.sh:36 forces RICETTINE_STORAGE_TYPE=s3.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### DUP-1: Login re-implements LoginAttempt.run's reserve/fail/refund logic
 
@@ -218,7 +218,7 @@
 - **Problem:** CI runs backend, frontend, e2e and two smokes only. These all exist but run only when someone remembers: actionlint, shellcheck, caddy validate, mount-data.test.sh, 29 terraform tests (infra-check.sh), the backup→wipe→restore drill and both Caddy overlays (https-smoke.sh, including the token-not-logged and X-Forwarded-For checks). A change to compose.yaml, the Caddyfiles, backup.sh or restore.sh can merge green and break production backups or the AWS origin. The PR-gate convention in CLAUDE.md ('automate checks instead of listing manual steps') is not applied to the ops layer.
 - **Fix:** Add CI jobs `infra` (scripts/infra-check.sh; it needs only Docker) and `ops-drills` (backup-restore-check.sh and https-smoke.sh on ubuntu-latest, where ports 80, 443 and 8080 are free). Mention them in CLAUDE.md's CI line.
 - **Evidence:** ci.yml jobs: backend, frontend, e2e, smoke, smoke-arm64, publish. infra-check.sh passed locally (exit 0, 'Success! 29 passed').
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### CONC-1: Photo and cover blobs are written to S3 while a row lock and a pooled connection are held
 
@@ -293,7 +293,7 @@
 - **Fix:** Add a staleness check that does not depend on the host. For example, a CloudWatch alarm on the backups bucket's PutRequests metric (request metrics on the db/ prefix), set to alarm on missing data for 26 h and wired to the existing SNS topic. Or a tiny scheduled Lambda that runs the aws-verify step 6 logic. Optionally keep the newest N noncurrent versions (`newer_noncurrent_versions`) so expiry never removes the last dumps.
 - **Evidence:** No CloudWatch alarm resources in infra/terraform. The OnFailure unit is the only alert path. The followup 'backup-failed.sh: a failed SNS publish only shows as a failed unit' is the same gap.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / backup-failed.sh SNS
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### SEC-5: Public, immutable media responses carry Set-Cookie: XSRF-TOKEN; CloudFront may cache it and serve one CSRF token to everyone
 
@@ -598,7 +598,7 @@
 - **Fix:** Change it to 25 and add `# backup_retention_days = 30` and `# origin_subdomain = "origin"`.
 - **Evidence:** example.tfvars:12 vs variables.tf:60.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / example.tfvars comment
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### DOC-3: CLAUDE.md package list and command list are stale; README repeats its test commands
 
@@ -923,7 +923,7 @@
 - **Fix:** Spell out the expected config.env text (built from the mocked values), daemon.json and the drop-in. Assert `length(write_files) == 14` and fix the message.
 - **Evidence:** core.tftest.hcl:456-458 map those paths to f.content.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Tests to add / tftest YAML round-trip
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### TEST-20: Drill's avatar_info leaks its temp file when curl fails
 
