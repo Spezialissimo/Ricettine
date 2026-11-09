@@ -17,7 +17,7 @@ Self-hosted recipe app: Spring Boot 4 (Java 25) backend + Angular 22 frontend, s
 - `compose.yaml` is image-only (published image); scripts export `COMPOSE_FILE=compose.yaml:compose.build.yaml` to build locally
 - Locally Docker runs on Colima: `export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`
 
-CI (`.github/workflows/ci.yml`) runs backend, frontend, e2e, smoke and smoke-arm64 on every PR, and `publish` on pushes to main and `v*` tags.
+CI (`.github/workflows/ci.yml`) runs backend, frontend, e2e, smoke, smoke-arm64 and infra (`infra-check.sh` plus the backup/restore drill) on every PR, and `publish` on pushes to main and `v*` tags.
 
 ## Conventions
 - Small PRs, one feature slice each. Every PR has backend integration tests plus Playwright specs that pass in both `mobile` and `desktop`. Automate checks instead of listing manual steps.

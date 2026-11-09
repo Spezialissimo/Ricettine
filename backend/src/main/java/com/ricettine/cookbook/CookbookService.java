@@ -43,7 +43,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Cookbooks and their entries. {@link #requireMember} and {@link #requireOwner} are the single place where
@@ -68,10 +71,13 @@ public class CookbookService {
 	private final PublicUrls urls;
 	private final OneTimeTokenRepository tokens;
 	private final OneTimeTokens oneTimeTokens;
+	private final TransactionTemplate tx;
 
 	public CookbookService(CookbookRepository cookbooks, CookbookAuthorRepository authors,
 			CookbookEntryRepository entries, UserRepository users, RecipeService recipes, MediaService media,
-			PublicUrls urls, OneTimeTokenRepository tokens, OneTimeTokens oneTimeTokens) {
+			PublicUrls urls, OneTimeTokenRepository tokens, OneTimeTokens oneTimeTokens,
+			PlatformTransactionManager txManager) {
+		this.tx = new TransactionTemplate(txManager);
 		this.cookbooks = cookbooks;
 		this.authors = authors;
 		this.entries = entries;
@@ -149,20 +155,25 @@ public class CookbookService {
 	}
 
 	/**
-	 * Owner only: registers the (already processed) upload as the cover, swaps the reference and deletes the old
-	 * cover media; the old blobs go after commit, the new ones are removed if this rolls back.
+	 * Owner only: stores the (already processed) upload's blobs with no transaction held, then one short transaction
+	 * locks the cookbook, re-checks the owner, registers the media, swaps the cover reference and deletes the old
+	 * cover media (its blobs go after commit). If anything fails the new blobs are removed.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public CookbookDto setCover(UUID userId, UUID id, ProcessedUpload upload) {
-		Cookbook c = lock(id);
-		requireOwnerOf(c, userId);
-		String old = c.getCoverMediaId();
-		c.setCoverMediaId(media.register(upload, userId, MediaKind.COOKBOOK, null, id));
-		c.touch();
-		cookbooks.saveAndFlush(c);
-		if (old != null) {
-			media.delete(old);
-		}
-		return toDto(c, CookbookRole.OWNER, userId);
+		return media.storeThen(upload, mediaId -> tx.execute(status -> {
+			Cookbook c = lock(id);
+			requireOwnerOf(c, userId);
+			String old = c.getCoverMediaId();
+			media.registerStored(mediaId, userId, MediaKind.COOKBOOK, null, id);
+			c.setCoverMediaId(mediaId);
+			c.touch();
+			cookbooks.saveAndFlush(c);
+			if (old != null) {
+				media.delete(old);
+			}
+			return toDto(c, CookbookRole.OWNER, userId);
+		}));
 	}
 
 	/** Owner only; idempotent. */

@@ -87,6 +87,18 @@ jobs:
       - name: Smoke test
         run: scripts/smoke.sh
 
+  # Lint, Terraform tests (mock providers, no AWS) and the backup, wipe, restore drill. Each script runs its tools in Docker
+  # and tears its own compose project down; the drill needs port 8080 free, which it is on a fresh runner.
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Infra checks
+        run: scripts/infra-check.sh
+      - name: Backup and restore drill
+        run: scripts/backup-restore-check.sh
+
   # Closes the plan-1 follow-up "run the image on arm64": boots the same image natively on an arm64 runner.
   smoke-arm64:
     runs-on: ubuntu-24.04-arm
@@ -99,7 +111,7 @@ jobs:
   # Publishes the multi-arch image only after every other job is green. Runs on pushes to main and v* tags, never on PRs.
   publish:
     if: github.event_name == 'push'
-    needs: [backend, frontend, e2e, smoke, smoke-arm64]
+    needs: [backend, frontend, e2e, smoke, smoke-arm64, infra]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:

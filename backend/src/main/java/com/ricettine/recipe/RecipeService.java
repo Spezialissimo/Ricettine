@@ -34,7 +34,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @Transactional
@@ -46,9 +49,11 @@ public class RecipeService {
 
 	private final UserRepository users;
 	private final PublicUrls urls;
+	private final TransactionTemplate tx;
 
 	public RecipeService(RecipeRepository recipes, MediaService media, MediaRepository mediaRows,
-			UserRepository users, PublicUrls urls) {
+			UserRepository users, PublicUrls urls, PlatformTransactionManager txManager) {
+		this.tx = new TransactionTemplate(txManager);
 		this.users = users;
 		this.urls = urls;
 		this.recipes = recipes;
@@ -112,14 +117,20 @@ public class RecipeService {
 	}
 
 	/**
-	 * Registers an already processed photo for the author's recipe. The recipe is share-locked so a concurrent
-	 * delete either sees this photo (and deletes it) or has already removed the recipe (404). The photo is not
-	 * referenced until a save puts its id in the cover or a step.
+	 * Registers an already processed photo for the author's recipe. The blobs are written first, with no transaction
+	 * held; then a short transaction locks the recipe (so a concurrent delete either sees this photo or has already
+	 * removed the recipe: 404), re-checks the photo cap (so concurrent uploads cannot overshoot it) and inserts the
+	 * row. On any failure the blobs are removed. The photo is not referenced until a save puts its id in the cover or
+	 * a step.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public PhotoDto addPhoto(UUID authorId, UUID id, ProcessedUpload upload) {
-		Recipe r = recipes.findForShareByIdAndAuthorId(id, authorId)
-			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
-		return photo(media.register(upload, authorId, MediaKind.RECIPE, r.getId()));
+		return media.storeThen(upload, mediaId -> tx.execute(status -> {
+			Recipe r = ownedForUpdate(authorId, id);
+			requirePhotoRoom(id);
+			media.registerStored(mediaId, authorId, MediaKind.RECIPE, r.getId(), null);
+			return photo(mediaId);
+		}));
 	}
 
 	/**
