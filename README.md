@@ -20,6 +20,8 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | --- | --- | --- |
 | `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
 | `RICETTINE_VERSION` | `latest` | Image tag to run, e.g. `1.2.0`. See Upgrading. |
+| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 75% of it, so raise it for a large library rather than removing it. |
+| `RICETTINE_TRUSTED_PROXIES` | matches nothing (Caddy overlays: loopback and private ranges) | Regex of peer addresses whose `X-Forwarded-For` the app believes, for the per-IP rate limits. With `:8080` published directly there is no proxy, so none is trusted; the Caddy overlays trust their Docker network. Set it only for your own reverse proxy. |
 | `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. **Only applied when the `db-data` volume is first created**: changing it later does not change the existing database's password (change it inside Postgres with `ALTER USER ricettine PASSWORD '...'` and then update the variable). |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/ricettine` | JDBC URL, if you use your own Postgres. |
 | `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `ricettine` | Database credentials. |
@@ -50,7 +52,7 @@ RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.h
 
 Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
 
-If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, and disable access logs for the same reason.
+If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, set `RICETTINE_TRUSTED_PROXIES` to a regex matching your proxy's address as the app sees it (otherwise `X-Forwarded-For` is ignored and every client shares the proxy's rate limit), and disable access logs for the same reason.
 
 ## Hosting on AWS
 

@@ -15,3 +15,5 @@ infra/terraform/.terraform/
 *.tfstate.*
 *.tfvars
 !example.tfvars
+.env
+backups/

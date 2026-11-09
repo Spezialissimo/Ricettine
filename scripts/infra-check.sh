@@ -18,6 +18,16 @@ files=()
 while IFS= read -r f; do files+=("$f"); done < <(find scripts deploy -name '*.sh' -type f 2>/dev/null | sort)
 docker run --rm -v "$PWD":/mnt -w /mnt "$SHELLCHECK_IMAGE" "${files[@]}"
 
+echo "compose project guard..."
+# a script that runs `down -v` deletes volumes: it must name its own compose project, or it can wipe a real stack
+for f in scripts/*.sh; do
+  code="$(grep -vE '^[[:space:]]*#' "$f" || true)"
+  if grep -qE 'down[[:space:]]+(.*[[:space:]])?-v' <<<"$code" && ! grep -qE 'COMPOSE_PROJECT_NAME=|compose[[:space:]]+(.*[[:space:]])?-p[[:space:]]' <<<"$code"; then
+    echo "$f runs 'down -v' without setting a compose project name (COMPOSE_PROJECT_NAME or -p)" >&2
+    exit 1
+  fi
+done
+
 echo "caddy validate..."
 docker run --rm -v "$PWD/deploy":/deploy:ro -e RICETTINE_DOMAIN=example.com \
   "$CADDY_IMAGE" caddy validate --config /deploy/Caddyfile --adapter caddyfile

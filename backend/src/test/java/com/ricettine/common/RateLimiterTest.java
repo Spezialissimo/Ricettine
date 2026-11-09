@@ -14,52 +14,41 @@ class RateLimiterTest {
 	@Test
 	void atLimitReportsTimeLeftInWindow() {
 		RateLimiter l = new RateLimiter(3, Duration.ofMinutes(15), 100, clock);
-		assertThat(l.check("k")).isEmpty();
 		for (int i = 0; i < 3; i++) {
-			l.hit("k");
+			assertThat(l.tryHit("k")).isEmpty();
 		}
 		clock.advance(Duration.ofMinutes(5));
-		assertThat(l.check("k")).hasValueSatisfying(d -> assertThat(d).isBetween(Duration.ofMinutes(10).minusSeconds(1), Duration.ofMinutes(10)));
-	}
-
-	@Test
-	void checkDoesNotCount() {
-		RateLimiter l = new RateLimiter(1, Duration.ofMinutes(1), 100, clock);
-		for (int i = 0; i < 5; i++) {
-			assertThat(l.check("k")).isEmpty();
-		}
-		assertThat(l.count("k")).isZero();
+		assertThat(l.tryHit("k")).hasValueSatisfying(d -> assertThat(d).isBetween(Duration.ofMinutes(10).minusSeconds(1), Duration.ofMinutes(10)));
 	}
 
 	@Test
 	void windowExpires() {
 		RateLimiter l = new RateLimiter(3, Duration.ofMinutes(15), 100, clock);
 		for (int i = 0; i < 3; i++) {
-			l.hit("k");
+			l.tryHit("k");
 		}
 		clock.advance(Duration.ofMinutes(15));
-		assertThat(l.check("k")).isEmpty();
-		l.hit("k");
+		assertThat(l.tryHit("k")).isEmpty();
 		assertThat(l.count("k")).isEqualTo(1);
 	}
 
 	@Test
 	void clearResets() {
 		RateLimiter l = new RateLimiter(2, Duration.ofMinutes(15), 100, clock);
-		l.hit("k");
-		l.hit("k");
-		assertThat(l.check("k")).isPresent();
+		l.tryHit("k");
+		l.tryHit("k");
+		assertThat(l.tryHit("k")).isPresent();
 		l.clear("k");
-		assertThat(l.check("k")).isEmpty();
+		assertThat(l.tryHit("k")).isEmpty();
 	}
 
 	@Test
 	void evictsLeastRecentlyUsedKey() {
 		RateLimiter l = new RateLimiter(5, Duration.ofMinutes(15), 2, clock);
-		l.hit("a");
-		l.hit("b");
-		l.hit("a"); // a is now most recent
-		l.hit("c"); // evicts b
+		l.tryHit("a");
+		l.tryHit("b");
+		l.tryHit("a"); // a is now most recent
+		l.tryHit("c"); // evicts b
 		assertThat(l.count("a")).isEqualTo(2);
 		assertThat(l.count("b")).isZero();
 		assertThat(l.count("c")).isEqualTo(1);
@@ -72,7 +61,7 @@ class RateLimiterTest {
 		for (int t = 0; t < 8; t++) {
 			Thread th = new Thread(() -> {
 				for (int i = 0; i < 1000; i++) {
-					l.hit("k");
+					l.tryHit("k");
 				}
 			});
 			threads.add(th);
@@ -121,7 +110,7 @@ class RateLimiterTest {
 		RateLimiter l = new RateLimiter(3, Duration.ofMinutes(15), 100, clock);
 		l.refund("missing");
 		assertThat(l.count("missing")).isZero();
-		l.hit("k");
+		l.tryHit("k");
 		l.refund("k");
 		l.refund("k");
 		assertThat(l.count("k")).isZero();

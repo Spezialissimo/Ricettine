@@ -17,6 +17,8 @@ services:
   app:
     image: ghcr.io/spezialissimo/ricettine:${RICETTINE_VERSION:-latest}
     restart: unless-stopped
+    # The JVM sizes its heap at 75% of this limit (MaxRAMPercentage); without a limit it would use the whole host.
+    mem_limit: ${RICETTINE_MEM_LIMIT:-1g}
     depends_on:
       db:
         condition: service_healthy
@@ -26,6 +28,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ricettine}
       # Set to your public URL in production, e.g. https://recipes.example.com
       RICETTINE_BASE_URL: ${RICETTINE_BASE_URL:-}
+      # Peers whose X-Forwarded-For is believed (regex). Default `(?!)` matches nothing: :8080 is published directly, so
+      # the peer is Docker's gateway, not a proxy. The Caddy overlays trust the Docker networks instead.
+      SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: ${RICETTINE_TRUSTED_PROXIES:-(?!)}
     volumes:
       - app-data:/data
     ports:

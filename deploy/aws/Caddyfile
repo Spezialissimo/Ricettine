@@ -16,6 +16,9 @@
 {$ORIGIN_DOMAIN} {
 	encode zstd gzip
 
+	# The app ignores the RFC 7239 `Forwarded` header; drop it as defence in depth.
+	request_header -Forwarded
+
 	# ORIGIN_SECRET must be alphanumeric: it is substituted into this file and matched literally,
 	# and `*` would act as a wildcard.
 	@secret header X-Origin-Verify {$ORIGIN_SECRET}
