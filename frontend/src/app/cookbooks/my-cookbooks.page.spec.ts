@@ -1,13 +1,20 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { clearOverlays, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { CookbookSummary } from './cookbook.model';
 import { MyCookbooksPage } from './my-cookbooks.page';
 
 const sum = (over: Partial<CookbookSummary>): CookbookSummary => ({
-  id: 'x', name: 'N', visibility: 'PRIVATE', role: 'OWNER', recipeCount: 0, coverThumbUrl: null,
-  updatedAt: '2026-11-04T10:00:00Z', ...over,
+  id: 'x',
+  name: 'N',
+  visibility: 'PRIVATE',
+  role: 'OWNER',
+  recipeCount: 0,
+  coverThumbUrl: null,
+  updatedAt: '2026-11-04T10:00:00Z',
+  ...over,
 });
 
 function setup(api: Partial<CookbookApi>) {
@@ -17,7 +24,7 @@ function setup(api: Partial<CookbookApi>) {
 }
 
 describe('MyCookbooksPage', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('renders names, counts, role and visibility badges and links to the cookbook', async () => {
     setup({
@@ -42,7 +49,9 @@ describe('MyCookbooksPage', () => {
   });
 
   it('shows the cover thumb of a cookbook that has one', async () => {
-    setup({ mine: async () => [sum({ id: 'a', coverThumbUrl: '/media/m1/thumb.jpg' }), sum({ id: 'b' })] });
+    setup({
+      mine: async () => [sum({ id: 'a', coverThumbUrl: '/media/m1/thumb.jpg' }), sum({ id: 'b' })],
+    });
     const f = TestBed.createComponent(MyCookbooksPage);
     await settle(f);
     const imgs = (f.nativeElement as HTMLElement).querySelectorAll('a.cookbook img.cover-thumb');
@@ -56,7 +65,11 @@ describe('MyCookbooksPage', () => {
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     expect(el.textContent).toContain(en.cookbooks.empty);
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes(en.cookbooks.new))).toBe(true);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) =>
+        b.textContent?.includes(en.cookbooks.new),
+      ),
+    ).toBe(true);
   });
 
   it('+ New cookbook opens the form; creating navigates to the new cookbook', async () => {
@@ -73,7 +86,11 @@ describe('MyCookbooksPage', () => {
     name.dispatchEvent(new Event('input'));
     (ov.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await settle(f);
-    expect(create).toHaveBeenCalledWith({ name: 'Desserts', description: null, visibility: 'PRIVATE' });
+    expect(create).toHaveBeenCalledWith({
+      name: 'Desserts',
+      description: null,
+      visibility: 'PRIVATE',
+    });
     expect(nav).toHaveBeenCalledWith('/cookbooks/new-id');
   });
 

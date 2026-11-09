@@ -10,7 +10,12 @@ import { AuthStore, Me } from './auth.store';
 class Blank {}
 
 const me: Me = {
-  id: '1', email: 'a@b.c', username: 'abc', displayName: 'Abc', avatarUrl: null, admin: false,
+  id: '1',
+  email: 'a@b.c',
+  username: 'abc',
+  displayName: 'Abc',
+  avatarUrl: null,
+  admin: false,
 };
 
 describe('authInterceptor', () => {
@@ -46,7 +51,9 @@ describe('authInterceptor', () => {
     const result = new Promise((resolve) =>
       http.request(method, url).subscribe({ next: resolve, error: resolve }),
     );
-    ctl.expectOne((r) => r.url === url && r.method === method).flush(null, { status, statusText: 'x' });
+    ctl
+      .expectOne((r) => r.url === url && r.method === method)
+      .flush(null, { status, statusText: 'x' });
     return result;
   }
 
@@ -75,6 +82,19 @@ describe('authInterceptor', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('401 on POST /api/auth/logout is not exempt: it clears me and goes to login', async () => {
+    await fail('POST', '/api/auth/logout', 401);
+    expect(store.me()).toBeNull();
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate.mock.calls[0][0].toString()).toBe('/login?next=%2Fsettings%2Fprofile');
+  });
+
+  it('an absolute URL is not an API call: its 401 does nothing', async () => {
+    await fail('GET', 'https://cdn.example.test/api/anything', 401);
+    expect(store.me()).toEqual(me);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('non-api 401 does nothing', async () => {
     await fail('GET', '/other', 401);
     expect(navigate).not.toHaveBeenCalled();
@@ -88,7 +108,11 @@ describe('authInterceptor', () => {
   });
 
   it('navigates only once for simultaneous 401s', async () => {
-    await Promise.all([fail('PATCH', '/api/me', 401), fail('POST', '/api/x', 401), fail('GET', '/api/y', 401)]);
+    await Promise.all([
+      fail('PATCH', '/api/me', 401),
+      fail('POST', '/api/x', 401),
+      fail('GET', '/api/y', 401),
+    ]);
     expect(navigate).toHaveBeenCalledTimes(1);
   });
   it('401 while never logged in does not navigate', async () => {

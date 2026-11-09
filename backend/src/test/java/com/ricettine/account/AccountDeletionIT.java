@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
 import jakarta.servlet.http.Cookie;
@@ -24,9 +23,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import tools.jackson.databind.ObjectMapper;
 
 @Import(AccountDeletionIT.Hooks.class)
 class AccountDeletionIT extends IntegrationTest {
@@ -41,16 +38,11 @@ class AccountDeletionIT extends IntegrationTest {
 		}
 	}
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired BlobStore blobs;
-	@Autowired ObjectMapper json;
 
 	@BeforeEach
 	void clean() {
 		called.clear();
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 	}
 
 	private static String body(String pw) {
@@ -59,8 +51,7 @@ class AccountDeletionIT extends IntegrationTest {
 
 	@Test
 	void wrongPasswordIs400() throws Exception {
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
-		Cookie c = Sessions.login(mvc, "a@x.com");
+		Cookie c = data.user("a@x.com", "alice", "Alice", false);
 		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
 				.content(body("nope-nope-nope")))
 			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("bad_credentials"));
@@ -70,8 +61,8 @@ class AccountDeletionIT extends IntegrationTest {
 
 	@Test
 	void deletesUserAvatarSessionsAndCallsHooks() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		User u = accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
+		data.account("admin@x.com", "boss", "Boss", true);
+		User u = data.account("a@x.com", "alice", "Alice", false);
 		Cookie c = Sessions.login(mvc, "a@x.com");
 		Cookie c2 = Sessions.login(mvc, "a@x.com");
 		String res = mvc.perform(multipart("/api/me/avatar")
@@ -104,8 +95,8 @@ class AccountDeletionIT extends IntegrationTest {
 
 	@Test
 	void deletesEveryMediaRowAndBlobTheUserOwns() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		User u = accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
+		data.account("admin@x.com", "boss", "Boss", true);
+		User u = data.account("a@x.com", "alice", "Alice", false);
 		Cookie c = Sessions.login(mvc, "a@x.com");
 		mvc.perform(multipart("/api/me/avatar")
 				.file(new MockMultipartFile("file", "a.jpg", "image/jpeg", TestImages.orientation6()))
@@ -134,9 +125,8 @@ class AccountDeletionIT extends IntegrationTest {
 
 	@Test
 	void soleAdminWithOthersIs409() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "alice", "Alice"), false);
-		Cookie c = Sessions.login(mvc, "admin@x.com");
+		Cookie c = data.user("admin@x.com", "boss", "Boss", true);
+		data.account("a@x.com", "alice", "Alice", false);
 		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
 				.content(body(Sessions.PASSWORD)))
 			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("last_admin"));
@@ -147,19 +137,22 @@ class AccountDeletionIT extends IntegrationTest {
 
 	@Test
 	void adminCanDeleteWhenAnotherAdminExists() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "boss2", "Boss2"), true);
-		Cookie c = Sessions.login(mvc, "admin@x.com");
+		Cookie c = data.user("admin@x.com", "boss", "Boss", true);
+		data.account("b@x.com", "boss2", "Boss2", true);
 		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
 				.content(body(Sessions.PASSWORD)))
 			.andExpect(status().isNoContent());
+		assertThat(jdbc.queryForObject("select count(*) from app_user", Integer.class)).isOne();
+		assertThat(jdbc.queryForObject("select is_admin from app_user where username = 'boss2'", Boolean.class))
+			.isTrue();
+		assertThat(jdbc.queryForObject("select count(*) from app_user where username = 'boss'", Integer.class))
+			.isZero();
 	}
 
 	@Test
 	void onlyUserCanDeleteAndInstanceReturnsToSetup() throws Exception {
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
+		Cookie c = data.user("admin@x.com", "boss", "Boss", true);
 		jdbc.update("insert into instance_setup (id, completed_at) values (1, now())");
-		Cookie c = Sessions.login(mvc, "admin@x.com");
 		mvc.perform(delete("/api/me").with(csrf()).cookie(c).contentType(MediaType.APPLICATION_JSON)
 				.content(body(Sessions.PASSWORD)))
 			.andExpect(status().isNoContent());

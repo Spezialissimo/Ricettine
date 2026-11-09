@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { createCookbook, logOut, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { createCookbook, logOut, newUserPage, publishRecipe, test } from '../helpers';
 
 test('co-authors: invite, accept, add, reuse, remove with recipes, rejoin and leave keeping them', async ({ browser }, testInfo) => {
   const a = await newUserPage(browser, testInfo, 'coA');

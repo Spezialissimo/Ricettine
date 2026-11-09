@@ -10,30 +10,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
-import com.ricettine.common.TokenPurpose;
-import com.ricettine.common.Tokens;
 import com.ricettine.common.OneTimeToken;
 import com.ricettine.common.OneTimeTokenRepository;
-import java.time.Instant;
+import com.ricettine.common.TokenPurpose;
+import com.ricettine.common.Tokens;
 import jakarta.servlet.http.Cookie;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class PasswordResetIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@Autowired OneTimeTokenRepository tokenRepo;
 
 	Cookie admin;
@@ -41,11 +34,8 @@ class PasswordResetIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("admin@x.com", Sessions.PASSWORD, "boss", "Boss"), true);
-		member = accounts.create(new NewAccountRequest("m@x.com", Sessions.PASSWORD, "member", "Member"), false);
-		admin = Sessions.login(mvc, "admin@x.com");
+		admin = data.user("admin@x.com", "boss", "Boss", true);
+		member = data.account("m@x.com", "member", "Member", false);
 	}
 
 	private String createLink(UUID userId) throws Exception {
@@ -97,7 +87,7 @@ class PasswordResetIT extends IntegrationTest {
 		String other = Tokens.newToken();
 		tokenRepo.saveAndFlush(new OneTimeToken(TokenPurpose.PASSWORD_RESET.name(), Tokens.hash(other),
 				member.getId(), null, Instant.now().plusSeconds(3600)));
-		User bystander = accounts.create(new NewAccountRequest("b@x.com", Sessions.PASSWORD, "bystander", "B"), false);
+		User bystander = data.account("b@x.com", "bystander", "B", false);
 		String bystanderLink = createLink(bystander.getId());
 
 		assertThat(redeem(used, "fresh-password-9").getResponse().getStatus()).isEqualTo(204);

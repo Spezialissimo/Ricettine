@@ -1,12 +1,11 @@
 package com.ricettine.recipe;
 
 import com.ricettine.auth.CurrentUser;
+import com.ricettine.common.Tokens;
 import com.ricettine.media.Media;
 import com.ricettine.media.MediaAccessPolicy;
 import com.ricettine.media.MediaKind;
 import jakarta.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,10 +47,7 @@ public class RecipeMediaAccessPolicy implements MediaAccessPolicy {
 			return Optional.empty();
 		}
 		String s = req.getParameter("s");
-		if (s != null && !s.isEmpty() && recipes.publishedShareToken(recipeId)
-			.filter(token -> MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8),
-					s.getBytes(StandardCharsets.UTF_8)))
-			.isPresent()) {
+		if (s != null && !s.isEmpty() && recipes.publishedShareToken(recipeId).filter(stored -> Tokens.matches(stored, s)).isPresent()) {
 			return Optional.of(TOKEN_CACHE);
 		}
 		return grants.stream().anyMatch(g -> g.grants(recipeId, req)) ? Optional.of(TOKEN_CACHE) : Optional.empty();

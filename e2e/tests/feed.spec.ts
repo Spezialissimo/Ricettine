@@ -1,5 +1,5 @@
-import { Page, TestInfo, expect, test } from '@playwright/test';
-import { apiPublishRecipe, createRecipe, logOut, newUserPage } from './helpers';
+import { Page, TestInfo, expect } from '@playwright/test';
+import { apiPublishRecipe, createRecipe, expectCardLayout, expectSaved, logOut, newUserPage, test } from '../helpers';
 
 const stamp = (testInfo: TestInfo) => `${testInfo.project.name}-${Date.now().toString(36)}`;
 
@@ -14,7 +14,7 @@ async function feedLoaded(page: Page) {
 async function editorRecipe(page: Page, title: string, visibility: 'Private' | 'Public', publish: boolean) {
   await createRecipe(page, { title, ingredients: ['salt'], steps: ['Cook'] });
   await page.getByRole('radio', { name: visibility }).check();
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
   if (publish) {
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('[data-url]')).toBeVisible();
@@ -24,8 +24,8 @@ async function editorRecipe(page: Page, title: string, visibility: 'Private' | '
 
 test('login lands on the feed, which lists only published public recipes and follows visibility', async ({ browser }, testInfo) => {
   const s = stamp(testInfo);
-  const { page: a, context: ctxA } = await newUserPage(browser, testInfo, 'feeda');
-  const { page: b, context: ctxB } = await newUserPage(browser, testInfo, 'feedb');
+  const { page: a } = await newUserPage(browser, testInfo, 'feeda');
+  const { page: b } = await newUserPage(browser, testInfo, 'feedb');
 
   await expect(b).toHaveURL(/\/$/);
   await expect(b.getByRole('heading', { name: 'Latest recipes' })).toBeVisible();
@@ -50,18 +50,16 @@ test('login lands on the feed, which lists only published public recipes and fol
   const saved = a.waitForResponse((r) => r.request().method() === 'PUT' && r.url().includes('/api/recipes/'));
   await a.getByRole('radio', { name: 'Private' }).check();
   await saved;
-  await expect(a.getByText(/^Hidden from the home feed and your profile\./)).toBeVisible();
+  await expect(a.getByText(/Hidden from the home feed and your profile\./)).toBeVisible();
 
   await b.goto('/');
   await feedLoaded(b);
   await expect(b.getByText(`Feed-pub-${s}`)).toHaveCount(0);
-  await ctxA.close();
-  await ctxB.close();
 });
 
 test('the feed paginates: 20 first, then Load more shows the oldest', async ({ browser }, testInfo) => {
   const s = stamp(testInfo);
-  const { page: b, context } = await newUserPage(browser, testInfo, 'feedpg');
+  const { page: b } = await newUserPage(browser, testInfo, 'feedpg');
   for (let i = 1; i <= 21; i++) {
     await apiPublishRecipe(b, { title: `Page-${s}-${String(i).padStart(2, '0')}`, visibility: 'PUBLIC' });
   }
@@ -77,25 +75,15 @@ test('the feed paginates: 20 first, then Load more shows the oldest', async ({ b
   await expect(b.getByText(`Page-${s}-01`)).toBeVisible();
   const names = await mine.locator('.name').allInnerTexts();
   expect(new Set(names).size).toBe(names.length);
-  await context.close();
 });
 
 test('feed cards sit side by side on desktop and stack on mobile; logout works from the feed', async ({ browser }, testInfo) => {
   const s = stamp(testInfo);
-  const { page, context } = await newUserPage(browser, testInfo, 'feedlay');
+  const { page } = await newUserPage(browser, testInfo, 'feedlay');
   await apiPublishRecipe(page, { title: `Lay-${s}-1`, visibility: 'PUBLIC' });
   await apiPublishRecipe(page, { title: `Lay-${s}-2`, visibility: 'PUBLIC' });
   await page.goto('/');
   const cards = page.locator('a.recipe');
-  await expect(cards.nth(1)).toBeVisible();
-  const first = (await cards.nth(0).boundingBox())!;
-  const second = (await cards.nth(1).boundingBox())!;
-  if (testInfo.project.name === 'desktop') {
-    expect(Math.abs(first.y - second.y)).toBeLessThan(2);
-    expect(second.x).toBeGreaterThan(first.x + first.width - 1);
-  } else {
-    expect(second.y).toBeGreaterThan(first.y + first.height - 1);
-  }
+  await expectCardLayout(cards, testInfo.project.name);
   await logOut(page);
-  await context.close();
 });

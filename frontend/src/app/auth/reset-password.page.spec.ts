@@ -2,15 +2,22 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { ResetPasswordPage } from './reset-password.page';
 
 describe('ResetPasswordPage', () => {
   async function run(status: number, body: object | null) {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+        },
       ],
     });
     const http = TestBed.inject(HttpTestingController);
@@ -33,7 +40,7 @@ describe('ResetPasswordPage', () => {
   it('shows success with a login link', async () => {
     const el = await run(204, null);
     expect(el.textContent).toContain(en.reset.done);
-    expect(el.querySelector('a[href="/login"]')).toBeTruthy();
+    expect(el.querySelector('a[href="/login"]')?.textContent?.trim()).toBeTruthy();
   });
 
   it('shows reset_invalid', async () => {

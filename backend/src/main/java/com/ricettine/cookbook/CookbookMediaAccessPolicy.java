@@ -1,12 +1,11 @@
 package com.ricettine.cookbook;
 
 import com.ricettine.auth.CurrentUser;
+import com.ricettine.common.Tokens;
 import com.ricettine.media.Media;
 import com.ricettine.media.MediaAccessPolicy;
 import com.ricettine.media.MediaKind;
 import jakarta.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -18,10 +17,11 @@ import org.springframework.stereotype.Component;
 @Component
 class CookbookMediaAccessPolicy implements MediaAccessPolicy {
 
-	/** Members revalidate too: a removed co-author must lose the cover at once, and the 304 is cheap. */
+	/**
+	 * Members and token holders both revalidate: a removed co-author must lose the cover, and a link reset must take
+	 * effect, at once; the 304 is cheap.
+	 */
 	static final String CACHE = "private, no-cache";
-	/** Token holders must revalidate, so a link reset takes effect at once. */
-	static final String TOKEN_CACHE = "private, no-cache";
 
 	private final CurrentUser currentUser;
 	private final CookbookRepository cookbooks;
@@ -54,9 +54,8 @@ class CookbookMediaAccessPolicy implements MediaAccessPolicy {
 			return Optional.of(CACHE);
 		}
 		String token = req.getParameter("c");
-		if (token != null && !token.isEmpty() && MessageDigest.isEqual(
-				c.getShareToken().getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))) {
-			return Optional.of(TOKEN_CACHE);
+		if (token != null && !token.isEmpty() && Tokens.matches(c.getShareToken(), token)) {
+			return Optional.of(CACHE);
 		}
 		return Optional.empty();
 	}

@@ -1,21 +1,25 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Recipe, RecipeInput } from '../recipe.model';
+import { deferred } from '../../testing/spec-helpers';
 import { Autosave } from './autosave';
 
 const input = (over: Partial<RecipeInput> = {}): RecipeInput => ({
-  version: 1, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
-  visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [], ...over,
+  version: 1,
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  visibility: 'PRIVATE',
+  coverMediaId: null,
+  groups: [],
+  steps: [],
+  ...over,
 });
 
 const httpError = (status: number, body: unknown = null) =>
   new HttpErrorResponse({ status, error: body, url: '/api/recipes/x' });
-
-function deferred<T>() {
-  let resolve!: (v: T) => void;
-  let reject!: (e: unknown) => void;
-  const promise = new Promise<T>((res, rej) => ((resolve = res), (reject = rej)));
-  return { promise, resolve, reject };
-}
 
 /** A tiny fake "store": the working copy autosave reads from, and the version bump it applies. */
 function harness(save: (i: RecipeInput) => Promise<Recipe>) {
@@ -144,7 +148,11 @@ describe('Autosave', () => {
     h.edit({ title: '' });
     await vi.advanceTimersByTimeAsync(800);
     expect(h.autosave.status()).toBe('error');
-    expect(h.autosave.error()).toEqual({ status: 400, code: 'recipe_incomplete', fields: { title: 'required' } });
+    expect(h.autosave.error()).toEqual({
+      status: 400,
+      code: 'recipe_incomplete',
+      fields: { title: 'required' },
+    });
     expect(h.autosave.dirty()).toBe(true);
 
     h.saveFn.mockImplementation(okSave);

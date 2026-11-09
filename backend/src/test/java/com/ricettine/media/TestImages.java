@@ -3,9 +3,20 @@ package com.ricettine.media;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBuffer;
+import java.awt.image.Raster;
+import java.awt.image.WritableRaster;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
 import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
@@ -88,10 +99,10 @@ public final class TestImages {
 	public static byte[] pngHeaderOnly(int w, int h) {
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			java.io.DataOutputStream d = new java.io.DataOutputStream(out);
+			DataOutputStream d = new DataOutputStream(out);
 			d.write(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A});
 			ByteArrayOutputStream ihdr = new ByteArrayOutputStream();
-			java.io.DataOutputStream i = new java.io.DataOutputStream(ihdr);
+			DataOutputStream i = new DataOutputStream(ihdr);
 			i.writeBytes("IHDR");
 			i.writeInt(w);
 			i.writeInt(h);
@@ -99,7 +110,7 @@ public final class TestImages {
 			byte[] body = ihdr.toByteArray();
 			d.writeInt(13);
 			d.write(body);
-			java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+			CRC32 crc = new CRC32();
 			crc.update(body);
 			d.writeInt((int) crc.getValue());
 			return out.toByteArray();
@@ -129,13 +140,13 @@ public final class TestImages {
 	/** Four-band (CMYK) JPEG written from a raster. */
 	public static byte[] cmykJpeg(int w, int h) {
 		try {
-			java.awt.image.WritableRaster r = java.awt.image.Raster.createInterleavedRaster(
-					java.awt.image.DataBuffer.TYPE_BYTE, w, h, 4, null);
-			javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+			WritableRaster r = Raster.createInterleavedRaster(
+					DataBuffer.TYPE_BYTE, w, h, 4, null);
+			ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
+			try (ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
 				writer.setOutput(ios);
-				writer.write(null, new javax.imageio.IIOImage(r, null, null), null);
+				writer.write(null, new IIOImage(r, null, null), null);
 			}
 			writer.dispose();
 			return out.toByteArray();
@@ -147,7 +158,7 @@ public final class TestImages {
 
 	/** RIFF/WEBP with only a VP8X header declaring w x h: enough for header-dimension checks, no pixel data. */
 	public static byte[] webpHeaderOnly(int w, int h) {
-		java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(30).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		ByteBuffer b = ByteBuffer.allocate(30).order(ByteOrder.LITTLE_ENDIAN);
 		b.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(22);
 		b.put("WEBP".getBytes(StandardCharsets.US_ASCII));
 		b.put("VP8X".getBytes(StandardCharsets.US_ASCII)).putInt(10);
@@ -167,13 +178,13 @@ public final class TestImages {
 	/** A real progressive JPEG (SOF2), written by the JDK encoder in progressive mode. */
 	public static byte[] progressiveJpeg(int w, int h) {
 		try {
-			javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
-			javax.imageio.ImageWriteParam p = writer.getDefaultWriteParam();
-			p.setProgressiveMode(javax.imageio.ImageWriteParam.MODE_DEFAULT);
+			ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+			ImageWriteParam p = writer.getDefaultWriteParam();
+			p.setProgressiveMode(ImageWriteParam.MODE_DEFAULT);
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
+			try (ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
 				writer.setOutput(ios);
-				writer.write(null, new javax.imageio.IIOImage(halves(w, h), null, null), p);
+				writer.write(null, new IIOImage(halves(w, h), null, null), p);
 			}
 			writer.dispose();
 			return out.toByteArray();

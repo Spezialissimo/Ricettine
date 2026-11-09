@@ -14,6 +14,7 @@ import com.ricettine.media.ProcessedUpload;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -135,7 +136,7 @@ public class AccountService {
 	 * connection), then registers it and swaps it in within one short transaction; the old blobs go only once the
 	 * swap has committed, the new ones are removed if it rolls back.
 	 */
-	public User setAvatar(UUID userId, byte[] image) {
+	public User setAvatar(UUID userId, Supplier<byte[]> image) {
 		ProcessedUpload upload = media.process(image, Set.of(ImageVariant.AVATAR));
 		return tx.execute(status -> swapAvatar(userId, upload));
 	}

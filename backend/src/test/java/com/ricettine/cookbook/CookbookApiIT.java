@@ -6,80 +6,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
+import com.ricettine.testsupport.Concurrently;
 import jakarta.servlet.http.Cookie;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class CookbookApiIT extends IntegrationTest {
-
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 
 	Cookie me;
 	Cookie other;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Me"), true);
-		accounts.create(new NewAccountRequest("other@x.com", Sessions.PASSWORD, "other1", "Other"), false);
-		me = Sessions.login(mvc, "me@x.com");
-		other = Sessions.login(mvc, "other@x.com");
-	}
-
-	JsonNode read(MvcResult r) throws Exception {
-		return json.readTree(r.getResponse().getContentAsString());
-	}
-
-	JsonNode createCookbook(Cookie who, String body) throws Exception {
-		return read(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(who).contentType(MediaType.APPLICATION_JSON)
-			.content(body)).andExpect(status().isCreated()).andReturn());
-	}
-
-	String cookbook(Cookie who) throws Exception {
-		return createCookbook(who, "{\"name\":\"Dinners\"}").get("id").asText();
-	}
-
-	/** A published recipe (title "R"), PRIVATE or PUBLIC; returns its JSON (id, shareUrl). */
-	JsonNode publishedRecipe(Cookie who, String visibility) throws Exception {
-		JsonNode draft = read(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andReturn());
-		String body = """
-			{"version":0,"title":"R","portions":2,"visibility":"%s","groups":[
-			 {"ingredients":[{"name":"flour"}]}],"steps":[{"text":"mix"}]}""".formatted(visibility);
-		mvc.perform(put("/api/recipes/" + draft.get("id").asText()).with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
-		return read(mvc.perform(post("/api/recipes/" + draft.get("id").asText() + "/publish").with(csrf()).cookie(who)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}")).andExpect(status().isOk())
-			.andReturn());
-	}
-
-	JsonNode draftRecipe(Cookie who) throws Exception {
-		return read(mvc.perform(post("/api/recipes").with(csrf()).cookie(who)).andReturn());
-	}
-
-	static String tokenOf(JsonNode published) {
-		String url = published.get("shareUrl").asText();
-		return url.substring(url.lastIndexOf('/') + 1);
+		me = data.user("me@x.com", "mario", "Me", true);
+		other = data.user("other@x.com", "other1", "Other", false);
 	}
 
 	ResultActions add(Cookie who, String cookbookId, String body) throws Exception {
@@ -96,7 +49,7 @@ class CookbookApiIT extends IntegrationTest {
 	}
 
 	JsonNode fetch(Cookie who, String id) throws Exception {
-		return read(mvc.perform(get("/api/cookbooks/" + id).cookie(who)).andExpect(status().isOk()).andReturn());
+		return data.read(mvc.perform(get("/api/cookbooks/" + id).cookie(who)).andExpect(status().isOk()).andReturn());
 	}
 
 	@Test
@@ -106,9 +59,9 @@ class CookbookApiIT extends IntegrationTest {
 			.andExpect(jsonPath("$.name").value("Dinners")).andExpect(jsonPath("$.visibility").value("PRIVATE"))
 			.andExpect(jsonPath("$.role").value("OWNER")).andExpect(jsonPath("$.description").doesNotExist())
 			.andExpect(jsonPath("$.owner.username").value("mario")).andExpect(jsonPath("$.authors").isEmpty())
-			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").value(org.hamcrest.Matchers.startsWith("http://localhost/c/")))
+			.andExpect(jsonPath("$.recipes").isEmpty()).andExpect(jsonPath("$.shareUrl").value(Matchers.startsWith("http://localhost/c/")))
 			.andExpect(jsonPath("$.cover").doesNotExist()).andReturn();
-		JsonNode n = read(r);
+		JsonNode n = data.read(r);
 		UUID id = UUID.fromString(n.get("id").asText());
 		assertThat(r.getResponse().getHeader("Location")).isEqualTo("/api/cookbooks/" + id);
 		assertThat(jdbc.queryForObject("select share_token from cookbook where id = ?", String.class, id)).hasSize(43);
@@ -126,8 +79,8 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void nonMemberGets404() throws Exception {
-		String id = cookbook(me);
-		String recipe = publishedRecipe(other, "PUBLIC").get("id").asText();
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(other, "PUBLIC");
 		mvc.perform(get("/api/cookbooks/" + id).cookie(other)).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("cookbook_not_found"));
 		mvc.perform(patch("/api/cookbooks/" + id).with(csrf()).cookie(other).contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +100,7 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void ownerPatchesAndDeletes() throws Exception {
-		String id = cookbook(me);
+		String id = data.createCookbook(me);
 		Instant before = jdbc.queryForObject("select updated_at from cookbook where id = ?::uuid", Timestamp.class, id)
 			.toInstant();
 		mvc.perform(patch("/api/cookbooks/" + id).with(csrf()).cookie(me).contentType(MediaType.APPLICATION_JSON)
@@ -169,7 +122,7 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void authorIsMemberButNotOwner() throws Exception {
-		String id = cookbook(me);
+		String id = data.createCookbook(me);
 		jdbc.update("insert into cookbook_author (cookbook_id, user_id, joined_at) "
 				+ "select ?::uuid, id, now() from app_user where username = 'other1'", id);
 		assertThat(fetch(other, id).get("role").asText()).isEqualTo("AUTHOR");
@@ -179,7 +132,7 @@ class CookbookApiIT extends IntegrationTest {
 			.andExpect(jsonPath("$.code").value("cookbook_owner_only"));
 		mvc.perform(delete("/api/cookbooks/" + id).with(csrf()).cookie(other)).andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("cookbook_owner_only"));
-		String recipe = publishedRecipe(other, "PRIVATE").get("id").asText();
+		String recipe = data.publishedRecipe(other, "PRIVATE");
 		addById(other, id, recipe).andExpect(status().isCreated());
 		mvc.perform(get("/api/cookbooks/mine").cookie(other)).andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].role").value("AUTHOR")).andExpect(jsonPath("$[0].recipeCount").value(1));
@@ -189,12 +142,12 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void mineListsOwnedNewestFirst() throws Exception {
-		String a = cookbook(me);
-		String b = createCookbook(me, "{\"name\":\"Desserts\"}").get("id").asText();
-		cookbook(other);
-		String recipe = publishedRecipe(me, "PRIVATE").get("id").asText();
+		String a = data.createCookbook(me);
+		String b = data.createCookbookJson(me, "{\"name\":\"Desserts\"}").get("id").asText();
+		data.createCookbook(other);
+		String recipe = data.publishedRecipe(me, "PRIVATE");
 		addById(me, a, recipe).andExpect(status().isCreated());
-		JsonNode list = read(mvc.perform(get("/api/cookbooks/mine").cookie(me)).andExpect(status().isOk()).andReturn());
+		JsonNode list = data.read(mvc.perform(get("/api/cookbooks/mine").cookie(me)).andExpect(status().isOk()).andReturn());
 		assertThat(list).hasSize(2);
 		// adding to A bumped it, so A is newest
 		assertThat(list.get(0).get("id").asText()).isEqualTo(a);
@@ -207,24 +160,24 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void addOwnPublishedByIdAndOthersByToken() throws Exception {
-		String id = cookbook(me);
-		String own = publishedRecipe(me, "PRIVATE").get("id").asText();
-		JsonNode theirs = publishedRecipe(other, "PRIVATE");
+		String id = data.createCookbook(me);
+		String own = data.publishedRecipe(me, "PRIVATE");
+		String theirs = data.publishedRecipe(other, "PRIVATE");
 		addById(me, id, own).andExpect(status().isCreated()).andExpect(jsonPath("$.recipeId").value(own))
 			.andExpect(jsonPath("$.title").value("R")).andExpect(jsonPath("$.mine").value(true))
 			.andExpect(jsonPath("$.author.username").value("mario"))
 			.andExpect(jsonPath("$.addedBy.username").value("mario"));
-		addByToken(me, id, tokenOf(theirs)).andExpect(status().isCreated())
-			.andExpect(jsonPath("$.recipeId").value(theirs.get("id").asText()))
+		addByToken(me, id, data.recipeShareToken(theirs)).andExpect(status().isCreated())
+			.andExpect(jsonPath("$.recipeId").value(theirs))
 			.andExpect(jsonPath("$.mine").value(false)).andExpect(jsonPath("$.author.username").value("other1"));
-		addByToken(me, id, tokenOf(theirs)).andExpect(status().isOk())
-			.andExpect(jsonPath("$.recipeId").value(theirs.get("id").asText()));
+		addByToken(me, id, data.recipeShareToken(theirs)).andExpect(status().isOk())
+			.andExpect(jsonPath("$.recipeId").value(theirs));
 		addById(me, id, own).andExpect(status().isOk());
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(2);
 		jdbc.update("update cookbook_entry set added_at = added_at - interval '1 hour' where recipe_id = ?::uuid", own);
 		JsonNode recipes = fetch(me, id).get("recipes");
 		assertThat(recipes).hasSize(2);
-		assertThat(recipes.get(0).get("recipeId").asText()).isEqualTo(theirs.get("id").asText());
+		assertThat(recipes.get(0).get("recipeId").asText()).isEqualTo(theirs);
 		assertThat(recipes.get(1).get("recipeId").asText()).isEqualTo(own);
 		assertThat(recipes.get(0).get("addedBy").get("username").asText()).isEqualTo("mario");
 		assertThat(recipes.get(0).get("title").asText()).isEqualTo("R");
@@ -232,33 +185,44 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void addByIdRequiresAuthorOrPublic() throws Exception {
-		String id = cookbook(me);
-		JsonNode privateTheirs = publishedRecipe(other, "PRIVATE");
-		JsonNode publicTheirs = publishedRecipe(other, "PUBLIC");
-		addById(me, id, privateTheirs.get("id").asText()).andExpect(status().isNotFound())
+		String id = data.createCookbook(me);
+		String privateTheirs = data.publishedRecipe(other, "PRIVATE");
+		String publicTheirs = data.publishedRecipe(other, "PUBLIC");
+		addById(me, id, privateTheirs).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
-		addById(me, id, publicTheirs.get("id").asText()).andExpect(status().isCreated());
-		JsonNode myDraft = draftRecipe(me);
-		JsonNode theirDraft = draftRecipe(other);
-		addById(me, id, myDraft.get("id").asText()).andExpect(status().isNotFound())
+		addById(me, id, publicTheirs).andExpect(status().isCreated());
+		String myDraft = data.draft(me);
+		String theirDraft = data.draft(other);
+		addById(me, id, myDraft).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
-		addById(me, id, theirDraft.get("id").asText()).andExpect(status().isNotFound());
-		String draftToken = jdbc.queryForObject("select share_token from recipe where id = ?::uuid", String.class,
-				theirDraft.get("id").asText());
+		addById(me, id, theirDraft).andExpect(status().isNotFound());
+		String draftToken = data.recipeShareToken(theirDraft);
 		addByToken(me, id, draftToken).andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("recipe_not_found"));
 		addByToken(me, id, "nope").andExpect(status().isNotFound());
 		addById(me, id, UUID.randomUUID().toString()).andExpect(status().isNotFound());
-		add(me, id, "{\"recipeId\":\"" + publicTheirs.get("id").asText() + "\",\"shareToken\":\"x\"}")
+		add(me, id, "{\"recipeId\":\"" + publicTheirs + "\",\"shareToken\":\"x\"}")
 			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"));
 		add(me, id, "{}").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation_failed"));
 	}
 
+	/** A non-null shareToken is a token, even a blank one: it finds nothing (404), and with a recipeId it is two refs (400). */
+	@Test
+	void blankShareTokenCountsAsSet() throws Exception {
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(me, "PUBLIC");
+		addByToken(me, id, "").andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("recipe_not_found"));
+		add(me, id, "{\"recipeId\":\"" + recipe + "\",\"shareToken\":\"\"}")
+			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"));
+		assertThat(fetch(me, id).get("recipes")).isEmpty();
+	}
+
 	@Test
 	void removeEntryIsIdempotent() throws Exception {
-		String id = cookbook(me);
-		String recipe = publishedRecipe(me, "PRIVATE").get("id").asText();
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(me, "PRIVATE");
 		addById(me, id, recipe).andExpect(status().isCreated());
 		mvc.perform(delete("/api/cookbooks/" + id + "/recipes/" + recipe).with(csrf()).cookie(me))
 			.andExpect(status().isNoContent());
@@ -269,12 +233,8 @@ class CookbookApiIT extends IntegrationTest {
 		assertThat(fetch(me, id).get("recipes")).isEmpty();
 	}
 
-	@Test
-	void cookbookFullAt500() throws Exception {
-		String id = cookbook(me);
-		String first = publishedRecipe(me, "PRIVATE").get("id").asText();
-		String extra = publishedRecipe(me, "PRIVATE").get("id").asText();
-		// 499 entries (the key is cookbook + recipe, so bulk-insert real recipe rows), then one more fits, the next not.
+	/** Puts 499 entries in the cookbook (bulk-inserted recipe rows plus {@code first}); the key is cookbook + recipe. */
+	private void fillTo499(String cookbookId, String first) {
 		jdbc.update("""
 			insert into recipe (id, author_id, status, visibility, title, portions, share_token, version, created_at, updated_at)
 			select gen_random_uuid(), (select id from app_user where username = 'mario'), 'PUBLISHED', 'PRIVATE', 'bulk', 1,
@@ -282,20 +242,49 @@ class CookbookApiIT extends IntegrationTest {
 			from generate_series(1, 498) g""");
 		jdbc.update("""
 			insert into cookbook_entry (cookbook_id, recipe_id, added_by, added_at)
-			select ?::uuid, id, null, now() from recipe where title = 'bulk' or id = ?::uuid""", id, first);
+			select ?::uuid, id, null, now() from recipe where title = 'bulk' or id = ?::uuid""", cookbookId, first);
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(499);
+	}
+
+	@Test
+	void cookbookFullAt500() throws Exception {
+		String id = data.createCookbook(me);
+		String first = data.publishedRecipe(me, "PRIVATE");
+		String extra = data.publishedRecipe(me, "PRIVATE");
+		fillTo499(id, first);
 		addById(me, id, extra).andExpect(status().isCreated());
-		JsonNode third = publishedRecipe(me, "PRIVATE");
-		addById(me, id, third.get("id").asText()).andExpect(status().isConflict())
+		String third = data.publishedRecipe(me, "PRIVATE");
+		addById(me, id, third).andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("cookbook_full"));
 		addById(me, id, extra).andExpect(status().isOk());
 		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(500);
 	}
 
 	@Test
+	void concurrentAddsAt499FillTheCookbookExactlyOnce() throws Exception {
+		String id = data.createCookbook(me);
+		String first = data.publishedRecipe(me, "PRIVATE");
+		List<String> extras = List.of(data.publishedRecipe(me, "PRIVATE"), data.publishedRecipe(me, "PRIVATE"));
+		fillTo499(id, first);
+		List<Integer> codes = Concurrently.run(2,
+				i -> () -> addById(me, id, extras.get(i)).andReturn().getResponse().getStatus());
+		assertThat(codes).containsExactlyInAnyOrder(201, 409);
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isEqualTo(500);
+	}
+
+	@Test
+	void ownDraftCannotBeAddedByShareToken() throws Exception {
+		String id = data.createCookbook(me);
+		String draft = data.draft(me);
+		addByToken(me, id, data.recipeShareToken(draft)).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("recipe_not_found"));
+		assertThat(jdbc.queryForObject("select count(*) from cookbook_entry", Integer.class)).isZero();
+	}
+
+	@Test
 	void deletingRecipeRemovesItsEntries() throws Exception {
-		String id = cookbook(me);
-		String recipe = publishedRecipe(me, "PRIVATE").get("id").asText();
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(me, "PRIVATE");
 		addById(me, id, recipe).andExpect(status().isCreated());
 		mvc.perform(delete("/api/recipes/" + recipe).with(csrf()).cookie(me)).andExpect(status().isNoContent());
 		assertThat(fetch(me, id).get("recipes")).isEmpty();
@@ -304,8 +293,8 @@ class CookbookApiIT extends IntegrationTest {
 
 	@Test
 	void deletingCookbookKeepsRecipes() throws Exception {
-		String id = cookbook(me);
-		String recipe = publishedRecipe(me, "PRIVATE").get("id").asText();
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(me, "PRIVATE");
 		addById(me, id, recipe).andExpect(status().isCreated());
 		mvc.perform(delete("/api/cookbooks/" + id).with(csrf()).cookie(me)).andExpect(status().isNoContent());
 		assertThat(jdbc.queryForObject("select count(*) from recipe where id = ?::uuid", Integer.class, recipe))

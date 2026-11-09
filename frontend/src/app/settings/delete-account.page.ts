@@ -1,13 +1,12 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { SetupStatus } from '../core/auth.guards';
 import { AuthStore } from '../core/auth.store';
 import { CookbookApi } from '../cookbooks/cookbook.api';
+import { SettingsApi } from './settings.api';
 
 @Component({
   selector: 'app-delete-account-page',
@@ -22,24 +21,37 @@ import { CookbookApi } from '../cookbooks/cookbook.api';
         @if (ownedCookbooks().length > 0) {
           <p>{{ t('settings.deleteCookbooks') }}</p>
           <ul data-owned-cookbooks>
-            @for (name of ownedCookbooks(); track $index) { <li>{{ name }}</li> }
+            @for (name of ownedCookbooks(); track $index) {
+              <li>{{ name }}</li>
+            }
           </ul>
         }
-        @if (cookbooksUnknown()) { <p>{{ t('settings.deleteCookbooksUnknown') }}</p> }
+        @if (cookbooksUnknown()) {
+          <p>{{ t('settings.deleteCookbooksUnknown') }}</p>
+        }
         <label>
           {{ t('auth.password') }}
-          <input type="password" name="password" [formControl]="password" autocomplete="current-password"
-            [class.invalid]="password.invalid && attempted()" />
+          <input
+            type="password"
+            name="password"
+            [formControl]="password"
+            autocomplete="current-password"
+            [class.invalid]="password.invalid && attempted()"
+          />
         </label>
-        @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
-        <button type="submit" class="primary danger" [disabled]="busy()">{{ t('settings.deleteSubmit') }}</button>
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
+        <button type="submit" class="primary danger" [disabled]="busy()">
+          {{ t('settings.deleteSubmit') }}
+        </button>
       </form>
       <a class="btn-back" routerLink="/settings/profile">{{ t('common.back') }}</a>
     </ng-container>
   `,
 })
 export class DeleteAccountPage implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(SettingsApi);
   private readonly auth = inject(AuthStore);
   private readonly setup = inject(SetupStatus);
   private readonly router = inject(Router);
@@ -67,11 +79,9 @@ export class DeleteAccountPage implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      await firstValueFrom(
-        this.http.delete<void>('/api/me', { body: { password: this.password.value } }),
-      );
+      await this.api.deleteAccount(this.password.value);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
       this.busy.set(false);
       return;
     }

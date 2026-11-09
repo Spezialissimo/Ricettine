@@ -2,6 +2,7 @@ package com.ricettine.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ricettine.testsupport.Concurrently;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,23 +77,7 @@ class RateLimiterTest {
 	@Test
 	void tryHitIsAtomicUnderConcurrency() throws Exception {
 		RateLimiter l = new RateLimiter(10, Duration.ofMinutes(15), 100, clock);
-		var pool = java.util.concurrent.Executors.newFixedThreadPool(32);
-		var start = new java.util.concurrent.CountDownLatch(1);
-		List<java.util.concurrent.Future<Boolean>> results = new ArrayList<>();
-		for (int i = 0; i < 32; i++) {
-			results.add(pool.submit(() -> {
-				start.await();
-				return l.tryHit("k").isEmpty();
-			}));
-		}
-		start.countDown();
-		int allowed = 0;
-		for (var f : results) {
-			if (f.get()) {
-				allowed++;
-			}
-		}
-		pool.shutdown();
+		long allowed = Concurrently.run(32, () -> l.tryHit("k").isEmpty()).stream().filter(hit -> hit).count();
 		assertThat(allowed).isEqualTo(10);
 		assertThat(l.count("k")).isEqualTo(10);
 	}

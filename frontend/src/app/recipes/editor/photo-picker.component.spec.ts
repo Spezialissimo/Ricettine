@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { MAX_PHOTO_BYTES, PHOTO_ACCEPT, PhotoPickerComponent } from './photo-picker.component';
 
 async function mount(capture = false) {
@@ -21,7 +22,8 @@ async function mount(capture = false) {
   };
   return { f, el, input, picked, rejected, choose };
 }
-const file = (size: number, type = 'image/jpeg') => new File([new Uint8Array(size)], 'p.jpg', { type });
+const file = (size: number, type = 'image/jpeg') =>
+  new File([new Uint8Array(size)], 'p.jpg', { type });
 
 describe('PhotoPickerComponent', () => {
   it('has a hidden image input and an accessible button that opens it', async () => {

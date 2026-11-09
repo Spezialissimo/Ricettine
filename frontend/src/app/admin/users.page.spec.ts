@@ -3,17 +3,44 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthStore, Me } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { UsersPage } from './users.page';
 
-const me: Me = { id: 'u1', email: 'a@x.y', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: true };
-const ann = { id: 'u1', username: 'ann', displayName: 'Ann', email: 'a@x.y', admin: true, createdAt: '2030-01-01T00:00:00Z' };
-const bob = { id: 'u2', username: 'bob', displayName: 'Bob', email: 'b@x.y', admin: false, createdAt: '2030-01-02T00:00:00Z' };
+const me: Me = {
+  id: 'u1',
+  email: 'a@x.y',
+  username: 'ann',
+  displayName: 'Ann',
+  avatarUrl: null,
+  admin: true,
+};
+const ann = {
+  id: 'u1',
+  username: 'ann',
+  displayName: 'Ann',
+  email: 'a@x.y',
+  admin: true,
+  createdAt: '2030-01-01T00:00:00Z',
+};
+const bob = {
+  id: 'u2',
+  username: 'bob',
+  displayName: 'Bob',
+  email: 'b@x.y',
+  admin: false,
+  createdAt: '2030-01-02T00:00:00Z',
+};
 
 describe('UsersPage', () => {
   async function setup(users: unknown[]) {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
     TestBed.inject(AuthStore).setMe(me);
     const http = TestBed.inject(HttpTestingController);
@@ -32,8 +59,12 @@ describe('UsersPage', () => {
     expect(el.querySelectorAll('[data-user]').length).toBe(2);
     (el.querySelector('[data-user="u2"] button[data-action="reset"]') as HTMLButtonElement).click();
     await settle(f);
-    http.expectOne((r) => r.method === 'POST' && r.url === '/api/admin/users/u2/password-reset')
-      .flush({ url: 'https://h/reset/tokx', expiresAt: '2030-02-01T00:00:00Z' }, { status: 201, statusText: 'Created' });
+    http
+      .expectOne((r) => r.method === 'POST' && r.url === '/api/admin/users/u2/password-reset')
+      .flush(
+        { url: 'https://h/reset/tokx', expiresAt: '2030-02-01T00:00:00Z' },
+        { status: 201, statusText: 'Created' },
+      );
     await settle(f);
     expect(el.textContent).toContain('https://h/reset/tokx');
     http.verify();
@@ -90,7 +121,9 @@ describe('UsersPage', () => {
     const { http, f, el } = await setup([ann, { ...bob, admin: true }]);
     roleButton(el, 'u2')!.click();
     await settle(f);
-    http.expectOne('/api/admin/users/u2/admin').flush({ code: 'last_admin' }, { status: 409, statusText: 'Conflict' });
+    http
+      .expectOne('/api/admin/users/u2/admin')
+      .flush({ code: 'last_admin' }, { status: 409, statusText: 'Conflict' });
     await settle(f);
     expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.last_admin);
   });

@@ -1,10 +1,14 @@
 package com.ricettine.common;
 
 import com.ricettine.config.LimitsConfig;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -90,8 +94,17 @@ public class RateLimits {
 
 		/** Runs a password check: bad credentials keep the reservation, success clears it, anything else refunds. */
 		public void run(Runnable passwordCheck) {
-			try {
+			run(() -> {
 				passwordCheck.run();
+				return null;
+			});
+		}
+
+		/** {@link #run(Runnable)} for a check that returns what it authenticated. */
+		public <T> T run(Supplier<T> passwordCheck) {
+			T result;
+			try {
+				result = passwordCheck.get();
 			}
 			catch (ApiException e) {
 				if ("bad_credentials".equals(e.getCode())) {
@@ -107,6 +120,7 @@ public class RateLimits {
 				throw e;
 			}
 			succeeded();
+			return result;
 		}
 	}
 
@@ -128,13 +142,13 @@ public class RateLimits {
 			return ip;
 		}
 		try {
-			byte[] b = java.net.InetAddress.getByName(ip).getAddress();
+			byte[] b = InetAddress.getByName(ip).getAddress();
 			if (b.length != 16) {
 				return ip;
 			}
-			return java.util.HexFormat.of().formatHex(b, 0, 8) + "::/64";
+			return HexFormat.of().formatHex(b, 0, 8) + "::/64";
 		}
-		catch (java.net.UnknownHostException e) {
+		catch (UnknownHostException e) {
 			return ip;
 		}
 	}

@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 
@@ -20,40 +21,89 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
         <div class="bar">
           <a class="logo" routerLink="/">{{ t('common.appName') }}</a>
           <nav class="main-nav" [attr.aria-label]="t('nav.main')">
-            <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
-              t('nav.home')
+            <a
+              routerLink="/"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: true }"
+              >{{ t('nav.home') }}</a
+            >
+            <a
+              routerLink="/recipes"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: true }"
+              >{{ t('nav.recipes') }}</a
+            >
+            <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+              t('nav.cookbooks')
             }}</a>
-            <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
-              t('nav.recipes')
-            }}</a>
-            <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.cookbooks') }}</a>
             <a class="new" routerLink="/recipes/new">{{ t('nav.newRecipe') }}</a>
-            <a routerLink="/settings/profile" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.settings') }}</a>
+            <a
+              routerLink="/settings/profile"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              >{{ t('nav.settings') }}</a
+            >
             @if (auth.me()?.admin) {
-              <a routerLink="/admin/invites" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.admin') }}</a>
+              <a
+                routerLink="/admin/invites"
+                routerLinkActive="active"
+                ariaCurrentWhenActive="page"
+                >{{ t('nav.admin') }}</a
+              >
             }
           </nav>
-          <a class="new-icon" routerLink="/recipes/new" [attr.aria-label]="t('nav.newRecipeShort')">+</a>
+          <a class="new-icon" routerLink="/recipes/new" [attr.aria-label]="t('nav.newRecipeShort')"
+            >+</a
+          >
           <div class="user">
             @if (auth.me(); as me) {
-              <a class="who" [routerLink]="['/u', me.username]" [attr.aria-label]="t('nav.profile')">{{ me.displayName }}</a>
+              <a
+                class="who"
+                [routerLink]="['/u', me.username]"
+                [attr.aria-label]="t('nav.profile')"
+                >{{ me.displayName }}</a
+              >
             }
             <button type="button" class="logout" (click)="logout()">{{ t('auth.logout') }}</button>
           </div>
         </div>
+        @if (logoutError(); as key) {
+          <div class="logout-error" role="alert">
+            <span>{{ t(key) }}</span>
+            <button type="button" class="logout-retry" (click)="logout()">
+              {{ t('common.retry') }}
+            </button>
+          </div>
+        }
       </header>
       <main><router-outlet /></main>
       <nav class="bottom-nav" [attr.aria-label]="t('nav.sections')">
-        <a routerLink="/" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
-          t('nav.home')
+        <a
+          routerLink="/"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: true }"
+          >{{ t('nav.home') }}</a
+        >
+        <a
+          routerLink="/recipes"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: true }"
+          >{{ t('nav.recipes') }}</a
+        >
+        <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+          t('nav.cookbooks')
         }}</a>
-        <a routerLink="/recipes" routerLinkActive="active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }">{{
-          t('nav.recipes')
+        <a routerLink="/settings/profile" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+          t('nav.settings')
         }}</a>
-        <a routerLink="/cookbooks" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.cookbooks') }}</a>
-        <a routerLink="/settings/profile" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.settings') }}</a>
         @if (auth.me()?.admin) {
-          <a routerLink="/admin/invites" routerLinkActive="active" ariaCurrentWhenActive="page">{{ t('nav.admin') }}</a>
+          <a routerLink="/admin/invites" routerLinkActive="active" ariaCurrentWhenActive="page">{{
+            t('nav.admin')
+          }}</a>
         }
       </nav>
     </ng-container>
@@ -64,8 +114,16 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly backup = inject(UnsavedBackup);
 
+  protected readonly logoutError = signal<string | null>(null);
+
   async logout(): Promise<void> {
-    await this.auth.logout();
+    this.logoutError.set(null);
+    try {
+      await this.auth.logout();
+    } catch (e) {
+      this.logoutError.set(errorKeyOf(e));
+      return;
+    }
     this.backup.sweep();
     await this.router.navigateByUrl('/login');
   }

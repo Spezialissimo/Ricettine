@@ -1,15 +1,21 @@
-import { ChangeDetectionStrategy, Component, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatAmount, parseAmount } from '../amount';
 import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
 import { countingIngredients, countsIngredient, unnamedRows } from './completeness';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 import { EditorStore } from './editor-store';
-
-export const MAX_GROUPS = 20;
-export const MAX_INGREDIENTS = 200;
-export const MAX_INGREDIENT_NAME = 200;
-export const MAX_GROUP_NAME = 100;
+import { MAX_GROUPS, MAX_GROUP_NAME, MAX_INGREDIENTS, MAX_INGREDIENT_NAME } from '../recipe-limits';
 
 const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
 
@@ -31,12 +37,23 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
           <div class="group-head">
             <div class="field grow">
               <label [for]="id(gi, -1, 'group')">{{ t('editor.groupName') }}</label>
-              <input type="text" [id]="id(gi, -1, 'group')" class="group-name" [maxLength]="maxGroupName"
-                [placeholder]="t('editor.groupNamePlaceholder')" [value]="g.name ?? ''"
-                (input)="setGroupName(gi, $any($event.target).value)" />
+              <input
+                type="text"
+                [id]="id(gi, -1, 'group')"
+                class="group-name"
+                [maxLength]="maxGroupName"
+                [placeholder]="t('editor.groupNamePlaceholder')"
+                [value]="g.name ?? ''"
+                (input)="setGroupName(gi, $any($event.target).value)"
+              />
             </div>
-            <button type="button" class="btn delete-group" [disabled]="!canDeleteGroup(g)"
-              [attr.aria-describedby]="published() && total() <= 1 ? hintId : null" (click)="deleteGroup(gi)">
+            <button
+              type="button"
+              class="btn delete-group"
+              [disabled]="!canDeleteGroup(g)"
+              [attr.aria-describedby]="published() && total() <= 1 ? hintId : null"
+              (click)="deleteGroup(gi)"
+            >
               {{ t('editor.deleteGroup') }}
             </button>
           </div>
@@ -44,14 +61,26 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
             <div class="ing-row">
               <div class="field amount-field">
                 <label [for]="id(gi, ii, 'amount')">{{ t('editor.amount') }}</label>
-                <input type="text" inputmode="decimal" class="amount" [id]="id(gi, ii, 'amount')"
-                  [value]="amountText(gi, ii, ing)" [attr.aria-invalid]="amountInvalid(gi, ii)"
-                  [attr.aria-describedby]="amountInvalid(gi, ii) ? id(gi, ii, 'amount-error') : null"
-                  (input)="setAmount(gi, ii, $any($event.target).value)" />
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="amount"
+                  [id]="id(gi, ii, 'amount')"
+                  [value]="amountText(gi, ii, ing)"
+                  [attr.aria-invalid]="amountInvalid(gi, ii)"
+                  [attr.aria-describedby]="
+                    amountInvalid(gi, ii) ? id(gi, ii, 'amount-error') : null
+                  "
+                  (input)="setAmount(gi, ii, $any($event.target).value)"
+                />
               </div>
               <div class="field unit-field">
                 <label [for]="id(gi, ii, 'unit')">{{ t('editor.unit') }}</label>
-                <select class="unit" [id]="id(gi, ii, 'unit')" (change)="setUnit(gi, ii, $any($event.target).value)">
+                <select
+                  class="unit"
+                  [id]="id(gi, ii, 'unit')"
+                  (change)="setUnit(gi, ii, $any($event.target).value)"
+                >
                   <option value="" [selected]="ing.unit === null">{{ t('editor.noUnit') }}</option>
                   @for (u of units; track u) {
                     <option [value]="u" [selected]="ing.unit === u">{{ t('units.' + u) }}</option>
@@ -60,37 +89,81 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
               </div>
               <div class="field name-field">
                 <label [for]="id(gi, ii, 'name')">{{ t('editor.ingredientName') }}</label>
-                <input type="text" class="name" [id]="id(gi, ii, 'name')" [maxLength]="maxName" [value]="ing.name"
-                  (input)="patch(gi, ii, { name: $any($event.target).value })" />
+                <input
+                  type="text"
+                  class="name"
+                  [id]="id(gi, ii, 'name')"
+                  [maxLength]="maxName"
+                  [value]="ing.name"
+                  (input)="patch(gi, ii, { name: $any($event.target).value })"
+                />
               </div>
               <div class="field note-field">
                 <label [for]="id(gi, ii, 'note')">{{ t('editor.ingredientNote') }}</label>
-                <input type="text" class="note" [id]="id(gi, ii, 'note')" [maxLength]="maxName" [value]="ing.note ?? ''"
-                  (input)="patch(gi, ii, { note: $any($event.target).value === '' ? null : $any($event.target).value })" />
+                <input
+                  type="text"
+                  class="note"
+                  [id]="id(gi, ii, 'note')"
+                  [maxLength]="maxName"
+                  [value]="ing.note ?? ''"
+                  (input)="
+                    patch(gi, ii, {
+                      note: $any($event.target).value === '' ? null : $any($event.target).value,
+                    })
+                  "
+                />
               </div>
-              <button type="button" class="btn icon delete-ingredient" [disabled]="!canDeleteIngredient(ing)"
-                [attr.aria-label]="ing.name.trim()
-                  ? t('editor.deleteIngredientNamed', { name: ing.name.trim() })
-                  : t('editor.deleteIngredientNumbered', { n: rowNumber(gi, ii) })"
-                [attr.aria-describedby]="published() && total() <= 1 ? hintId : null" (click)="deleteIngredient(gi, ii)">
+              <button
+                type="button"
+                class="btn icon delete-ingredient"
+                [disabled]="!canDeleteIngredient(ing)"
+                [attr.aria-label]="
+                  ing.name.trim()
+                    ? t('editor.deleteIngredientNamed', { name: ing.name.trim() })
+                    : t('editor.deleteIngredientNumbered', { n: rowNumber(gi, ii) })
+                "
+                [attr.aria-describedby]="published() && total() <= 1 ? hintId : null"
+                (click)="deleteIngredient(gi, ii)"
+              >
                 <span aria-hidden="true">✕</span>
               </button>
               @if (amountInvalid(gi, ii)) {
-                <p class="field-error amount-error" [id]="id(gi, ii, 'amount-error')">{{ t('editor.amountInvalid') }}</p>
+                <p class="field-error amount-error" [id]="id(gi, ii, 'amount-error')">
+                  {{ t('editor.amountInvalid') }}
+                </p>
               }
             </div>
           }
           @if (groups.length > 0) {
-            <button type="button" class="btn add-ingredient" [id]="id(gi, -1, 'add')" [disabled]="count() >= maxIngredients"
-              (click)="addIngredient(gi)">{{ t('editor.addIngredient') }}</button>
+            <button
+              type="button"
+              class="btn add-ingredient"
+              [id]="id(gi, -1, 'add')"
+              [disabled]="count() >= maxIngredients"
+              (click)="addIngredient(gi)"
+            >
+              {{ t('editor.addIngredient') }}
+            </button>
           }
         </div>
       }
       <div class="ing-actions">
         @if (groups.length === 0) {
-          <button type="button" class="btn add-ingredient" [id]="id(0, -1, 'add')" (click)="addIngredient(0)">{{ t('editor.addIngredient') }}</button>
+          <button
+            type="button"
+            class="btn add-ingredient"
+            [id]="id(0, -1, 'add')"
+            (click)="addIngredient(0)"
+          >
+            {{ t('editor.addIngredient') }}
+          </button>
         } @else {
-          <button type="button" class="btn add-group" [disabled]="groups.length >= maxGroups" (click)="addGroup()">
+          <button
+            type="button"
+            class="btn add-group"
+            [disabled]="groups.length >= maxGroups"
+            (click)="addGroup()"
+          >
             {{ t('editor.addGroup') }}
           </button>
         }
@@ -117,11 +190,15 @@ export class IngredientsEditorComponent {
   protected readonly published = computed(() => this.store.server()?.status === 'PUBLISHED');
   /** Ingredients that count for publishing (non-blank name). */
   protected readonly total = computed(() => countingIngredients(this.store.recipe().groups));
-  protected readonly count = computed(() => this.store.recipe().groups.reduce((n, g) => n + g.ingredients.length, 0));
+  protected readonly count = computed(() =>
+    this.store.recipe().groups.reduce((n, g) => n + g.ingredients.length, 0),
+  );
 
   /** Typed amount texts that are not valid amounts, by "group.row". */
   private readonly invalidTexts = computed(() =>
-    Object.fromEntries(Object.entries(this.texts()).filter(([, t]) => parseAmount(t) === 'invalid')),
+    Object.fromEntries(
+      Object.entries(this.texts()).filter(([, t]) => parseAmount(t) === 'invalid'),
+    ),
   );
   protected readonly invalidKeys = computed(() => Object.keys(this.invalidTexts()));
 
@@ -161,7 +238,14 @@ export class IngredientsEditorComponent {
 
   /** 1-based position of a row across all groups (names an unnamed row's delete button). */
   protected rowNumber(g: number, i: number): number {
-    return this.store.recipe().groups.slice(0, g).reduce((n, grp) => n + grp.ingredients.length, 0) + i + 1;
+    return (
+      this.store
+        .recipe()
+        .groups.slice(0, g)
+        .reduce((n, grp) => n + grp.ingredients.length, 0) +
+      i +
+      1
+    );
   }
 
   protected id = (g: number, i: number, part: string) => `${this.base}-${g}-${i}-${part}`;
@@ -199,24 +283,38 @@ export class IngredientsEditorComponent {
   protected patch(g: number, i: number, change: Partial<Ingredient>): void {
     this.edit((groups) =>
       groups.map((grp, gi) =>
-        gi !== g ? grp : { ...grp, ingredients: grp.ingredients.map((ing, ii) => (ii === i ? { ...ing, ...change } : ing)) },
+        gi !== g
+          ? grp
+          : {
+              ...grp,
+              ingredients: grp.ingredients.map((ing, ii) =>
+                ii === i ? { ...ing, ...change } : ing,
+              ),
+            },
       ),
     );
   }
   protected setGroupName(g: number, value: string): void {
-    this.edit((groups) => groups.map((grp, gi) => (gi === g ? { ...grp, name: value === '' ? null : value } : grp)));
+    this.edit((groups) =>
+      groups.map((grp, gi) => (gi === g ? { ...grp, name: value === '' ? null : value } : grp)),
+    );
   }
 
   protected addIngredient(g: number): void {
     this.edit((groups) =>
       groups.length === 0
         ? [{ name: null, ingredients: [{ ...BLANK }] }]
-        : groups.map((grp, gi) => (gi === g ? { ...grp, ingredients: [...grp.ingredients, { ...BLANK }] } : grp)),
+        : groups.map((grp, gi) =>
+            gi === g ? { ...grp, ingredients: [...grp.ingredients, { ...BLANK }] } : grp,
+          ),
     );
     const row = (this.store.recipe().groups[g]?.ingredients.length ?? 1) - 1;
-    afterNextRender(() => (document.getElementById(this.id(g, row, 'name')) as HTMLElement | null)?.focus(), {
-      injector: this.injector,
-    });
+    afterNextRender(
+      () => (document.getElementById(this.id(g, row, 'name')) as HTMLElement | null)?.focus(),
+      {
+        injector: this.injector,
+      },
+    );
   }
   protected addGroup(): void {
     this.edit((groups) => [...groups, { name: null, ingredients: [] }]);
@@ -224,17 +322,23 @@ export class IngredientsEditorComponent {
   protected deleteIngredient(g: number, i: number): void {
     this.rekey((gi, ii) => (gi !== g ? [gi, ii] : ii === i ? null : [gi, ii > i ? ii - 1 : ii]));
     this.edit((groups) =>
-      groups.map((grp, gi) => (gi === g ? { ...grp, ingredients: grp.ingredients.filter((_, ii) => ii !== i) } : grp)),
+      groups.map((grp, gi) =>
+        gi === g ? { ...grp, ingredients: grp.ingredients.filter((_, ii) => ii !== i) } : grp,
+      ),
     );
     // focus the previous row's name, else the next one's (now at the same index), else the group's add button
     const left = this.store.recipe().groups[g]?.ingredients.length ?? 0;
-    this.focusLater(i > 0 ? this.id(g, i - 1, 'name') : left > 0 ? this.id(g, 0, 'name') : this.id(g, -1, 'add'));
+    this.focusLater(
+      i > 0 ? this.id(g, i - 1, 'name') : left > 0 ? this.id(g, 0, 'name') : this.id(g, -1, 'add'),
+    );
   }
   protected deleteGroup(g: number): void {
     this.rekey((gi, ii) => (gi === g ? null : [gi > g ? gi - 1 : gi, ii]));
     this.edit((groups) => groups.filter((_, gi) => gi !== g));
     const n = this.store.recipe().groups.length;
-    this.focusLater(g > 0 ? this.id(g - 1, -1, 'group') : n > 0 ? this.id(0, -1, 'group') : this.id(0, -1, 'add'));
+    this.focusLater(
+      g > 0 ? this.id(g - 1, -1, 'group') : n > 0 ? this.id(0, -1, 'group') : this.id(0, -1, 'add'),
+    );
   }
 
   /** Moves typed amount texts to their new row positions after a delete (`null` drops the entry). */

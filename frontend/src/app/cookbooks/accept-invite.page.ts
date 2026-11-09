@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInvitePreview } from './cookbook.model';
 
@@ -18,9 +18,18 @@ import { CookbookInvitePreview } from './cookbook.model';
         <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.title') }}</a>
       } @else if (preview(); as p) {
         <h1>{{ t('cookbooks.acceptTitle') }}</h1>
-        <p class="desc">{{ t('cookbooks.acceptBody', { name: p.cookbookName, owner: p.owner?.displayName ?? t('cookbooks.deletedUser') }) }}</p>
+        <p class="desc">
+          {{
+            t('cookbooks.acceptBody', {
+              name: p.cookbookName,
+              owner: p.owner?.displayName ?? t('cookbooks.deletedUser'),
+            })
+          }}
+        </p>
         <div class="actions">
-          <button type="button" class="new" [disabled]="busy()" (click)="accept()">{{ t('cookbooks.accept') }}</button>
+          <button type="button" class="new" [disabled]="busy()" (click)="accept()">
+            {{ t('cookbooks.accept') }}
+          </button>
           <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.notNow') }}</a>
         </div>
       } @else {
@@ -45,7 +54,7 @@ export class AcceptInvitePage {
     try {
       this.preview.set(await this.api.previewInvite(this.token));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
@@ -56,7 +65,7 @@ export class AcceptInvitePage {
       const book = await this.api.acceptInvite(this.token);
       await this.router.navigateByUrl(`/cookbooks/${book.id}`);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }

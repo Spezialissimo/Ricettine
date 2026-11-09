@@ -35,8 +35,9 @@ server:
     # Lets Tomcat drain an oversize upload so the client sees 413 instead of a broken pipe.
     max-swallow-size: 16MB
     remoteip:
-      # loopback and RFC 1918 (Docker networks, the Caddy container); any other peer's X-Forwarded-For is ignored
-      internal-proxies: "127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|::1|0:0:0:0:0:0:0:1|10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3}|172\\.(?:1[6-9]|2\\d|3[01])\\.\\d{1,3}\\.\\d{1,3}"
+      # Trust no peer by default: a bare `docker run -p` or `java -jar` must not believe a spoofed X-Forwarded-For.
+      # The compose files set this explicitly (RICETTINE_TRUSTED_PROXIES); tests that need a proxy set it themselves.
+      internal-proxies: "(?!)"
   # Tomcat's RemoteIpValve: X-Forwarded-For is honoured only from internal-proxies (right-most untrusted entry wins),
   # and the RFC 7239 `Forwarded` header is ignored. The rate limits key on this address.
   forward-headers-strategy: native

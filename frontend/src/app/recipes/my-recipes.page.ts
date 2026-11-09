@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { mediaUrl } from '../core/media';
 import { RecipeApi } from './recipe.api';
 import { RecipeSummary } from './recipe.model';
@@ -27,13 +27,21 @@ import { RecipeSummary } from './recipe.model';
               <li>
                 <a class="recipe" [routerLink]="['/recipes', r.id, 'edit']">
                   @if (thumb(r); as src) {
-                    <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })" />
+                    <img
+                      class="thumb"
+                      [src]="src"
+                      [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })"
+                    />
                   } @else {
                     <span class="thumb none" aria-hidden="true"></span>
                   }
                   <span class="body">
-                    <span class="name" [class.untitled]="!r.title">{{ r.title || t('recipes.untitled') }}</span>
-                    <span class="badge" [attr.data-badge]="badge(r)">{{ t('recipes.status.' + badge(r)) }}</span>
+                    <span class="name" [class.untitled]="!r.title">{{
+                      r.title || t('recipes.untitled')
+                    }}</span>
+                    <span class="badge" [attr.data-badge]="badge(r)">{{
+                      t('recipes.status.' + badge(r))
+                    }}</span>
                   </span>
                 </a>
               </li>
@@ -60,7 +68,7 @@ export class MyRecipesPage {
     try {
       this.recipes.set(await this.api.mine());
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 

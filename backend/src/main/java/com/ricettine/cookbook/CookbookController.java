@@ -2,11 +2,12 @@ package com.ricettine.cookbook;
 
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.Ids;
 import com.ricettine.cookbook.CookbookDtos.CookbookDto;
 import com.ricettine.cookbook.CookbookDtos.CookbookEntryDto;
 import com.ricettine.cookbook.CookbookDtos.CookbookInput;
 import com.ricettine.cookbook.CookbookDtos.CookbookSummary;
-import com.ricettine.cookbook.CookbookDtos.RecipeRef;
+import com.ricettine.recipe.RecipeDtos.RecipeRef;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -75,11 +76,8 @@ public class CookbookController {
 	@DeleteMapping("/{id}/recipes/{recipeId}")
 	ResponseEntity<Void> removeRecipe(@PathVariable String id, @PathVariable String recipeId) {
 		UUID cookbookId = parse(id);
-		UUID recipe;
-		try {
-			recipe = UUID.fromString(recipeId);
-		}
-		catch (IllegalArgumentException e) {
+		UUID recipe = Ids.tryParse(recipeId).orElse(null);
+		if (recipe == null) {
 			cookbooks.requireMember(cookbookId, currentUser.id());
 			return ResponseEntity.noContent().build();
 		}
@@ -89,11 +87,6 @@ public class CookbookController {
 
 	/** A malformed id can't be anyone's cookbook: same 404 as an unknown one. */
 	static UUID parse(String id) {
-		try {
-			return UUID.fromString(id);
-		}
-		catch (IllegalArgumentException e) {
-			throw new ApiException(HttpStatus.NOT_FOUND, "cookbook_not_found");
-		}
+		return Ids.parse(id, "cookbook_not_found");
 	}
 }

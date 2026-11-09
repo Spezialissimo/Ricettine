@@ -25,10 +25,13 @@ export class AppTitleStrategy extends TitleStrategy {
     if (!this.i18nService) {
       const i18n = (this.i18nService = this.injector.get(TranslocoService));
       // survives a failed load: these streams (unlike selectTranslate) do not error out
-      merge(i18n.langChanges$, i18n.events$.pipe(filter((e) => e.type === 'translationLoadSuccess'))).subscribe(() =>
-        this.render(),
-      );
-      i18n.load(i18n.getActiveLang()).subscribe({ error: (e) => console.error('Translations failed to load', e) });
+      merge(
+        i18n.langChanges$,
+        i18n.events$.pipe(filter((e) => e.type === 'translationLoadSuccess')),
+      ).subscribe(() => this.render());
+      i18n
+        .load(i18n.getActiveLang())
+        .subscribe({ error: (e) => console.error('Translations failed to load', e) });
     }
     return this.i18nService;
   }

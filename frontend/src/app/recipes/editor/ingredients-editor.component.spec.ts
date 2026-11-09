@@ -1,12 +1,21 @@
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { Group } from '../recipe.model';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { IngredientsEditorComponent } from './ingredients-editor.component';
 
-const ing = (name: string, amount: number | null = null) => ({ amount, unit: null, name, note: null });
-const group = (name: string | null, ...names: string[]): Group => ({ name, ingredients: names.map((n) => ing(n)) });
+const ing = (name: string, amount: number | null = null) => ({
+  amount,
+  unit: null,
+  name,
+  note: null,
+});
+const group = (name: string | null, ...names: string[]): Group => ({
+  name,
+  ingredients: names.map((n) => ing(n)),
+});
 
 async function mount(groups: Group[] = [], status: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
   const store = fakeEditorStore({ groups }, status);
@@ -19,7 +28,9 @@ async function mount(groups: Group[] = [], status: 'DRAFT' | 'PUBLISHED' = 'DRAF
   return { f, el: f.nativeElement as HTMLElement, store };
 }
 const byText = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text) as HTMLButtonElement;
+  Array.from(root.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === text,
+  ) as HTMLButtonElement;
 const type = (el: HTMLInputElement, value: string) => {
   el.value = value;
   el.dispatchEvent(new Event('input'));
@@ -47,8 +58,28 @@ describe('IngredientsEditorComponent', () => {
     type(el.querySelector('input.name') as HTMLInputElement, 'flour');
     type(el.querySelector('input.note') as HTMLInputElement, 'sifted');
     await settle(f);
-    expect(store.recipe().groups[0].ingredients[0]).toEqual({ amount: 1.5, unit: 'kg', name: 'flour', note: 'sifted' });
-    expect(Array.from(unit.options).map((o) => o.value)).toEqual(['', 'g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'piece', 'pinch', 'clove', 'slice', 'can', 'bunch']);
+    expect(store.recipe().groups[0].ingredients[0]).toEqual({
+      amount: 1.5,
+      unit: 'kg',
+      name: 'flour',
+      note: 'sifted',
+    });
+    expect(Array.from(unit.options).map((o) => o.value)).toEqual([
+      '',
+      'g',
+      'kg',
+      'ml',
+      'l',
+      'tsp',
+      'tbsp',
+      'cup',
+      'piece',
+      'pinch',
+      'clove',
+      'slice',
+      'can',
+      'bunch',
+    ]);
     for (const sel of ['input.amount', 'select.unit', 'input.name', 'input.note']) {
       const id = el.querySelector(sel)!.id;
       expect(el.querySelector(`label[for="${id}"]`)?.textContent?.trim(), sel).toBeTruthy();
@@ -59,7 +90,9 @@ describe('IngredientsEditorComponent', () => {
     const { el } = await mount([group('A', 'flour', ''), group('B', ' milk ')]);
     const del = Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[];
     expect(del.map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Delete ingredient flour', 'Delete ingredient 2', 'Delete ingredient milk',
+      'Delete ingredient flour',
+      'Delete ingredient 2',
+      'Delete ingredient milk',
     ]);
     expect(del[0].textContent?.trim()).toBe('✕');
   });
@@ -105,7 +138,8 @@ describe('IngredientsEditorComponent', () => {
 
   it('on a published recipe, delete is disabled on the last counting ingredient, with a hint', async () => {
     const { f, el, store } = await mount([group(null, 'milk', '')], 'PUBLISHED');
-    const del = () => Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[];
+    const del = () =>
+      Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[];
     expect(del()[0].disabled).toBe(true); // the blank row does not count
     expect(del()[1].disabled).toBe(false);
     expect(el.textContent).toContain(en.editor.needsOne);
@@ -117,13 +151,17 @@ describe('IngredientsEditorComponent', () => {
 
   it('on a published recipe, deleting stays enabled while another counting ingredient remains', async () => {
     const { el } = await mount([group(null, 'milk', 'eggs')], 'PUBLISHED');
-    for (const b of Array.from(el.querySelectorAll('button.delete-ingredient')) as HTMLButtonElement[]) expect(b.disabled).toBe(false);
+    for (const b of Array.from(
+      el.querySelectorAll('button.delete-ingredient'),
+    ) as HTMLButtonElement[])
+      expect(b.disabled).toBe(false);
     expect(el.textContent).not.toContain(en.editor.needsOne);
   });
 
   describe('invalid amounts and deletes', () => {
     afterEach(() => document.querySelectorAll('app-ingredients-editor').forEach((e) => e.remove()));
-    const amounts = (el: HTMLElement) => Array.from(el.querySelectorAll('input.amount')) as HTMLInputElement[];
+    const amounts = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('input.amount')) as HTMLInputElement[];
 
     it('reports the number of invalid amounts to the store and focuses the first one on request', async () => {
       const { f, el, store } = await mount([group(null, 'a', 'b')]);
@@ -138,7 +176,9 @@ describe('IngredientsEditorComponent', () => {
     });
 
     it('focusFirstProblem falls back to a nameless row that holds data', async () => {
-      const { f, el } = await mount([{ name: null, ingredients: [ing('milk'), { amount: 2, unit: null, name: '', note: null }] }]);
+      const { f, el } = await mount([
+        { name: null, ingredients: [ing('milk'), { amount: 2, unit: null, name: '', note: null }] },
+      ]);
       f.componentInstance.focusFirstProblem();
       expect(document.activeElement).toBe(el.querySelectorAll('input.name')[1]);
     });
@@ -183,7 +223,8 @@ describe('IngredientsEditorComponent', () => {
     it('focuses the neighbouring name (previous, else next) after deleting a row, else the add button', async () => {
       const { f, el } = await mount([group(null, 'a', 'b', 'c')]);
       const names = () => Array.from(el.querySelectorAll('input.name')) as HTMLInputElement[];
-      const del = (i: number) => (el.querySelectorAll('button.delete-ingredient')[i] as HTMLButtonElement).click();
+      const del = (i: number) =>
+        (el.querySelectorAll('button.delete-ingredient')[i] as HTMLButtonElement).click();
       del(1);
       await settle(f);
       expect(document.activeElement).toBe(names()[0]);

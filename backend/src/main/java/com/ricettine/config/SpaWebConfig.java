@@ -15,6 +15,9 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 @Configuration
 public class SpaWebConfig implements WebMvcConfigurer {
 
+	/** Where the Angular build's entry page lives on the classpath. */
+	static final String INDEX = "static/index.html";
+
 	private static final List<String> BACKEND_PREFIXES = List.of("api", "media", "actuator");
 
 	@Override
@@ -36,7 +39,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
 							return requested;
 						}
 						if (isSpaRoute(resourcePath)) {
-							Resource index = new ClassPathResource("static/index.html");
+							Resource index = new ClassPathResource(INDEX);
 							return index.exists() ? index : null;
 						}
 						return null;

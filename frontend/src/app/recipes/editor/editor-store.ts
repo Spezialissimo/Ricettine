@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
-import { ApiError, errorKey, toApiError } from '../../core/api-error';
+import { ApiError, errorKey, errorKeyOf, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
@@ -10,8 +10,17 @@ import { remapIndex } from './remap-index';
 import { ReadBackup, UnsavedBackup } from './unsaved-backup';
 
 const EMPTY: RecipeInput = {
-  version: 0, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
-  visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [],
+  version: 0,
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  visibility: 'PRIVATE',
+  coverMediaId: null,
+  groups: [],
+  steps: [],
 };
 
 const blank = (s: string | null) => !s || !s.trim();
@@ -20,10 +29,16 @@ const blank = (s: string | null) => !s || !s.trim();
 export function isUntouchedDraft(server: Recipe | null, r: RecipeInput): boolean {
   return (
     server?.status === 'DRAFT' &&
-    blank(r.title) && blank(r.source) && blank(r.notes) &&
-    r.portions === 1 && r.prepMinutes === null && r.cookMinutes === null &&
-    r.visibility === 'PRIVATE' && r.coverMediaId === null &&
-    r.groups.length === 0 && r.steps.length === 0
+    blank(r.title) &&
+    blank(r.source) &&
+    blank(r.notes) &&
+    r.portions === 1 &&
+    r.prepMinutes === null &&
+    r.cookMinutes === null &&
+    r.visibility === 'PRIVATE' &&
+    r.coverMediaId === null &&
+    r.groups.length === 0 &&
+    r.steps.length === 0
   );
 }
 
@@ -32,12 +47,57 @@ export function isUntouchedDraft(server: Recipe | null, r: RecipeInput): boolean
  * and a row being typed must not show "Not saved"). They stay in the working copy.
  */
 export function withoutBlankIngredients(r: RecipeInput): RecipeInput {
-  return { ...r, groups: r.groups.map((g) => ({ ...g, ingredients: g.ingredients.filter((i) => !blank(i.name)) })) };
+  return {
+    ...r,
+    groups: r.groups.map((g) => ({
+      ...g,
+      ingredients: g.ingredients.filter((i) => !blank(i.name)),
+    })),
+  };
 }
 
-/** The user's own words, for the copyable block shown on a conflict: title, notes, then steps. */
-export function conflictText(r: RecipeInput): string {
-  return [r.title, r.notes, ...r.steps.map((s) => s.text)]
+/** Wording of the details lines in the conflict block (the page passes translated ones). */
+export type ConflictLabels = {
+  prep: (n: number) => string;
+  cook: (n: number) => string;
+  portions: (n: number) => string;
+};
+const ENGLISH: ConflictLabels = {
+  prep: (n) => `Prep: ${n} min`,
+  cook: (n) => `Cook: ${n} min`,
+  portions: (n) => `Portions: ${n}`,
+};
+
+/**
+ * The user's own words, for the copyable block shown on a conflict: title, notes, steps, then what
+ * "Load latest" would otherwise throw away: ingredient lines (`amount unit name, note`), source, times
+ * and portions (when not the default of 1).
+ */
+export function conflictText(r: RecipeInput, labels: ConflictLabels = ENGLISH): string {
+  const ingredients = r.groups.flatMap((g) => [
+    ...(blank(g.name) ? [] : [g.name!.trim()]),
+    ...g.ingredients
+      .map((i) => {
+        const head = [i.amount, i.unit, i.name.trim()]
+          .filter((p) => p !== null && p !== '')
+          .join(' ');
+        return blank(i.note) ? head : head ? `${head}, ${i.note!.trim()}` : i.note!.trim();
+      })
+      .filter((l) => l !== ''),
+  ]);
+  const details = [
+    r.portions !== 1 ? labels.portions(r.portions) : null,
+    r.prepMinutes !== null ? labels.prep(r.prepMinutes) : null,
+    r.cookMinutes !== null ? labels.cook(r.cookMinutes) : null,
+    r.source,
+  ].filter((t): t is string => !blank(t));
+  return [
+    r.title,
+    r.notes,
+    ...r.steps.map((s) => s.text),
+    ingredients.join('\n'),
+    details.join('\n'),
+  ]
     .filter((t): t is string => !blank(t))
     .join('\n\n');
 }
@@ -47,7 +107,9 @@ const withoutEmptyRows = (r: RecipeInput): RecipeInput => ({
   ...r,
   groups: r.groups.map((g) => ({
     ...g,
-    ingredients: g.ingredients.filter((i) => !(blank(i.name) && i.amount === null && i.unit === null && blank(i.note))),
+    ingredients: g.ingredients.filter(
+      (i) => !(blank(i.name) && i.amount === null && i.unit === null && blank(i.note)),
+    ),
   })),
 });
 
@@ -60,18 +122,24 @@ function sameContent(a: RecipeInput, b: RecipeInput): boolean {
     Array.isArray(v)
       ? v.map(canon)
       : v && typeof v === 'object'
-        ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon((v as Record<string, unknown>)[k])]))
+        ? Object.fromEntries(
+            Object.keys(v)
+              .sort()
+              .map((k) => [k, canon((v as Record<string, unknown>)[k])]),
+          )
         : v;
   const strip = (r: RecipeInput) => JSON.stringify(canon({ ...withoutEmptyRows(r), version: 0 }));
   return strip(a) === strip(b);
 }
 
 const sameTexts = (a: Record<string, string>, b: Record<string, string>) =>
-  Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([k, v]) => b[k] === v);
+  Object.keys(a).length === Object.keys(b).length &&
+  Object.entries(a).every(([k, v]) => b[k] === v);
 
 /** Identifies one editor instance (one tab) among the writers of a recipe's backup. */
 const newWriterId = (): string =>
-  globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
 /** An upload failure worth retrying with the same file (no connection, server error, 503 busy). */
 const retryableUpload = (e: ApiError) => e.status === 0 || e.status >= 500;
@@ -132,7 +200,10 @@ export class EditorStore {
       this._restoreSaved.set(true);
     },
     // Input that is never sent (nameless rows with data, invalid amounts) stays backed up after a save.
-    backup: { write: () => this.writeBackup(), clear: () => (this.hasUnsavedInput() ? this.writeBackup() : this.clearBackup()) },
+    backup: {
+      write: () => this.writeBackup(),
+      clear: () => (this.hasUnsavedInput() ? this.writeBackup() : this.clearBackup()),
+    },
   });
 
   readonly recipe: Signal<RecipeInput> = this._recipe.asReadonly();
@@ -141,7 +212,9 @@ export class EditorStore {
   /** True while any photo is still being uploaded (Publish waits). */
   readonly uploading = computed(() => this._uploads().some((u) => u.status === 'uploading'));
   /** True while a photo is uploading or failed and can be retried: Publish waits, leaving asks first. */
-  readonly uploadsUnfinished = computed(() => this._uploads().some((u) => u.status === 'uploading' || (u.status === 'failed' && !!u.file)));
+  readonly uploadsUnfinished = computed(() =>
+    this._uploads().some((u) => u.status === 'uploading' || (u.status === 'failed' && !!u.file)),
+  );
   /** True when this visit started from text saved locally on an earlier visit (applied and saved, or being saved). */
   readonly restored: Signal<boolean> = this._restored.asReadonly();
   /** Amount texts restored from the local backup (by "group.row"); replaced by each server copy. */
@@ -160,7 +233,9 @@ export class EditorStore {
   /** Nameless ingredient rows holding an amount, unit or note: never saved, so an unsaved state to the person. */
   readonly unnamedIngredients = computed(() => unnamedRows(this._recipe().groups).length);
   /** True while typed input exists that cannot be saved (invalid amounts, nameless rows with data). */
-  readonly hasUnsavedInput = computed(() => this.invalidAmounts() > 0 || this.unnamedIngredients() > 0);
+  readonly hasUnsavedInput = computed(
+    () => this.invalidAmounts() > 0 || this.unnamedIngredients() > 0,
+  );
   readonly loaded = computed(() => this._server() !== null);
   /** i18n key of the load failure, if any. */
   readonly loadError: Signal<string | null> = this._loadError.asReadonly();
@@ -175,8 +250,15 @@ export class EditorStore {
    */
   readonly restoreRefused = computed(() => {
     const e = this.autosave.error();
-    return this._restored() && !this._restoreSaved() && this.status() === 'error' &&
-      !!e && e.status >= 400 && e.status < 500 && e.status !== 401;
+    return (
+      this._restored() &&
+      !this._restoreSaved() &&
+      this.status() === 'error' &&
+      !!e &&
+      e.status >= 400 &&
+      e.status < 500 &&
+      e.status !== 401
+    );
   });
   /** Server-reported field problems by dotted path (`title`, `steps[3].text`, ...). */
   readonly fieldErrors = computed<Record<string, string>>(() => {
@@ -188,13 +270,20 @@ export class EditorStore {
     // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
     // Rejects when text stayed unsaved, so a logout keeps the local backups.
     const pending = inject(PendingSaves);
-    const unregister = pending.register(() => this.autosave.flush().then(() => this.savedForLogout()));
+    const unregister = pending.register(() =>
+      this.autosave.flush().then(() => this.savedForLogout()),
+    );
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this._uploads().forEach((u) => this.revoke(u.preview));
       this._uploads.set([]);
-      pending.track(this.autosave.flush().finally(() => this.autosave.dispose()).then(() => this.savedForLogout()));
+      pending.track(
+        this.autosave
+          .flush()
+          .finally(() => this.autosave.dispose())
+          .then(() => this.savedForLogout()),
+      );
     });
   }
 
@@ -222,7 +311,7 @@ export class EditorStore {
     try {
       server = await this.api.get(id);
     } catch (e) {
-      this._loadError.set(errorKey(toApiError(e)));
+      this._loadError.set(errorKeyOf(e));
       return;
     }
     this.replace(server);
@@ -268,7 +357,13 @@ export class EditorStore {
 
   private writeBackup(): void {
     if (!this._id || !this.userId) return;
-    this.lastWriteOk = this.backup.write(this._id, this.writerId, this.userId, this._recipe(), this._invalidTexts());
+    this.lastWriteOk = this.backup.write(
+      this._id,
+      this.writerId,
+      this.userId,
+      this._recipe(),
+      this._invalidTexts(),
+    );
   }
 
   private clearBackup(): void {
@@ -312,18 +407,28 @@ export class EditorStore {
       if (!mine) return; // replaced, removed or its step deleted meanwhile; setUpload/dropUpload revoked the preview
       this._photos.update((m) => ({ ...m, [photo.mediaId]: photo }));
       this.setReference(mine.slot, photo.mediaId);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'done', file: null } : u)));
+      this._uploads.update((us) =>
+        us.map((u) => (u.id === id ? { ...u, status: 'done', file: null } : u)),
+      );
     } catch (e) {
       const mine = this._uploads().find((u) => u.id === id);
       if (!mine) return;
       const err = toApiError(e);
       if (retryableUpload(err)) {
         // never dropped silently: the preview stays with "Upload failed — Retry"
-        this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', file, error: 'editor.uploadFailed' } : u)));
+        this._uploads.update((us) =>
+          us.map((u) =>
+            u.id === id ? { ...u, status: 'failed', file, error: 'editor.uploadFailed' } : u,
+          ),
+        );
         return;
       }
       this.revoke(preview);
-      this._uploads.update((us) => us.map((u) => (u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(err) } : u)));
+      this._uploads.update((us) =>
+        us.map((u) =>
+          u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(err) } : u,
+        ),
+      );
     }
   }
 
@@ -351,18 +456,24 @@ export class EditorStore {
 
   /** Steps below an inserted/removed step move: their uploads follow (the removed step's upload is discarded). */
   stepInserted(at: number): void {
-    this._uploads.update((us) => us.map((u) => (typeof u.slot === 'number' && u.slot >= at ? { ...u, slot: u.slot + 1 } : u)));
+    this._uploads.update((us) =>
+      us.map((u) => (typeof u.slot === 'number' && u.slot >= at ? { ...u, slot: u.slot + 1 } : u)),
+    );
   }
 
   stepRemoved(at: number): void {
     this.dropUpload(at);
-    this._uploads.update((us) => us.map((u) => (typeof u.slot === 'number' && u.slot > at ? { ...u, slot: u.slot - 1 } : u)));
+    this._uploads.update((us) =>
+      us.map((u) => (typeof u.slot === 'number' && u.slot > at ? { ...u, slot: u.slot - 1 } : u)),
+    );
   }
 
   /** A step moved from `from` to `to`: the uploads of every step in between follow it (the moved step's goes with it). */
   stepMoved(from: number, to: number): void {
     this._uploads.update((us) =>
-      us.map((u) => (typeof u.slot === 'number' ? { ...u, slot: remapIndex(u.slot, from, to) } : u)),
+      us.map((u) =>
+        typeof u.slot === 'number' ? { ...u, slot: remapIndex(u.slot, from, to) } : u,
+      ),
     );
   }
 
@@ -371,18 +482,25 @@ export class EditorStore {
       slot === 'cover'
         ? { ...r, coverMediaId: mediaId }
         : slot < r.steps.length
-          ? { ...r, steps: r.steps.map((s, i) => (i === slot ? { ...s, photoMediaId: mediaId } : s)) }
+          ? {
+              ...r,
+              steps: r.steps.map((s, i) => (i === slot ? { ...s, photoMediaId: mediaId } : s)),
+            }
           : r,
     );
   }
 
   private setUpload(u: PhotoUpload): void {
-    this._uploads().filter((x) => x.slot === u.slot).forEach((x) => this.revoke(x.preview));
+    this._uploads()
+      .filter((x) => x.slot === u.slot)
+      .forEach((x) => this.revoke(x.preview));
     this._uploads.update((us) => [...us.filter((x) => x.slot !== u.slot), u]);
   }
 
   private dropUpload(slot: PhotoSlot): void {
-    this._uploads().filter((x) => x.slot === slot).forEach((x) => this.revoke(x.preview));
+    this._uploads()
+      .filter((x) => x.slot === slot)
+      .forEach((x) => this.revoke(x.preview));
     this._uploads.update((us) => us.filter((x) => x.slot !== slot));
   }
 
@@ -433,7 +551,13 @@ export class EditorStore {
   async loadLatest(): Promise<void> {
     if (!this._id) return;
     await this.autosave.settled();
-    this.replace(await this.api.get(this._id));
+    const before = this._recipe();
+    const beforeTexts = this._invalidTexts();
+    const latest = await this.api.get(this._id);
+    // Typed while the fetch was pending: replacing now would wipe it unseen. Keep it (editor and backup)
+    // and stay in the conflict; the banner's copy block shows it and Load latest can be pressed again.
+    if (this._recipe() !== before || this._invalidTexts() !== beforeTexts) return;
+    this.replace(latest);
     this.clearBackup(); // the person chose the server copy (the banner showed their text to copy)
   }
 
@@ -460,7 +584,8 @@ export class EditorStore {
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();
-    if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty()) return 'blocked';
+    if (st === 'error' || st === 'conflict' || st === 'offline' || this.autosave.dirty())
+      return 'blocked';
     // The editor stays editable while publishing: hold autosave so nothing goes out with the
     // pre-publish version (a false 409), and keep whatever is typed meanwhile.
     this.autosave.suspend();
@@ -547,7 +672,9 @@ export class EditorStore {
       const known = this._recipe().version;
       const fresh = await this.api.get(this._id!);
       const stillEmpty =
-        this.status() !== 'conflict' && fresh.version === known && isUntouchedDraft(fresh, toInput(fresh));
+        this.status() !== 'conflict' &&
+        fresh.version === known &&
+        isUntouchedDraft(fresh, toInput(fresh));
       if (!stillEmpty || !this.isUntouchedDraft()) {
         this.autosave.resume();
         return false;

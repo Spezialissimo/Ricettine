@@ -4,22 +4,46 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SetupStatus } from '../core/auth.guards';
 import { AuthStore } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle, submitForm, typeInto } from '../testing/spec-helpers';
 import { DeleteAccountPage } from './delete-account.page';
 
 describe('DeleteAccountPage', () => {
   const summary = (name: string, role: 'OWNER' | 'AUTHOR') => ({
-    id: name, name, visibility: 'PRIVATE', role, recipeCount: 0, coverThumbUrl: null, updatedAt: '2026-01-01T00:00:00Z',
+    id: name,
+    name,
+    visibility: 'PRIVATE',
+    role,
+    recipeCount: 0,
+    coverThumbUrl: null,
+    updatedAt: '2026-01-01T00:00:00Z',
   });
 
-  async function run(status: number, body: object | null, setupRequired = false, mine: object[] | 'fail' = []) {
+  async function run(
+    status: number,
+    body: object | null,
+    setupRequired = false,
+    mine: object[] | 'fail' = [],
+  ) {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
     const http = TestBed.inject(HttpTestingController);
     const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const refresh = vi.spyOn(TestBed.inject(SetupStatus), 'refresh');
-    TestBed.inject(AuthStore).setMe({ id: '1', email: 'a@b.c', username: 'ann', displayName: 'A', avatarUrl: null, admin: true });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ann',
+      displayName: 'A',
+      avatarUrl: null,
+      admin: true,
+    });
     const f = TestBed.createComponent(DeleteAccountPage);
     await settle(f);
     const mineReq = http.expectOne('/api/cookbooks/mine');
@@ -27,10 +51,8 @@ describe('DeleteAccountPage', () => {
     else mineReq.flush(mine);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    const i = el.querySelector('input[type=password]') as HTMLInputElement;
-    i.value = 'mypassword12';
-    i.dispatchEvent(new Event('input'));
-    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    typeInto(el, 'input[type=password]', 'mypassword12');
+    submitForm(el);
     await settle(f);
     const req = http.expectOne('/api/me');
     expect(req.request.method).toBe('DELETE');
@@ -46,9 +68,13 @@ describe('DeleteAccountPage', () => {
 
   it('lists the cookbooks that will be deleted, owned ones only', async () => {
     const { el } = await run(409, { code: 'last_admin' }, false, [
-      summary('Soups', 'OWNER'), summary('Shared', 'AUTHOR'), summary('Desserts', 'OWNER'),
+      summary('Soups', 'OWNER'),
+      summary('Shared', 'AUTHOR'),
+      summary('Desserts', 'OWNER'),
     ]);
-    const items = Array.from(el.querySelectorAll('[data-owned-cookbooks] li')).map((li) => li.textContent?.trim());
+    const items = Array.from(el.querySelectorAll('[data-owned-cookbooks] li')).map((li) =>
+      li.textContent?.trim(),
+    );
     expect(items).toEqual(['Soups', 'Desserts']);
     expect(el.textContent).toContain(en.settings.deleteCookbooks);
   });

@@ -6,7 +6,15 @@ describe('safeNext', () => {
     expect(safeNext('/a?b=c')).toBe('/a?b=c');
   });
   it('rejects everything else', () => {
-    for (const v of ['//evil.com', '/\\evil.com', 'https://evil.com', 'evil', '', null, undefined]) {
+    for (const v of [
+      '//evil.com',
+      '/\\evil.com',
+      'https://evil.com',
+      'evil',
+      '',
+      null,
+      undefined,
+    ]) {
       expect(safeNext(v)).toBe('/');
     }
   });

@@ -1,17 +1,26 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../../core/api-error';
+import { errorKey, errorKeyOf, fieldErrorKey, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
-import { ConfirmDeleteDialog } from './confirm-delete.dialog';
-import { ConfirmLeaveDialog } from './confirm-leave.dialog';
 import { DetailChipsComponent } from './detail-chips.component';
 import { EditorStore, conflictText } from './editor-store';
-import { openEditorSheet } from './editor-sheet';
+import { confirmSheet } from '../../shared/confirm-dialog.component';
 import { IngredientsEditorComponent } from './ingredients-editor.component';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoPickerComponent } from './photo-picker.component';
@@ -19,13 +28,7 @@ import { PhotoSlotComponent } from './photo-slot.component';
 import { SharePanelComponent } from './share-panel.component';
 import { StepsEditorComponent } from './steps-editor.component';
 import { countingIngredients, countingSteps } from './completeness';
-
-export const MAX_TITLE = 200;
-export const MAX_NOTES = 10_000;
-const FIELD_CODES = ['required', 'too_long', 'out_of_range', 'too_many', 'invalid', 'invalid_unit'];
-
-/** i18n key for a server field code (`fields` of validation_failed / recipe_incomplete). */
-export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.includes(code) ? code : 'invalid'}`;
+import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
 
 /**
  * The recipe editor. One DOM for both layouts (CSS at $bp-desktop): two columns on desktop (details,
@@ -34,7 +37,19 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
  */
 @Component({
   selector: 'app-recipe-editor-page',
-  imports: [TranslocoDirective, DetailChipsComponent, IngredientsEditorComponent, StepsEditorComponent, PhotoDropDirective, PhotoPickerComponent, PhotoSlotComponent, SharePanelComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [
+    TranslocoDirective,
+    DetailChipsComponent,
+    IngredientsEditorComponent,
+    StepsEditorComponent,
+    PhotoDropDirective,
+    PhotoPickerComponent,
+    PhotoSlotComponent,
+    SharePanelComponent,
+    CdkMenuTrigger,
+    CdkMenu,
+    CdkMenuItem,
+  ],
   providers: [EditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-editor.page.scss',
@@ -47,7 +62,9 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
       } @else {
         @let r = store.recipe();
         <header class="editor-header">
-          <button type="button" class="btn back" [disabled]="busy()" (click)="done()">{{ t('editor.done') }}</button>
+          <button type="button" class="btn back" [disabled]="busy()" (click)="done()">
+            {{ t('editor.done') }}
+          </button>
           <span class="state">{{
             store.server()?.status === 'PUBLISHED'
               ? t('editor.published', { visibility: t('recipes.status.' + badge()) })
@@ -58,14 +75,33 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
           }}</span>
           <span class="spacer"></span>
           @if (store.server()?.status === 'DRAFT') {
-            <button type="button" class="btn primary publish" [disabled]="busy() || store.uploadsUnfinished()"
-              [attr.aria-describedby]="store.uploadsUnfinished() ? 'uploads-hint' : null" (click)="publish()">{{ t('editor.publish') }}</button>
+            <button
+              type="button"
+              class="btn primary publish"
+              [disabled]="busy() || store.uploadsUnfinished()"
+              [attr.aria-describedby]="store.uploadsUnfinished() ? 'uploads-hint' : null"
+              (click)="publish()"
+            >
+              {{ t('editor.publish') }}
+            </button>
           }
-          <button type="button" class="btn more" [attr.aria-label]="t('editor.more')" [disabled]="busy()"
-            [cdkMenuTriggerFor]="menu">⋯</button>
+          <button
+            type="button"
+            class="btn more"
+            [attr.aria-label]="t('editor.more')"
+            [disabled]="busy()"
+            [cdkMenuTriggerFor]="menu"
+          >
+            ⋯
+          </button>
           <ng-template #menu>
             <div class="menu" cdkMenu>
-              <button type="button" class="menu-item danger" cdkMenuItem (cdkMenuItemTriggered)="confirmDelete()">
+              <button
+                type="button"
+                class="menu-item danger"
+                cdkMenuItem
+                (cdkMenuItemTriggered)="confirmDelete()"
+              >
                 {{ t('editor.delete') }}
               </button>
             </div>
@@ -77,13 +113,17 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
             <p>{{ t('editor.conflict') }}</p>
             <label for="conflict-copy">{{ t('editor.conflictCopy') }}</label>
             <textarea id="conflict-copy" readonly rows="6" [value]="conflictCopy()"></textarea>
-            <button type="button" class="btn primary" (click)="loadLatest()">{{ t('editor.loadLatest') }}</button>
+            <button type="button" class="btn primary" (click)="loadLatest()">
+              {{ t('editor.loadLatest') }}
+            </button>
           </section>
         }
         @if (store.saveError(); as e) {
           <p class="alert" role="alert">{{ t(e) }}</p>
           @if (store.restoreRefused()) {
-            <button type="button" class="btn use-saved" (click)="loadLatest()">{{ t('editor.useSaved') }}</button>
+            <button type="button" class="btn use-saved" (click)="loadLatest()">
+              {{ t('editor.useSaved') }}
+            </button>
           }
         }
         @if (store.uploading()) {
@@ -103,16 +143,27 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
 
         <div class="cols">
           <div class="col-left">
-            <div class="cover" [class.has-photo]="!!r.coverMediaId || !!store.uploadFor('cover')" appPhotoDrop
-              (dropped)="store.uploadPhoto('cover', $event)" (rejected)="store.rejectPhoto('cover', $event)">
+            <div
+              class="cover"
+              [class.has-photo]="!!r.coverMediaId || !!store.uploadFor('cover')"
+              appPhotoDrop
+              (dropped)="store.uploadPhoto('cover', $event)"
+              (rejected)="store.rejectPhoto('cover', $event)"
+            >
               <app-photo-slot slot="cover" />
             </div>
             <div class="title-field">
               <label for="recipe-title">{{ t('editor.title') }}</label>
-              <input id="recipe-title" type="text" [maxLength]="maxTitle" [placeholder]="t('editor.titlePlaceholder')"
-                [value]="r.title" [attr.aria-invalid]="!!titleError()"
+              <input
+                id="recipe-title"
+                type="text"
+                [maxLength]="maxTitle"
+                [placeholder]="t('editor.titlePlaceholder')"
+                [value]="r.title"
+                [attr.aria-invalid]="!!titleError()"
                 [attr.aria-describedby]="titleError() ? 'recipe-title-error' : null"
-                (input)="set('title', $any($event.target).value)" />
+                (input)="set('title', $any($event.target).value)"
+              />
               @if (titleError(); as key) {
                 <p id="recipe-title-error" class="field-error">{{ t(key) }}</p>
               }
@@ -122,38 +173,68 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
               <legend>{{ t('editor.visibility') }}</legend>
               @for (v of visibilities; track v) {
                 <label class="seg" [attr.data-v]="v">
-                  <input type="radio" name="visibility" [value]="v" [checked]="r.visibility === v"
-                    (change)="setVisibility(v)" />
+                  <input
+                    type="radio"
+                    name="visibility"
+                    [value]="v"
+                    [checked]="r.visibility === v"
+                    (change)="setVisibility(v)"
+                  />
                   {{ t(v === 'PRIVATE' ? 'editor.private' : 'editor.public') }}
                 </label>
               }
             </fieldset>
-            <p class="visibility-hint">{{ t(r.visibility === 'PRIVATE' ? 'editor.privateHint' : 'editor.publicHint') }}</p>
+            <p class="visibility-hint">
+              {{ t(r.visibility === 'PRIVATE' ? 'editor.privateHint' : 'editor.publicHint') }}
+            </p>
             <app-share-panel class="share" />
-            <section class="ingredients" [class.missing]="missing().includes('ingredients') || showInvalid() || showUnnamed()" aria-labelledby="ingredients-heading">
+            <section
+              class="ingredients"
+              [class.missing]="missing().includes('ingredients') || showInvalid() || showUnnamed()"
+              aria-labelledby="ingredients-heading"
+            >
               <h2 id="ingredients-heading">{{ t('editor.ingredients') }}</h2>
               @if (missing().includes('ingredients')) {
-                <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
+                <p class="section-error field-error" role="alert">
+                  {{ t('errors.recipe_incomplete') }}
+                </p>
               }
               @if (showInvalid()) {
-                <p class="section-error field-error" role="alert">{{ t('editor.amountsInvalid') }}</p>
+                <p class="section-error field-error" role="alert">
+                  {{ t('editor.amountsInvalid') }}
+                </p>
               }
               @if (showUnnamed()) {
-                <p class="section-error field-error" role="alert">{{ t('editor.unnamedIngredientHint') }}</p>
+                <p class="section-error field-error" role="alert">
+                  {{ t('editor.unnamedIngredientHint') }}
+                </p>
               }
               <app-ingredients-editor />
             </section>
             <div class="notes">
-              <h2><label for="recipe-notes">{{ t('editor.notes') }}</label></h2>
-              <textarea id="recipe-notes" rows="4" [maxLength]="maxNotes" [value]="r.notes ?? ''"
-                (input)="setNotes($any($event.target).value)"></textarea>
+              <h2>
+                <label for="recipe-notes">{{ t('editor.notes') }}</label>
+              </h2>
+              <textarea
+                id="recipe-notes"
+                rows="4"
+                [maxLength]="maxNotes"
+                [value]="r.notes ?? ''"
+                (input)="setNotes($any($event.target).value)"
+              ></textarea>
             </div>
           </div>
           <div class="col-right">
-            <section class="steps" [class.missing]="missing().includes('steps')" aria-labelledby="steps-heading">
+            <section
+              class="steps"
+              [class.missing]="missing().includes('steps')"
+              aria-labelledby="steps-heading"
+            >
               <h2 id="steps-heading">{{ t('editor.steps') }}</h2>
               @if (missing().includes('steps')) {
-                <p class="section-error field-error" role="alert">{{ t('errors.recipe_incomplete') }}</p>
+                <p class="section-error field-error" role="alert">
+                  {{ t('errors.recipe_incomplete') }}
+                </p>
               }
               <app-steps-editor />
             </section>
@@ -161,10 +242,17 @@ export const fieldErrorKey = (code: string) => `editor.field.${FIELD_CODES.inclu
         </div>
 
         <div class="bottom-bar">
-          <app-photo-picker [capture]="true" icon="📷" [label]="t('editor.photo')"
-            [ariaLabel]="t('editor.addStepPhoto', { n: (steps()?.targetStep() ?? 0) + 1 })" (picked)="steps()?.attachPhoto($event)"
-            (rejected)="rejectBarPhoto($event)" />
-          <button type="button" class="btn primary" (click)="nextStep()">{{ t('editor.nextStep') }}</button>
+          <app-photo-picker
+            [capture]="true"
+            icon="📷"
+            [label]="t('editor.photo')"
+            [ariaLabel]="t('editor.addStepPhoto', { n: (steps()?.targetStep() ?? 0) + 1 })"
+            (picked)="steps()?.attachPhoto($event)"
+            (rejected)="rejectBarPhoto($event)"
+          />
+          <button type="button" class="btn primary" (click)="nextStep()">
+            {{ t('editor.nextStep') }}
+          </button>
         </div>
       }
     </ng-container>
@@ -186,8 +274,12 @@ export class RecipeEditorPage {
   private readonly ingredients = viewChild(IngredientsEditorComponent);
   /** Set by a refused Publish while an amount is invalid; clears once all amounts are valid. */
   private readonly invalidAttempt = signal(false);
-  protected readonly showInvalid = computed(() => this.invalidAttempt() && this.store.invalidAmounts() > 0);
-  protected readonly showUnnamed = computed(() => this.invalidAttempt() && this.store.unnamedIngredients() > 0);
+  protected readonly showInvalid = computed(
+    () => this.invalidAttempt() && this.store.invalidAmounts() > 0,
+  );
+  protected readonly showUnnamed = computed(
+    () => this.invalidAttempt() && this.store.unnamedIngredients() > 0,
+  );
   /** Save status shown in the header: invalid amounts are not "Saved" (they are held back from the server). */
   protected readonly statusKey = computed(() => {
     const s = this.store.status();
@@ -200,7 +292,11 @@ export class RecipeEditorPage {
   protected readonly missing = computed(() => {
     const r = this.store.recipe();
     return this.requested().filter((f) =>
-      f === 'title' ? (r.title ?? '').trim() === '' : f === 'ingredients' ? countingIngredients(r.groups) === 0 : countingSteps(r.steps) === 0,
+      f === 'title'
+        ? (r.title ?? '').trim() === ''
+        : f === 'ingredients'
+          ? countingIngredients(r.groups) === 0
+          : countingSteps(r.steps) === 0,
     );
   });
   /** i18n key of the title problem: the server's field code, or an empty title that publishing needs. */
@@ -208,11 +304,18 @@ export class RecipeEditorPage {
     const code = this.store.fieldErrors()['title'];
     if (code) return fieldErrorKey(code);
     const blank = (this.store.recipe().title ?? '').trim() === '';
-    return blank && (this.store.server()?.status === 'PUBLISHED' || this.missing().includes('title'))
+    return blank &&
+      (this.store.server()?.status === 'PUBLISHED' || this.missing().includes('title'))
       ? 'errors.recipe_incomplete'
       : null;
   });
-  protected readonly conflictCopy = computed(() => conflictText(this.store.recipe()));
+  protected readonly conflictCopy = computed(() =>
+    conflictText(this.store.recipe(), {
+      prep: (n) => this.i18n.translate('editor.conflictPrep', { n }),
+      cook: (n) => this.i18n.translate('editor.conflictCook', { n }),
+      portions: (n) => this.i18n.translate('editor.conflictPortions', { n }),
+    }),
+  );
   protected readonly badge = computed(() => {
     const s = this.store.server();
     if (!s || s.status === 'DRAFT') return 'draft';
@@ -241,16 +344,19 @@ export class RecipeEditorPage {
    */
   async canLeave(): Promise<boolean> {
     if (!this.store.uploadsUnfinished() || this.auth.me() === null) return true;
-    const ref = openEditorSheet(this.dialog, this.injector, ConfirmLeaveDialog, {
-      label: this.i18n.translate('editor.leaveConfirm.title'),
+    return confirmSheet(this.dialog, this.injector, this.i18n, {
+      titleKey: 'editor.leaveConfirm.title',
+      bodyKey: 'editor.leaveConfirm.body',
+      cancelKey: 'editor.leaveConfirm.stay',
+      confirmKey: 'editor.leaveConfirm.leave',
+      cancelPrimary: true,
     });
-    return (await firstValueFrom(ref.closed, { defaultValue: undefined })) === true;
   }
 
   /** The bottom bar has no step of its own: a refused file is reported on the step it was meant for. */
   protected rejectBarPhoto(key: string): void {
     const steps = this.store.recipe().steps.length;
-    this.store.rejectPhoto(steps === 0 ? 'cover' : this.steps()?.targetStep() ?? steps - 1, key);
+    this.store.rejectPhoto(steps === 0 ? 'cover' : (this.steps()?.targetStep() ?? steps - 1), key);
   }
 
   protected nextStep(): void {
@@ -274,7 +380,9 @@ export class RecipeEditorPage {
     } catch (e) {
       const err = toApiError(e);
       if (err.code === 'recipe_incomplete') {
-        const fields = (['title', 'ingredients', 'steps'] as const).filter((f) => f in (err.fields ?? {}));
+        const fields = (['title', 'ingredients', 'steps'] as const).filter(
+          (f) => f in (err.fields ?? {}),
+        );
         this.requested.set(fields);
         this.revealFirstMissing(fields[0]);
       } else {
@@ -340,7 +448,7 @@ export class RecipeEditorPage {
       }
       await this.router.navigateByUrl('/recipes');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -351,14 +459,17 @@ export class RecipeEditorPage {
     this.busy.set(true);
     this.actionError.set(null);
     try {
-      const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteDialog, {
-        label: this.i18n.translate('editor.deleteConfirm.title'),
+      const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+        titleKey: 'editor.deleteConfirm.title',
+        bodyKey: 'editor.deleteConfirm.body',
+        confirmKey: 'editor.deleteConfirm.confirm',
+        danger: true,
       });
-      if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+      if (!confirmed) return;
       await this.store.remove();
       await this.router.navigateByUrl('/recipes');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -369,7 +480,7 @@ export class RecipeEditorPage {
     try {
       await this.store.loadLatest();
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 }

@@ -11,29 +11,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.media.BlobStore;
 import com.ricettine.media.TestImages;
+import com.ricettine.testsupport.TestData;
 import jakarta.servlet.http.Cookie;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 class CookbookCoverIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
-	@Autowired ObjectMapper json;
 	@Autowired BlobStore blobs;
 
 	Cookie owner;
@@ -43,38 +37,22 @@ class CookbookCoverIT extends IntegrationTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
-		accounts.create(new NewAccountRequest("me@x.com", Sessions.PASSWORD, "mario", "Mario"), true);
-		accounts.create(new NewAccountRequest("a@x.com", Sessions.PASSWORD, "author1", "Author"), false);
-		accounts.create(new NewAccountRequest("s@x.com", Sessions.PASSWORD, "stranger", "Stranger"), false);
-		owner = Sessions.login(mvc, "me@x.com");
-		author = Sessions.login(mvc, "a@x.com");
-		stranger = Sessions.login(mvc, "s@x.com");
-		cb = json.readTree(mvc.perform(post("/api/cookbooks").with(csrf()).cookie(owner)
-			.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Dinners\"}"))
-			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+		owner = data.user("me@x.com", "mario", "Mario", true);
+		author = data.user("a@x.com", "author1", "Author", false);
+		stranger = data.user("s@x.com", "stranger", "Stranger", false);
+		cb = data.createCookbook(owner);
 		jdbc.update("insert into cookbook_author (cookbook_id, user_id, joined_at) "
 				+ "select ?::uuid, id, now() from app_user where username = 'author1'", cb);
 	}
 
 	ResultActions put(Cookie who, byte[] bytes) throws Exception {
-		return mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
+		return mvc.perform(multipart(HttpMethod.PUT, "/api/cookbooks/" + cb + "/cover")
 			.file(new MockMultipartFile("file", "p.jpg", "image/jpeg", bytes)).with(csrf()).cookie(who));
 	}
 
 	JsonNode setCover(Cookie who) throws Exception {
 		return json.readTree(put(who, TestImages.plainJpeg(800, 600)).andExpect(status().isOk())
 			.andReturn().getResponse().getContentAsString());
-	}
-
-	String token() {
-		return jdbc.queryForObject("select share_token from cookbook where id = ?::uuid", String.class, cb);
-	}
-
-	boolean blobExists(String mediaId) {
-		return blobs.get("img/" + mediaId + "/thumb.jpg").isPresent()
-				|| blobs.get("img/" + mediaId + "/display.jpg").isPresent();
 	}
 
 	@Test
@@ -95,7 +73,7 @@ class CookbookCoverIT extends IntegrationTest {
 			mvc.perform(get(url).cookie(stranger)).andExpect(status().isNotFound());
 			mvc.perform(get(url)).andExpect(status().isNotFound());
 			mvc.perform(get(url).param("c", "wrong")).andExpect(status().isNotFound());
-			mvc.perform(get(url).param("c", token())).andExpect(status().isOk())
+			mvc.perform(get(url).param("c", data.cookbookShareToken(cb))).andExpect(status().isOk())
 				.andExpect(header().string("Cache-Control", "private, no-cache"));
 		}
 		// member DTOs carry no token; the author sees the cover too
@@ -104,8 +82,8 @@ class CookbookCoverIT extends IntegrationTest {
 		mvc.perform(get("/api/cookbooks/mine").cookie(owner))
 			.andExpect(jsonPath("$[0].coverThumbUrl").value(thumb));
 		// the public view carries ?c= on both URLs
-		String q = "?c=" + URLEncoder.encode(token(), StandardCharsets.UTF_8);
-		mvc.perform(get("/api/c/" + token()))
+		String q = "?c=" + URLEncoder.encode(data.cookbookShareToken(cb), StandardCharsets.UTF_8);
+		mvc.perform(get("/api/c/" + data.cookbookShareToken(cb)))
 			.andExpect(jsonPath("$.cover.thumbUrl").value(thumb + q))
 			.andExpect(jsonPath("$.cover.displayUrl").value(display + q));
 	}
@@ -113,12 +91,12 @@ class CookbookCoverIT extends IntegrationTest {
 	@Test
 	void resetLinkRevokesTheOldToken() throws Exception {
 		String thumb = setCover(owner).get("cover").get("thumbUrl").asText();
-		String old = token();
+		String old = data.cookbookShareToken(cb);
 		mvc.perform(get(thumb).param("c", old)).andExpect(status().isOk());
 		mvc.perform(post("/api/cookbooks/" + cb + "/share-link/reset").with(csrf()).cookie(owner))
 			.andExpect(status().isOk());
 		mvc.perform(get(thumb).param("c", old)).andExpect(status().isNotFound());
-		mvc.perform(get(thumb).param("c", token())).andExpect(status().isOk());
+		mvc.perform(get(thumb).param("c", data.cookbookShareToken(cb))).andExpect(status().isOk());
 	}
 
 	@Test
@@ -146,15 +124,15 @@ class CookbookCoverIT extends IntegrationTest {
 	@Test
 	void replacingDeletesTheOldCoverAndRemoveClearsIt() throws Exception {
 		String first = setCover(owner).get("cover").get("mediaId").asText();
-		assertThat(blobExists(first)).isTrue();
+		assertThat(TestData.blobExists(blobs, first)).isTrue();
 		String second = setCover(owner).get("cover").get("mediaId").asText();
 		assertThat(second).isNotEqualTo(first);
-		assertThat(blobExists(first)).isFalse();
-		assertThat(blobExists(second)).isTrue();
+		assertThat(TestData.blobExists(blobs, first)).isFalse();
+		assertThat(TestData.blobExists(blobs, second)).isTrue();
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isEqualTo(1);
 		mvc.perform(delete("/api/cookbooks/" + cb + "/cover").with(csrf()).cookie(owner))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.cover").doesNotExist());
-		assertThat(blobExists(second)).isFalse();
+		assertThat(TestData.blobExists(blobs, second)).isFalse();
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isZero();
 		// idempotent
 		mvc.perform(delete("/api/cookbooks/" + cb + "/cover").with(csrf()).cookie(owner))
@@ -165,7 +143,7 @@ class CookbookCoverIT extends IntegrationTest {
 	void deletingTheCookbookDeletesTheCover() throws Exception {
 		String id = setCover(owner).get("cover").get("mediaId").asText();
 		mvc.perform(delete("/api/cookbooks/" + cb).with(csrf()).cookie(owner)).andExpect(status().isNoContent());
-		assertThat(blobExists(id)).isFalse();
+		assertThat(TestData.blobExists(blobs, id)).isFalse();
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isZero();
 	}
 
@@ -174,7 +152,7 @@ class CookbookCoverIT extends IntegrationTest {
 		String id = setCover(owner).get("cover").get("mediaId").asText();
 		put(owner, TestImages.fakeJpgPdf()).andExpect(status().isUnsupportedMediaType())
 			.andExpect(jsonPath("$.code").value("unsupported_image"));
-		assertThat(blobExists(id)).isTrue();
+		assertThat(TestData.blobExists(blobs, id)).isTrue();
 		assertThat(jdbc.queryForObject("select count(*) from media", Integer.class)).isEqualTo(1);
 	}
 

@@ -13,7 +13,11 @@ export function unnamedRows(groups: readonly Group[]): [number, number][] {
   const out: [number, number][] = [];
   groups.forEach((g, gi) =>
     g.ingredients.forEach((i, ii) => {
-      if (!countsIngredient(i.name) && (i.amount !== null || i.unit !== null || (i.note ?? '').trim() !== '')) out.push([gi, ii]);
+      if (
+        !countsIngredient(i.name) &&
+        (i.amount !== null || i.unit !== null || (i.note ?? '').trim() !== '')
+      )
+        out.push([gi, ii]);
     }),
   );
   return out;

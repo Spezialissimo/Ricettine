@@ -9,7 +9,6 @@
     "copied": "Copied",
     "share": "Share",
     "expiresOn": "Expires {{date}}",
-    "logout": "Log out",
     "retry": "Retry"
   },
   "titles": {
@@ -52,10 +51,8 @@
     "usernameHint": "Lowercase letters, digits and underscore, 3-30 characters.",
     "passwordHint": "At least 10 characters.",
     "newPassword": "New password",
-    "loggingIn": "Logging in...",
     "required": "This field is required.",
     "register": "Create account",
-    "creating": "Creating account...",
     "fillBoth": "Enter your email and password."
   },
   "setup": {
@@ -64,7 +61,6 @@
     "submit": "Create administrator"
   },
   "settings": {
-    "title": "Settings",
     "profileTitle": "Profile",
     "saved": "Saved.",
     "avatar": "Avatar",
@@ -94,7 +90,6 @@
     "activeInvites": "Active invites",
     "noInvites": "No active invites.",
     "revoke": "Revoke",
-    "createdOn": "Created {{date}}",
     "resetPassword": "Reset password",
     "resetReady": "Password reset link for {{name}}",
     "adminBadge": "Admin",
@@ -111,7 +106,10 @@
     "field": {
       "required": "This field is required.",
       "too_long": "This value is too long.",
-      "invalid": "This value is not valid."
+      "out_of_range": "This value is out of range.",
+      "too_many": "There are too many items.",
+      "invalid": "This value is not valid.",
+      "invalid_unit": "That unit is not supported."
     },
     "cookbook_not_found": "This cookbook could not be found.",
     "cookbook_owner_only": "Only the owner of the cookbook can do that.",
@@ -323,7 +321,6 @@
     "notes": "Notes",
     "photo": "Photo",
     "nextStep": "+ Next step",
-    "details": "Details",
     "chips": {
       "serves": "Serves {{n}}",
       "prep": "Prep {{time}}",
@@ -363,15 +360,10 @@
     },
     "conflict": "This recipe was changed on another device or tab, so your latest changes were not saved. Copy anything you want to keep, then load the latest version.",
     "conflictCopy": "Your unsaved text",
+    "conflictPrep": "Prep: {{n}} min",
+    "conflictCook": "Cook: {{n}} min",
+    "conflictPortions": "Portions: {{n}}",
     "loadLatest": "Load latest",
-    "field": {
-      "required": "This field is required.",
-      "too_long": "This is too long.",
-      "out_of_range": "This value is out of range.",
-      "too_many": "There are too many items.",
-      "invalid": "This value is not valid.",
-      "invalid_unit": "That unit is not supported."
-    },
     "published": "Published · {{visibility}}",
     "addIngredient": "+ Ingredient",
     "addGroup": "+ Group",

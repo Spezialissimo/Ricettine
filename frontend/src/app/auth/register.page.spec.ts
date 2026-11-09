@@ -2,11 +2,21 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { fillForm, settle } from '../testing/spec-helpers';
 import { AuthStore } from '../core/auth.store';
 import { RegisterPage } from './register.page';
 
-const me = { id: '1', email: 'a@b.co', username: 'davide', displayName: 'D', avatarUrl: null, admin: false };
+const me = {
+  id: '1',
+  email: 'a@b.co',
+  username: 'davide',
+  displayName: 'D',
+  avatarUrl: null,
+  admin: false,
+};
+
+const ACCOUNT = { email: 'a@b.co', username: 'davide', displayName: 'D', password: 'longenough1' };
 
 describe('RegisterPage', () => {
   let http: HttpTestingController;
@@ -14,8 +24,14 @@ describe('RegisterPage', () => {
   function setup() {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+        },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -26,7 +42,9 @@ describe('RegisterPage', () => {
   it('shows the invalid message and no form on 404', async () => {
     const f = setup();
     await settle(f);
-    http.expectOne('/api/invites/tok').flush({ code: 'invite_invalid' }, { status: 404, statusText: 'x' });
+    http
+      .expectOne('/api/invites/tok')
+      .flush({ code: 'invite_invalid' }, { status: 404, statusText: 'x' });
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     expect(el.textContent).toContain(en.errors.invite_invalid);
@@ -40,28 +58,26 @@ describe('RegisterPage', () => {
     http.expectOne('/api/invites/tok').flush({ expiresAt: 'x' });
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    const type = (sel: string, v: string) => {
-      const i = el.querySelector(sel) as HTMLInputElement;
-      i.value = v;
-      i.dispatchEvent(new Event('input'));
-    };
     const fill = async () => {
-      type('input[name=email]', 'a@b.co');
-      type('input[name=username]', 'davide');
-      type('input[name=displayName]', 'D');
-      type('input[name=password]', 'longenough1');
-      el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      fillForm(el, ACCOUNT);
       await settle(f);
     };
     await fill();
-    http.expectOne('/api/invites/tok/register').flush({ code: 'username_taken' }, { status: 409, statusText: 'x' });
+    http
+      .expectOne('/api/invites/tok/register')
+      .flush({ code: 'username_taken' }, { status: 409, statusText: 'x' });
     await settle(f);
-    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.username_taken);
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(
+      en.errors.username_taken,
+    );
 
     await fill();
     const req = http.expectOne('/api/invites/tok/register');
     expect(req.request.body).toEqual({
-      email: 'a@b.co', username: 'davide', displayName: 'D', password: 'longenough1',
+      email: 'a@b.co',
+      username: 'davide',
+      displayName: 'D',
+      password: 'longenough1',
     });
     req.flush(me);
     await settle(f);
@@ -76,25 +92,21 @@ describe('RegisterPage', () => {
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('input[name=email]')!.getAttribute('autocomplete')).toBe('email');
-    const type = (sel: string, v: string) => {
-      const i = el.querySelector(sel) as HTMLInputElement;
-      i.value = v;
-      i.dispatchEvent(new Event('input'));
-    };
-    type('input[name=email]', 'a@b.co');
-    type('input[name=username]', 'davide');
-    type('input[name=displayName]', 'D');
-    type('input[name=password]', 'longenough1');
-    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    fillForm(el, ACCOUNT);
     await settle(f);
     http
       .expectOne('/api/invites/tok/register')
-      .flush({ code: 'validation_failed', fields: { displayName: 'validation_failed' } }, { status: 400, statusText: 'x' });
+      .flush(
+        { code: 'validation_failed', fields: { displayName: 'validation_failed' } },
+        { status: 400, statusText: 'x' },
+      );
     await settle(f);
     const err = el.querySelector('[data-error=displayName]')!;
     expect(err.textContent).toContain(en.errors.validation_failed);
     expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-invalid')).toBe('true');
-    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-describedby')).toBe(err.id);
+    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-describedby')).toBe(
+      err.id,
+    );
     expect(el.querySelector('[data-error=email]')).toBeNull();
     expect(el.querySelector('[data-error=username]')).toBeNull();
     expect(el.querySelector('[role=alert]')).toBeNull();

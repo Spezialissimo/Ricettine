@@ -1,10 +1,5 @@
-import { Locator, Page, expect, test } from '@playwright/test';
-import { createRecipe, logIn, logOut, newUserPage } from './helpers';
-
-const newRecipeLink = (page: Page, project: string) =>
-  project === 'desktop'
-    ? page.getByRole('link', { name: '+ New recipe' })
-    : page.getByRole('link', { name: 'New recipe', exact: true });
+import { Locator, Page, expect } from '@playwright/test';
+import { createRecipe, expectSaved, leaveUntouchedDraft, logIn, logOut, newRecipeLink, newUserPage, test } from '../helpers';
 
 async function addStep(page: Page, desktop: boolean, current?: Locator) {
   if (desktop && current) await current.press('Control+Enter');
@@ -14,7 +9,7 @@ async function addStep(page: Page, desktop: boolean, current?: Locator) {
 
 test('create, autosave and publish a recipe, text only', async ({ browser }, testInfo) => {
   const desktop = testInfo.project.name === 'desktop';
-  const { page, context } = await newUserPage(browser, testInfo, 'recipe');
+  const { page } = await newUserPage(browser, testInfo, 'recipe');
 
   await newRecipeLink(page, testInfo.project.name).click();
   await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
@@ -92,7 +87,7 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
   await page.keyboard.type('Layer and bake');
 
   await page.getByLabel('Notes').fill('Better the next day');
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
 
   // reload restores everything
   await page.reload();
@@ -135,28 +130,21 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
   await expect(card).toContainText('Private');
 
   // Done on an untouched new draft: not listed
-  await newRecipeLink(page, testInfo.project.name).click();
-  await expect(page).toHaveURL(/\/edit$/);
-  await expect(page.getByLabel('Title')).toBeVisible();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(page).toHaveURL(/\/recipes$/);
-  await expect(page.locator('a.recipe')).toHaveCount(1);
-  await context.close();
+  await leaveUntouchedDraft(page, testInfo.project.name, 1);
 });
 
 test('createRecipe helper builds a saved recipe through the UI', async ({ browser }, testInfo) => {
-  const { page, context } = await newUserPage(browser, testInfo, 'helper');
+  const { page } = await newUserPage(browser, testInfo, 'helper');
   const url = await createRecipe(page, { title: 'Soup', ingredients: ['leek', 'potato'], steps: ['Chop', 'Simmer'] });
   await page.goto(url);
   await expect(page.getByLabel('Title')).toHaveValue('Soup');
   await expect(page.getByLabel('Ingredient', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('textbox', { name: /^Step \d+$/ })).toHaveCount(2);
-  await context.close();
 });
 
 test('a published recipe can never become incomplete', async ({ browser }, testInfo) => {
   const desktop = testInfo.project.name === 'desktop';
-  const { page, context } = await newUserPage(browser, testInfo, 'guard');
+  const { page } = await newUserPage(browser, testInfo, 'guard');
   await createRecipe(page, { title: 'Soup', ingredients: ['leek'], steps: ['Chop'] });
   const stepBoxes = page.getByRole('textbox', { name: /^Step \d+$/ });
   const ingredients = page.locator('section.ingredients');
@@ -168,7 +156,7 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await expect(stepBoxes).toHaveCount(2);
   await ingredients.getByRole('button', { name: '+ Ingredient' }).click();
   await expect(ingredients.getByLabel('Ingredient', { exact: true })).toHaveCount(2);
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.locator('.editor-header .state')).toContainText('Published');
@@ -202,15 +190,14 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await expect(page.getByLabel('Title')).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('.title-field .field-error')).toBeVisible();
   await page.getByLabel('Title').fill('Soup');
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
   await page.reload();
   await expect(page.getByLabel('Title')).toHaveValue('Soup');
-  await context.close();
 });
 
 test('ingredient row: the name is the wide field and nothing overflows the panel', async ({ browser }, testInfo) => {
   const desktop = testInfo.project.name === 'desktop';
-  const { page, context } = await newUserPage(browser, testInfo, 'ingrow');
+  const { page } = await newUserPage(browser, testInfo, 'ingrow');
   await createRecipe(page, { title: 'Bread', ingredients: ['flour'] });
   const section = page.locator('section.ingredients');
   const row = section.locator('.ing-row').first();
@@ -239,16 +226,14 @@ test('ingredient row: the name is the wide field and nothing overflows the panel
     await page.setViewportSize({ width: 800, height: 800 }); // narrowest desktop width: still no overflow
     await check();
   }
-  await context.close();
 });
 
 test('logging out right after typing keeps the text', async ({ browser }, testInfo) => {
-  const { page, context, who } = await newUserPage(browser, testInfo, 'logout');
+  const { page, who } = await newUserPage(browser, testInfo, 'logout');
   const url = await createRecipe(page, { title: 'Pie' });
   await page.getByLabel('Title').fill('Pie with apples');
   await logOut(page); // no wait for "Saved ✓"
   await logIn(page, who);
   await page.goto(url);
   await expect(page.getByLabel('Title')).toHaveValue('Pie with apples');
-  await context.close();
 });

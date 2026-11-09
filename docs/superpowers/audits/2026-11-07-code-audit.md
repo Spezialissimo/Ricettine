@@ -86,7 +86,7 @@
 - **Fix:** Reject the ambiguous form: if the text matches /^\d{1,3}(,\d{3})+$/ either treat it as a thousands separator or return 'invalid' so the inline error shows. Add a spec for '1,000', '1,5' and '1,500.5'.
 - **Evidence:** Traced the regex: '1,000' -> m matches `\d*[.,]\d+` -> Number('1.000') = 1.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Editor state and input handling ('1,000' parses as 1)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### DATA-2: Photos on AWS have no backup or versioning, and a restored dump can point at deleted objects
 
@@ -95,7 +95,7 @@
 - **Problem:** On AWS backup.sh skips media because 'media already lives in S3'. The media bucket is unversioned on purpose, so that deleted photos really disappear. The instance role holds s3:DeleteObject on it. An app bug (for example in orphan cleanup), an operator mistake or a compromised container can therefore delete every photo with no way back. A DB restore after accidental deletion also brings back rows whose S3 objects are gone. The privacy reason does not hold up either: the DB dumps already keep deleted accounts' data for backup_retention_days.
 - **Fix:** Enable versioning on the media bucket with a lifecycle `noncurrent_version_expiration` equal to backup_retention_days, plus expired-delete-marker cleanup. Deletion then becomes final on the same schedule as the dumps. Document it in deploy-aws.md, and add tftest assertions.
 - **Evidence:** storage.tf:11 comment 'Versioning stays off on purpose'. backup.sh:61 skips media when storage type is s3. start.sh:36 forces RICETTINE_STORAGE_TYPE=s3.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### DUP-1: Login re-implements LoginAttempt.run's reserve/fail/refund logic
 
@@ -104,7 +104,7 @@
 - **Problem:** The security-critical rule ('bad_credentials keeps the reservation, success clears it, anything else refunds') exists twice: inline in AuthController.login (try/catch on ApiException and RuntimeException) and in RateLimits.LoginAttempt.run, which password change and account deletion use. If one copy is changed, the limits drift apart without anyone noticing.
 - **Fix:** Give LoginAttempt a value-returning `<T> T run(Supplier<T>)`, and have login use it to return the authenticated User (throwing bad_credentials inside). Then delete the inline try/catch. failed() can become private.
 - **Evidence:** Read both at AUDIT_SHA: AuthController.java:58-78 and RateLimits.java:91-110 have the same branching.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### ERR-1: Avatar upload reads the whole file onto the heap before waiting for a processing slot
 
@@ -113,7 +113,7 @@
 - **Problem:** MeController calls file.getBytes() (up to 15 MB) before MediaService.process waits up to 30 s for one of 2 decode permits. So every queued avatar upload holds a full copy on the heap. Recipe photos and cookbook covers use the Supplier overload, which reads only once a permit is held. The application.yml comment ('never held in heap') suggests this protection applies to every upload.
 - **Fix:** Make AccountService.setAvatar take Supplier<byte[]> and pass `() -> file.getBytes()` as RecipePhotoController does. A shared helper for the IOException wrapping would also remove the three copies.
 - **Evidence:** MediaService.java:54 documents the Supplier overload for exactly this reason. RecipePhotoController.java:51 and CookbookCoverController.java:50 use it, and MeController.java:61 does not.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### OPS-1: JVM heap sized to 75% of host RAM: no compose service sets a memory limit
 
@@ -131,7 +131,7 @@
 - **Problem:** AuthStore.logout() swallows every error from POST /api/auth/logout and then clears `me`. The comment only justifies a 401, but a network failure (status 0) or a 5xx also lands here. The UI then shows the login page while the server session cookie is still valid; reloading the page calls /api/me and signs the person straight back in. On a shared device the user believes they logged out and did not.
 - **Fix:** Swallow only a 401 (session already gone). For any other error keep `me` set, return/throw an ApiError and let the shell show errors.network_error with a retry. Add a spec for the status-0 and 500 cases.
 - **Evidence:** Code read: catch {} then finally { this._me.set(null) } with no status check.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### SEC-3: GitHub Actions pinned to mutable major tags, including the job that holds packages:write
 
@@ -160,7 +160,7 @@
 - **Fix:** Restore the production repository after each test once, in IntegrationTest (@AfterEach calling WebTestUtils.setCsrfTokenRepository with CookieCsrfTokenRepository.withHttpOnlyFalse(), as the follow-up proposes), and drop the inline hack from PublicRecipeIT. Alternatively write a local csrf() RequestPostProcessor that only sets the X-XSRF-TOKEN header and cookie pair, which needs no filter mutation.
 - **Evidence:** Comment in PublicRecipeIT.anonymousRequestCreatesNoSession and in UploadTooLargeIT class javadoc; plan-2 follow-up lists the same item as open.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Small cleanups / Test infrastructure (csrf() leak)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-2: Vacuous or missing-control assertions in profile, feed, robots and S3 timeout tests
 
@@ -170,7 +170,7 @@
 - **Fix:** (1) publish a PUBLIC recipe as well and assert it is present while the draft is absent. (2) delete the contains("") term, keep the explicit doesNotContain branch. (3) add status().isOk(). (4) assert the cause is an SdkClientException/ApiCallTimeoutException (or message contains 'timed out'). (5) assert count(*) from app_user and the remaining admin flag. (6) pin the expected status per path.
 - **Evidence:** Read each assertion in context; (2) and (3) are open follow-ups, (1) is the Plan 4 follow-up, (4) the Plan 5 follow-up.
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Tests to add (FeedIT positive control, ProfileIT vacuous contains); 2026-11-07-plan-5-followups.md: Tests to add (actuator robots header, S3BlobStoreTimeoutTest isNotNull)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-3: Privacy-critical profile visibility has no raw-JSON leak guard and no self-view thumb test
 
@@ -180,7 +180,7 @@
 - **Fix:** In visitorSeesOnlyPublic assert the raw response body does not contain privPublished, pubDraft, privDraft, aPrivateBook ids, nor their share tokens. Add a selfThumbsLoad test that GETs coverThumbUrl of a draft and a published recipe with the owner cookie and expects 200.
 - **Evidence:** ProfileIT has no assertion on getContentAsString of the visitor profile; thumbsLoadForVisitor uses profile(b, ...).
 - **Follow-up:** 2026-11-05-plan-4-followups.md: Feed and profile (string-level IT guard); Tests to add (self-view thumbs)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-4: PublicUrls (configured base URL, X-Forwarded-* handling) and conditional-GET forms have no tests
 
@@ -190,7 +190,7 @@
 - **Fix:** Add a PublicUrlsTest (unit, MockHttpServletRequest in RequestContextHolder) for blank vs configured base with and without trailing slash, and one IT that sends X-Forwarded-Proto: https and X-Forwarded-Host and asserts the shareUrl. Parameterise etagAndNotModified over 'W/"x"', '"a", "x"' and '*'.
 - **Evidence:** grep for base-url, X-Forwarded in backend/src/test returns nothing.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Tests to add (If-None-Match weak, list and * forms)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-5: Step-photo upload remapping on insert/remove/reorder has no unit test
 
@@ -199,7 +199,7 @@
 - **Problem:** EditorStore.stepInserted/stepRemoved/stepMoved re-index in-flight and failed photo uploads so a photo lands on the step it was chosen for. remapIndex is also used for the active step. No spec calls any of them: steps-editor.component.spec uses fakeEditorStore, whose stepInserted/stepRemoved/stepMoved are empty stubs, and remapIndex has no spec at all. A sign error would attach an upload (or its Retry) to the wrong step, which the e2e reorder specs do not exercise because they never reorder with an upload pending.
 - **Fix:** Add a remapIndex table test (move down, move up, i == from, outside range) and EditorStore specs that start an upload on step 1, then call stepInserted(0), stepRemoved, stepMoved and assert uploadFor(slot) follows; for a removed step assert the upload is dropped.
 - **Evidence:** grep for stepMoved|stepInserted|stepRemoved|remapIndex across *.spec.ts finds nothing; the only hits are the empty stubs in editor-store.testing.ts.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-6: Frontend gaps from earlier follow-ups still untested: interceptor logout 401, ParamReuseStrategy config change, cookbook empty/error states, reset-link dialog Escape, feed re-entrancy
 
@@ -209,7 +209,7 @@
 - **Fix:** Add one test per item (about 6 short tests). For (f), call more.click() twice synchronously and expect page toHaveBeenCalledTimes(2) including the initial load.
 - **Evidence:** grep for 'invites', 'Escape' in the cookbook specs finds nothing; feed.page.spec.ts:51 is the only loading test.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-3-followups.md: Tests to add / Frontend
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-7: Infra lint, Terraform tests, mount-data tests, the backup/restore drill and the HTTPS overlays never run in CI
 
@@ -218,7 +218,7 @@
 - **Problem:** CI runs backend, frontend, e2e and two smokes only. These all exist but run only when someone remembers: actionlint, shellcheck, caddy validate, mount-data.test.sh, 29 terraform tests (infra-check.sh), the backup→wipe→restore drill and both Caddy overlays (https-smoke.sh, including the token-not-logged and X-Forwarded-For checks). A change to compose.yaml, the Caddyfiles, backup.sh or restore.sh can merge green and break production backups or the AWS origin. The PR-gate convention in CLAUDE.md ('automate checks instead of listing manual steps') is not applied to the ops layer.
 - **Fix:** Add CI jobs `infra` (scripts/infra-check.sh; it needs only Docker) and `ops-drills` (backup-restore-check.sh and https-smoke.sh on ubuntu-latest, where ports 80, 443 and 8080 are free). Mention them in CLAUDE.md's CI line.
 - **Evidence:** ci.yml jobs: backend, frontend, e2e, smoke, smoke-arm64, publish. infra-check.sh passed locally (exit 0, 'Success! 29 passed').
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### CONC-1: Photo and cover blobs are written to S3 while a row lock and a pooled connection are held
 
@@ -228,7 +228,7 @@
 - **Fix:** Write the blobs first (outside the transaction, keyed by the new media id), then open the short transaction that locks the row and inserts the media row; on failure delete the blobs. The orphan cleanup already covers blobs without rows only for rows, so also delete blobs in the catch path.
 - **Evidence:** Code read: MediaService.register is called from inside the @Transactional RecipeService.addPhoto / CookbookService.setCover. Plan 2 follow-up already named the symptom.
 - **Follow-up:** 2026-11-04-plan-2-followups.md: Plan 5 (S3 timeouts / addPhoto holds a FOR SHARE lock)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR D) · [ ] skip · [ ] later
 
 ### CONS-1: Account, admin and settings pages call HttpClient directly while feed/profile/recipes/cookbooks use *Api services
 
@@ -237,7 +237,7 @@
 - **Problem:** Nine components/stores build URLs and declare their DTO types (`Invite`, `Created`, `User`, `Reset`) inline, with unit tests that must mock HttpClient, while four other features go through typed *Api services. Two conventions for the same job makes the codebase look unfinished and makes endpoint changes a hunt.
 - **Fix:** Add AuthApi/AccountApi (register, setup, reset, password, profile, avatar, delete) and AdminApi (invites, users) in the same shape as CookbookApi; move the DTO types into *.model.ts; keep the pages thin.
 - **Evidence:** grep inject(HttpClient) outside *.api.ts and core: 9 files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DATA-3: Conflict 'copy your text' block omits most of the user's edits, and Load latest discards them (plus the edits typed during its fetch)
 
@@ -247,7 +247,7 @@
 - **Fix:** Add ingredient lines (`amount unit name, note`), source, times and portions to conflictText(). In loadLatest(), after the fetch compare autosave.dirty()/rev with the value before it; if the user typed meanwhile, keep the backup (or re-apply on top of the fetched copy) instead of clearing it.
 - **Evidence:** Read conflictText() (editor-store.ts:39-43) and loadLatest() (433-438); replace() resets autosave and clearBackup() runs unconditionally after the awaited get.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Unsaved-text backup / The copyable conflict block ...; Text typed while "Load latest" is fetching ...
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR C) · [ ] skip · [ ] later
 
 ### DUP-2: Recipe/cookbook/photo fixture helpers re-implemented in about a dozen ITs
 
@@ -256,7 +256,7 @@
 - **Problem:** Almost every IT carries its own copy of create-recipe, save-with-body, publish, upload-photo, publishedRecipe, shareToken lookup, createCookbook and blobExists, each with slightly different signatures and return types (String id, JsonNode, String[]). The recipe JSON body literal alone is written out at least 8 times. This is what produces most of the 80 jscpd clones (the import blocks and setUp blocks are also clones). A change to the recipe payload shape or an endpoint path has to be patched in a dozen places, and the copies have already drifted (some assert status 201/200, some do not, e.g. CookbookApiIT.publishedRecipe and draftRecipe call andReturn() without asserting the status, so a failed create surfaces later as an NPE).
 - **Fix:** Add one test-scope helper in com.ricettine (next to Sessions), e.g. RecipeFixtures/CookbookFixtures constructed with (MockMvc, ObjectMapper, JdbcTemplate): createDraft(cookie), save(cookie,id,version,visibility,cover,stepPhoto), publish(cookie,id,version), publishedRecipe(cookie,visibility), uploadPhoto(cookie,recipeId), shareToken(id), createCookbook(cookie,name), blobExists(BlobStore,mediaId). Every helper asserts the expected status. Keep per-test body customisation via an overload that takes the JSON string.
 - **Evidence:** Read all 12 files; 3 byte-identical blobExists(), 12 methods named create/published/publishedRecipe/recipe returning an id; jscpd pack lists 15+ clones between these files, all fixture or header text.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-3: Per-class DB reset and user bootstrap copy-pasted into 28 test classes
 
@@ -265,7 +265,7 @@
 - **Problem:** 28 classes start with the same two statements (truncate table app_user, one_time_token, instance_setup cascade; delete from spring_session) and then create the same two or three accounts (me/other, a/b, owner/bea/carl) and log them in. The truncate list is a hard-coded table list: a new top-level table (or a table not reached by the cascade) silently leaks rows between classes until each of 28 copies is edited. A few classes forget the second statement (AccountServiceIT, SetupIT, MediaIT, MediaAccessIT, RobotsHeaderIT), so the reset is inconsistent. InviteIT also has its own login() that duplicates Sessions.login.
 - **Fix:** Move the reset into IntegrationTest as a @BeforeEach (one method, both statements, or truncate every public table except flyway_schema_history discovered from information_schema) and add a small TestUsers helper (create(email, username, admin) returning user plus cookie). Delete the 28 copies. Reuse Sessions.login in InviteIT.
 - **Evidence:** grep -rln 'truncate table app_user' backend/src/test returns 28 files; read each.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-4: Six near-identical confirm dialog components and eight copies of the open-sheet/await-closed boilerplate
 
@@ -274,7 +274,7 @@
 - **Problem:** Five dialogs are the same 30-line component (title, body, Cancel, a confirm button, a copied `.danger` style block and `uid()` title id) differing only in i18n keys; remove-member is the same plus a checkbox. Each caller repeats `openEditorSheet(...)` + `(await firstValueFrom(ref.closed, { defaultValue: undefined })) === true` (8 sites). Any change to dialog behaviour (focus, a11y, danger colour) needs six edits.
 - **Fix:** One ConfirmDialog component taking {titleKey, bodyKey, params, confirmKey, danger} through DIALOG_DATA, plus a helper `confirmSheet(dialog, injector, i18n, data): Promise<boolean>` next to openEditorSheet. Keep remove-member as the only specialised one (or give ConfirmDialog an optional checkbox).
 - **Evidence:** Diffed the five files: only i18n keys and uid prefix differ. grep: 12 openEditorSheet call sites, 8 `closed, { defaultValue` awaits.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-5: Duplicated e2e setup: step-photo/publish helpers, layout checks, login-as-admin-and-invite, FIXTURE path
 
@@ -283,7 +283,7 @@
 - **Problem:** (1) addStepPhoto and the cover/step photo block are copied between share-link and cookbook-link specs (17-line jscpd clone). (2) newRecipeLink is defined identically in editor.spec and recipe-editor.spec, with the same Done-on-untouched-draft block (9-line clone). (3) The 'cards sit side by side on desktop, stack on mobile' bounding-box check is written four times (feed, profile, cookbooks, cookbook-link). (4) auth-a11y.spec repeats the admin login + createInvitePath prelude that newUserPage already holds. (5) FIXTURE is rebuilt in six files, one with a different mechanism (fileURLToPath vs import.meta.dirname); `saved` locator is redefined in two specs next to the literal 'Saved ✓' repeated about 20 times. Any change to the editor's status text or the photo buttons needs edits in many places.
 - **Fix:** Move addStepPhoto, addCoverPhoto, newRecipeLink, expectSideBySide(cards)/expectStacked, expectSaved(page), FIXTURE_PHOTO and an inviteAsAdmin(browser, testInfo) helper into helpers.ts and import them. Keep behaviour identical.
 - **Evidence:** jscpd pack: feed/profile 11 lines, editor/recipe-editor 9, cookbook-link/share-link 17 and 5; grep -n 'FIXTURE =' finds 6 definitions.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### OPS-2: Backup alerting only covers a run that fails: no alert when backups stop, and lifecycle then deletes the last good dump
 
@@ -293,7 +293,7 @@
 - **Fix:** Add a staleness check that does not depend on the host. For example, a CloudWatch alarm on the backups bucket's PutRequests metric (request metrics on the db/ prefix), set to alarm on missing data for 26 h and wired to the existing SNS topic. Or a tiny scheduled Lambda that runs the aws-verify step 6 logic. Optionally keep the newest N noncurrent versions (`newer_noncurrent_versions`) so expiry never removes the last dumps.
 - **Evidence:** No CloudWatch alarm resources in infra/terraform. The OnFailure unit is the only alert path. The followup 'backup-failed.sh: a failed SNS publish only shows as a failed unit' is the same gap.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / backup-failed.sh SNS
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### SEC-5: Public, immutable media responses carry Set-Cookie: XSRF-TOKEN; CloudFront may cache it and serve one CSRF token to everyone
 
@@ -303,7 +303,7 @@
 - **Fix:** Don't issue CSRF cookies on /media/**. Either add a separate SecurityFilterChain for `/media/**` (GET only, csrf disabled, same session-based authentication), or use a request handler that skips token loading on safe requests to /media/**. Add the planned edge-caching IT: an avatar GET with no cookies and with a stale SESSION cookie must carry no Set-Cookie at all.
 - **Evidence:** Throwaway IT at AUDIT_SHA: GET of an avatar URL with no cookies returned 200, `Cache-Control: public, max-age=31536000, immutable` and `Set-Cookie: XSRF-TOKEN=<uuid>; Path=/`. With a stale SESSION cookie the result was the same (XSRF-TOKEN only, no SESSION cookie).
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Edge caching
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR B)
 
 ### SEC-6: No Content-Security-Policy (and no Referrer-Policy in self-hosted mode)
 
@@ -312,7 +312,7 @@
 - **Problem:** Neither the app nor the Caddy overlays send a CSP. The AWS Managed-SecurityHeadersPolicy doesn't add one either. Spring Security's defaults give nosniff and X-Frame-Options DENY only. If any XSS gets in through user-authored recipe content, nothing contains it. A reviewer checking the headers will notice right away. Self-hosted mode also sends no Referrer-Policy on pages whose URLs carry invite, reset and share tokens. Browser defaults strip the path on cross-origin requests, so it's low risk.
 - **Fix:** Add `headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")).referrerPolicy(r -> r.policy(SAME_ORIGIN)))` in SecurityConfig. Check it against the Angular build (critical-CSS inlining uses an inline onload handler, so set `inlineCritical: false` or use autoCsp). Assert the header in RobotsHeaderIT-style tests and run the e2e suite.
 - **Evidence:** Throwaway IT: GET /login returned `X-Frame-Options: DENY`, with no Content-Security-Policy and no Referrer-Policy. grep finds no CSP in deploy/ or backend.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR B)
 
 ### TEST-8: Cookbook invite, cap and removal edge cases from the Plan 3 follow-ups are still untested
 
@@ -322,7 +322,7 @@
 - **Fix:** Add the seven small cases to CookbookInviteIT, CookbookApiIT, CookbookMemberIT and CookbookAccountDeletionIT using the existing CookbookIT helpers. For (d) use the race helper from the concurrency finding.
 - **Evidence:** Searched the cookbook tests for each scenario; none present.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Tests to add (co-author invites bullets, concurrency 500 cap, own draft by token, account deletion invite survival)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### TEST-9: Manually created Playwright contexts get no trace or screenshot on failure
 
@@ -331,7 +331,7 @@
 - **Problem:** playwright.config sets trace: 'retain-on-failure' and screenshot: 'only-on-failure', but those options apply only to the built-in context/page fixtures. Almost every spec drives pages from newUserPage/newContext, which call browser.newContext() directly. When such a test fails in CI, the uploaded e2e-results artifact has no trace and no screenshot for the page that actually failed, so the config gives false assurance. The same specs mostly close the context only on the happy path (no try/finally), so a failing test leaks contexts and the single shared worker/browser keeps them.
 - **Fix:** Build contexts through the test fixtures instead of browser.newContext: add a fixture in helpers (test.extend) that creates contexts, starts tracing (context.tracing.start) and, on testInfo.status !== expected, saves trace and screenshots to testInfo.outputPath, and always closes the contexts in teardown. Specs then drop their manual context.close() calls.
 - **Evidence:** helpers.ts newContext() calls browser.newContext({baseURL, viewport,...}) and never starts tracing; 14 spec files use newUserPage; only session-expiry.spec.ts wraps the body in try/finally.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-10: Unsaved-text safety e2e gaps: session expiry to login to restore, logout failure, restored notice, conflict server check, step-photo retry
 
@@ -341,7 +341,7 @@
 - **Fix:** Add a session-expiry spec on the editor (clear SESSION cookie, type, log in via next, expect text restored and saved), assert the server text in the conflict test with an expect.poll on GET /api/recipes/{id}, and parametrise the retry spec over cover and step slot.
 - **Evidence:** unsaved-safety.spec.ts has 4 tests (offline, close tab, retry cover, conflict); no test touches the logout failure path or /login?next with an open editor.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Unsaved-text backup Missing e2e; Unsaved-safety e2e
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ## Low (72)
 
@@ -393,7 +393,7 @@
 - **Fix:** Move RecipeRef (and resolveAddable's contract) into the recipe package; test non-null shareToken as set (blank token is invalid, not absent).
 - **Evidence:** Code read.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Before a native Android client / RecipeRef package cycle, shareToken "" accepted
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### CONS-4: Token expiry mixes the JVM clock with the database now(); the Clock bean is ignored
 
@@ -413,7 +413,7 @@
 - **Fix:** Replace the FQNs with imports (alias Spring's User by importing User.withUsername statically or keep one FQN with a comment), sort the imports, use HttpStatus.CONTENT_TOO_LARGE and org.jspecify.annotations.Nullable.
 - **Evidence:** Read at AUDIT_SHA, plus javac -Xlint:all output from the input pack.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / Fully qualified names; import order in BeansConfig
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### CONS-6: Two fieldErrorKey functions map the same server codes to two parallel i18n key sets
 
@@ -422,7 +422,7 @@
 - **Problem:** core/api-error.ts maps field codes to errors.field.*; recipe-editor.page.ts defines another exported fieldErrorKey with its own code list mapping to editor.field.*. Two lookups, two key trees with overlapping meaning, and the editor one is exported but used only in that file.
 - **Fix:** Extend errors.field.* with out_of_range/too_many/invalid_unit, use the single function, delete editor.field.* keys and the local copy.
 - **Evidence:** Both functions read; the editor copy has no other importer.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### CONS-7: Inconsistent fake-timer cleanup and heavy 'as unknown as' casts in specs
 
@@ -560,7 +560,7 @@
 - **Fix:** Delete the six keys; drop `export` on the unused symbols; move the recipe limits into one recipe-limits.ts next to recipe.model.ts with a comment pointing at RecipeValidator.
 - **Evidence:** Script over en.json vs src; grep -rlw per symbol found only the defining file.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (unused i18n keys)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DEP-1: Prettier is installed and configured but never run; 122 files fail its own check
 
@@ -570,7 +570,7 @@
 - **Fix:** Either run `prettier --write` once, add `format:check` to package.json and the CI frontend job, or remove prettier and .prettierrc. (The infra-check script is the natural home for the check.)
 - **Evidence:** npx prettier --check "src/**/*.{ts,scss,html}" -> 122 files with issues; grep of .github, scripts, CLAUDE.md shows no use.
 - **Follow-up:** docs/superpowers/plans/2026-11-05-plan-4-followups.md: Small cleanups / app.routes.ts has a long single-line entry
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR I) · [ ] skip · [ ] later
 
 ### DEP-2: Base and service images use mutable tags; the AWS host defaults to `latest`
 
@@ -588,7 +588,7 @@
 - **Problem:** The README is the CLI template (mentions `ng e2e`, which does not exist; browser e2e is Playwright in /e2e); launch.json still debugs tests at the Karma URL localhost:9876 although unit tests run on Vitest.
 - **Fix:** Replace the README with a short project one (dev, test, build, i18n, link to e2e) or delete it; remove the Karma launch entry.
 - **Evidence:** Read both files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DOC-2: example.tfvars documents wrong defaults and omits variables
 
@@ -598,7 +598,7 @@
 - **Fix:** Change it to 25 and add `# backup_retention_days = 30` and `# origin_subdomain = "origin"`.
 - **Evidence:** example.tfvars:12 vs variables.tf:60.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Small cleanups / example.tfvars comment
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### DOC-3: CLAUDE.md package list and command list are stale; README repeats its test commands
 
@@ -608,7 +608,7 @@
 - **Fix:** Update the package list (account, admin, auth, common, config, cookbook, feed, invite, media, profile, recipe, setup), list all scripts in CLAUDE.md, and merge README's Development/Tests into one section that lists every check and says which run in CI.
 - **Evidence:** `ls backend/src/main/java/com/ricettine/` shows 12 packages.
 - **Follow-up:** Input pack: Docs / CLAUDE.md package list
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-6: Malformed-UUID try/catch repeated six times
 
@@ -618,7 +618,7 @@
 - **Fix:** One helper, e.g. Ids.parse(String, String code) in common, returning a UUID or throwing the given 404; keep the requireMember-first calls explicit at the three call sites.
 - **Evidence:** Read all six sites.
 - **Follow-up:** 2026-11-04-plan-3-followups.md: Small cleanups / malformed-UUID try/catch
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-7: Constant-time token compare after an equality DB lookup, copied four times
 
@@ -627,7 +627,7 @@
 - **Problem:** Every site finds the row with WHERE share_token = ? (an index lookup, not constant time) and then compares the same token again with MessageDigest.isEqual. The second compare adds nothing and the UTF-8/MessageDigest boilerplate is copied four times. Tokens are 256-bit, so timing is not exploitable, but a reviewer will ask why the check exists. PublicRecipeController's lookup does not do it, so the code is also inconsistent.
 - **Fix:** Delete the redundant compares (the lookup is the check), or extract one Tokens.matches(a, b) and use it everywhere including recipes. Prefer deleting.
 - **Evidence:** Read the four sites and RecipeRepository.findByShareTokenAndStatus.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-8: Duplicated static/index.html lookup
 
@@ -637,7 +637,7 @@
 - **Fix:** Add one `static final String INDEX = "static/index.html"` (or a shared Resource) in SpaWebConfig and use it in both places.
 - **Evidence:** grep 'static/index.html'.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Duplicated static/index.html constant
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### DUP-9: Oversized-upload 413 contract tested twice over real HTTP with two different hand-rolled clients
 
@@ -655,7 +655,7 @@
 - **Problem:** Each test builds an ExecutorService, a start latch and a list of Futures by hand. RecipeApiIT.concurrentSavesNeverProduce500 and concurrentSavesOfPopulatedRecipeGiveOne200AndOne409 are the same loop with a different setup (20+ line clone). SetupIT, IpRateLimitIT and RateLimiterTest call pool.shutdown() after the assertions rather than in finally, so a failing assertion or an exception from f.get() leaks threads into the rest of the suite.
 - **Fix:** Add a tiny helper, e.g. Concurrent.race(int n, IntFunction<Callable<T>> task) returning List<T>, which owns the pool, the latch and the try/finally shutdownNow. Merge the two RecipeApiIT concurrency tests into one parameterised by the prior number of saves.
 - **Evidence:** Read all seven; pattern identical.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### DUP-11: ImageProcessorTest: six near-identical orientation tests
 
@@ -675,7 +675,7 @@
 - **Fix:** A tiny AdminTabsComponent (or an AdminLayout route with child routes) for the nav; an InviteList helper (or reuse one component with an input for the endpoint) for the invite handling.
 - **Evidence:** jscpd clones listed in the input pack, confirmed by reading.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (duplicated admin tab nav)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-13: Frontend spec boilerplate repeated across specs (btn, overlay, person, mount providers, overlay cleanup)
 
@@ -684,7 +684,7 @@
 - **Problem:** Five specs each define the same btn(root, text) query and overlay() lookup and the same afterEach that empties .cdk-overlay-container; person() is defined three times; register/setup/delete-account page specs repeat the same form-fill blocks (12-line clone); autosave.spec duplicates a block already in editor-store.testing.ts. A change in how buttons or overlays render touches each copy, and the copies already differ slightly (btn matches aria-label in some, not in others).
 - **Fix:** Add src/app/testing/dom.ts with btn, overlay, clearOverlays and a fillForm helper, export person() fixtures from one place, and import them. Move settle() out of testing/transloco.ts into the same dom helper file.
 - **Evidence:** jscpd: members-panel/cookbook.page 8 lines, cookbook-share-panel/share-panel 8, register/setup 12; grep '^const btn' hits 5 spec files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-14: AWS restore is a hand-copied version of restore.sh in the docs
 
@@ -751,7 +751,7 @@
 - **Fix:** Log at DEBUG, or WARN once per session id with a small bounded set. Better still, remove the unreadable attribute or the session so the log stops.
 - **Evidence:** Read at AUDIT_SHA. UnreadableSessionIT covers the logout behaviour, not the logging.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Plan 6 / Sessions
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### OPS-4: cancel-in-progress also cancels a running publish on main
 
@@ -913,7 +913,7 @@
 - **Problem:** 'the project viewport applies' tests Playwright's own device config, not the app. The logout-then-login navigation check uses every() over a list that may be empty, so it is true even if the listener never fires. step-reorder's 'Step 3 moved to position 2' uses toBeAttached on a live region that is always attached. Several shell/profile specs assert only toBeTruthy() on a selector match (existence of a link), which survives broken hrefs/labels beyond the selector itself.
 - **Fix:** Drop the viewport test or move it to a config sanity check; assert navigations.length >= 0 intent explicitly (e.g. expect no 'navigate' events beyond '/'); assert live-region text with toHaveText; assert hrefs/labels instead of truthiness.
 - **Evidence:** walkthrough.spec.ts:12 asserts viewportSize against the project's own settings; toBeTruthy count in frontend specs is about 25.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-19: cloud-init round-trip tftest compares three files to themselves; count assertion is stale
 
@@ -923,7 +923,7 @@
 - **Fix:** Spell out the expected config.env text (built from the mocked values), daemon.json and the drop-in. Assert `length(write_files) == 14` and fix the message.
 - **Evidence:** core.tftest.hcl:456-458 map those paths to f.content.
 - **Follow-up:** docs/superpowers/plans/2026-11-07-plan-5-followups.md: Tests to add / tftest YAML round-trip
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR E)
 
 ### TEST-20: Drill's avatar_info leaks its temp file when curl fails
 
@@ -943,7 +943,7 @@
 - **Fix:** Move the constant to the top, import the types, rename the parameter, pass the Cookbook into entryDto, add shareToken to SummaryRow, delete the dead re-check, merge the constants, inline or move isProgressiveJpeg into the test.
 - **Evidence:** Read each site.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (MAX_PHOTOS); 2026-11-04-plan-3-followups.md: Small cleanups / Backend; 2026-11-05-plan-4-followups.md: Small cleanups / FeedService
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR H)
 
 ### VERB-2: Fully qualified names, duplicate and untidy imports in test sources
 
@@ -953,7 +953,7 @@
 - **Fix:** Run an organise-imports pass (IntelliJ or google-java-format with import ordering) over backend/src/test and replace inline qualified names with imports. Optionally add the formatter plugin check to the Maven build so it stays clean.
 - **Evidence:** Visual read of each file; duplicate import at MediaAccessIT lines 14 and 18.
 - **Follow-up:** 2026-11-07-plan-5-followups.md: Small cleanups (FQNs in S3BlobStoreIT, RecipePhotoBusyIT, MediaAccessIT, duplicate import in MediaAccessIT); 2026-11-04-plan-3-followups.md: Small cleanups (FQNs in CookbookIT/CookbookApiIT)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR F)
 
 ### VERB-3: Backup is re-parsed and re-serialised in full on every keystroke
 
@@ -972,7 +972,7 @@
 - **Problem:** 35 catch blocks do the same two-call conversion from an unknown error to an i18n key.
 - **Fix:** Add `errorKeyOf(e: unknown): string` to api-error.ts and use it; keep toApiError for callers that need status/fields.
 - **Evidence:** grep count 35 in non-spec code.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### CONC-5: Editor backup/upload edge cases still open: false conflicts, silent quota loss, late upload lands on the wrong step
 

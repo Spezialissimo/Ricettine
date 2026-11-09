@@ -1,6 +1,7 @@
 import { DialogRef } from '@angular/cdk/dialog';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { PortionsSheetComponent } from './portions-sheet.component';
@@ -18,8 +19,12 @@ async function mount(portions: number) {
   const f = TestBed.createComponent(PortionsSheetComponent);
   await settle(f);
   const el = f.nativeElement as HTMLElement;
-  const minus = el.querySelector(`button[aria-label="${en.editor.portions.decrease}"]`) as HTMLButtonElement;
-  const plus = el.querySelector(`button[aria-label="${en.editor.portions.increase}"]`) as HTMLButtonElement;
+  const minus = el.querySelector(
+    `button[aria-label="${en.editor.portions.decrease}"]`,
+  ) as HTMLButtonElement;
+  const plus = el.querySelector(
+    `button[aria-label="${en.editor.portions.increase}"]`,
+  ) as HTMLButtonElement;
   return { f, el, store, close, minus, plus };
 }
 
@@ -57,7 +62,9 @@ describe('PortionsSheetComponent', () => {
 
   it('Done closes the sheet', async () => {
     const { el, close } = await mount(2);
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === en.editor.sheetDone)!).click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === en.editor.sheetDone)!
+      .click();
     expect(close).toHaveBeenCalled();
   });
 });

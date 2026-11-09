@@ -10,27 +10,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ricettine.IntegrationTest;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
+import com.ricettine.config.BoundedPasswordEncoder;
 import jakarta.servlet.http.Cookie;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MvcResult;
 
 class AuthIT extends IntegrationTest {
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired AuthSessions authSessions;
-	@Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
+	@Autowired PasswordEncoder encoder;
 
 	@BeforeEach
 	void clean() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-		jdbc.execute("delete from spring_session");
 	}
 
 	private User user(String email, String username, boolean admin) {
@@ -73,7 +71,7 @@ class AuthIT extends IntegrationTest {
 
 	@Test
 	void passwordHashingIsBounded() {
-		assertThat(encoder).isInstanceOf(com.ricettine.config.BoundedPasswordEncoder.class);
+		assertThat(encoder).isInstanceOf(BoundedPasswordEncoder.class);
 	}
 
 	@Test
@@ -83,7 +81,7 @@ class AuthIT extends IntegrationTest {
 		var blobs = jdbc.queryForList("select attribute_bytes from spring_session_attributes "
 				+ "where attribute_name = 'SPRING_SECURITY_CONTEXT'", byte[].class);
 		assertThat(blobs).hasSize(1);
-		String stored = new String(blobs.getFirst(), java.nio.charset.StandardCharsets.ISO_8859_1);
+		String stored = new String(blobs.getFirst(), StandardCharsets.ISO_8859_1);
 		assertThat(stored).contains(u.getId().toString()).doesNotContain("$argon2")
 			.doesNotContain(u.getPasswordHash());
 	}
@@ -167,7 +165,7 @@ class AuthIT extends IntegrationTest {
 	@Test
 	void legacyBcryptHashStillLogsIn() throws Exception {
 		User u = user("old@x.com", "olduser", false);
-		String bcrypt = "{bcrypt}" + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+		String bcrypt = "{bcrypt}" + new BCryptPasswordEncoder()
 			.encode("correct-horse-1");
 		jdbc.update("update app_user set password_hash = ? where id = ?", bcrypt, u.getId());
 		assertThat(login("old@x.com", "correct-horse-1").getResponse().getStatus()).isEqualTo(200);

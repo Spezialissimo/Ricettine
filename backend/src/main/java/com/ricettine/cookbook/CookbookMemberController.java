@@ -2,6 +2,7 @@ package com.ricettine.cookbook;
 
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.Ids;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,11 +30,8 @@ public class CookbookMemberController {
 	void remove(@PathVariable String id, @PathVariable String userId,
 			@RequestParam(defaultValue = "false") boolean removeRecipes) {
 		UUID cookbookId = CookbookController.parse(id);
-		UUID target;
-		try {
-			target = UUID.fromString(userId);
-		}
-		catch (IllegalArgumentException e) {
+		UUID target = Ids.tryParse(userId).orElse(null);
+		if (target == null) {
 			cookbooks.requireMember(cookbookId, currentUser.id());
 			throw new ApiException(HttpStatus.NOT_FOUND, "cookbook_not_found");
 		}

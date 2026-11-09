@@ -1,4 +1,8 @@
 import { Browser, BrowserContext, Page, TestInfo, expect } from '@playwright/test';
+import { expectSaved } from './ui';
+
+export { test } from './test';
+export * from './ui';
 
 /** The administrator created once by auth.setup.ts and shared by every project. */
 export const ADMIN = {
@@ -23,7 +27,11 @@ export function person(testInfo: TestInfo, tag: string): Person {
   };
 }
 
-/** A fresh browser context configured exactly like the current project (viewport, touch, UA). */
+/**
+ * A fresh browser context configured exactly like the current project (viewport, touch, UA). Every spec
+ * makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
+ * made through `browser.newContext`; `test` (./test.ts) closes them when the test ends.
+ */
 export function newContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
   const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
   return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
@@ -68,15 +76,21 @@ export async function register(page: Page, invitePath: string, who: Person) {
   await expectHome(page, who.displayName);
 }
 
-/** Registers a new regular user (via an invite from the shared admin) and returns their logged-in page. */
-export async function newUserPage(browser: Browser, testInfo: TestInfo, tag: string) {
-  const who = person(testInfo, tag);
+/** In a throwaway context, logs in as the shared admin, creates an invite and returns its link path. */
+export async function inviteAsAdmin(browser: Browser, testInfo: TestInfo): Promise<string> {
   const adminCtx = await newContext(browser, testInfo);
   const adminPage = await adminCtx.newPage();
   await adminPage.goto('/login');
   await logIn(adminPage, ADMIN);
   const invitePath = await createInvitePath(adminPage);
   await adminCtx.close();
+  return invitePath;
+}
+
+/** Registers a new regular user (via an invite from the shared admin) and returns their logged-in page. */
+export async function newUserPage(browser: Browser, testInfo: TestInfo, tag: string) {
+  const who = person(testInfo, tag);
+  const invitePath = await inviteAsAdmin(browser, testInfo);
 
   const context = await newContext(browser, testInfo);
   const page = await context.newPage();
@@ -121,7 +135,7 @@ export async function createRecipe(page: Page, data: NewRecipeData): Promise<str
     await page.getByRole('button', { name: '+ Add step' }).or(page.getByRole('button', { name: '+ Next step' })).filter({ visible: true }).click();
     await page.getByRole('textbox', { name: /^Step \d+$/ }).nth(i).fill(text);
   }
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
   return page.url();
 }
 

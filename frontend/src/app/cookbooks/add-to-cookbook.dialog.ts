@@ -1,29 +1,62 @@
 import { DIALOG_DATA, Dialog, DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet, uid } from '../recipes/editor/editor-sheet';
+import { errorKeyOf } from '../core/api-error';
+import { openSheet, uid } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInput, CookbookSummary, RecipeRef } from './cookbook.model';
 import { CookbookFormDialog } from './cookbook-form.dialog';
 
-type Row = { id: string; name: string; state: 'idle' | 'busy' | 'added' | 'already'; error: string | null };
+type Row = {
+  id: string;
+  name: string;
+  state: 'idle' | 'busy' | 'added' | 'already';
+  error: string | null;
+};
 
 /** Picks a cookbook to add `ref` to (existing recipe, or a recipe seen through its share link). */
 @Component({
   selector: 'app-add-to-cookbook-dialog',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: '../recipes/editor/sheet.scss',
+  styleUrl: '../shared/sheet.scss',
   styles: `
-    ul { list-style: none; margin: 0 0 12px; padding: 0; }
-    li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; flex-wrap: wrap; padding: 4px 0; }
-    .name { font-weight: 600; overflow-wrap: anywhere; }
-    .ok { color: #2e7d32; }
-    .alert { color: #b3261e; margin: 0; flex-basis: 100%; font-size: 0.85rem; }
-    .actions { display: flex; gap: 8px; justify-content: space-between; }
-    .actions button, li button { padding: 0 16px; }
+    ul {
+      list-style: none;
+      margin: 0 0 12px;
+      padding: 0;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 44px;
+      flex-wrap: wrap;
+      padding: 4px 0;
+    }
+    .name {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .ok {
+      color: #2e7d32;
+    }
+    .alert {
+      color: #b3261e;
+      margin: 0;
+      flex-basis: 100%;
+      font-size: 0.85rem;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+    .actions button,
+    li button {
+      padding: 0 16px;
+    }
   `,
   template: `
     <ng-container *transloco="let t">
@@ -31,7 +64,9 @@ type Row = { id: string; name: string; state: 'idle' | 'busy' | 'added' | 'alrea
       @if (loadError(); as e) {
         <p class="alert" role="alert">{{ t(e) }}</p>
       } @else if (rows(); as list) {
-        @if (list.length === 0) { <p class="hint">{{ t('cookbooks.noneYet') }}</p> }
+        @if (list.length === 0) {
+          <p class="hint">{{ t('cookbooks.noneYet') }}</p>
+        }
         <ul>
           @for (r of list; track r.id) {
             <li>
@@ -41,10 +76,18 @@ type Row = { id: string; name: string; state: 'idle' | 'busy' | 'added' | 'alrea
               } @else if (r.state === 'already') {
                 <span role="status">{{ t('cookbooks.alreadyIn') }}</span>
               } @else {
-                <button type="button" [disabled]="r.state === 'busy'" [attr.aria-label]="t('cookbooks.addTo', { name: r.name })"
-                  (click)="add(r.id)">{{ t('cookbooks.add') }}</button>
+                <button
+                  type="button"
+                  [disabled]="r.state === 'busy'"
+                  [attr.aria-label]="t('cookbooks.addTo', { name: r.name })"
+                  (click)="add(r.id)"
+                >
+                  {{ t('cookbooks.add') }}
+                </button>
               }
-              @if (r.error; as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+              @if (r.error; as e) {
+                <p class="alert" role="alert">{{ t(e) }}</p>
+              }
             </li>
           }
         </ul>
@@ -76,9 +119,11 @@ export class AddToCookbookDialog {
   private async load(): Promise<void> {
     try {
       const mine = await this.api.mine();
-      this.rows.set(mine.map((c: CookbookSummary) => ({ id: c.id, name: c.name, state: 'idle', error: null })));
+      this.rows.set(
+        mine.map((c: CookbookSummary) => ({ id: c.id, name: c.name, state: 'idle', error: null })),
+      );
     } catch (e) {
-      this.loadError.set(errorKey(toApiError(e)));
+      this.loadError.set(errorKeyOf(e));
     }
   }
 
@@ -92,14 +137,14 @@ export class AddToCookbookDialog {
       const { created } = await this.api.addRecipe(id, this.data.ref);
       this.patchRow(id, { state: created ? 'added' : 'already' });
     } catch (e) {
-      this.patchRow(id, { state: 'idle', error: errorKey(toApiError(e)) });
+      this.patchRow(id, { state: 'idle', error: errorKeyOf(e) });
     }
   }
 
   /** Creates a cookbook, then adds the recipe to it; the form stays open if either step fails. */
   protected async createNew(): Promise<void> {
     const state: { made: { id: string; name: string } | null } = { made: null };
-    const sheet = openEditorSheet(this.dialog, this.injector, CookbookFormDialog, {
+    const result = await openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.newTitle'),
       data: {
         submit: async (input: CookbookInput) => {
@@ -108,7 +153,7 @@ export class AddToCookbookDialog {
         },
       },
     });
-    if ((await firstValueFrom(sheet.closed, { defaultValue: undefined })) === true && state.made) {
+    if (result === true && state.made) {
       const { id, name } = state.made;
       this.rows.update((rs) => [{ id, name, state: 'added', error: null }, ...(rs ?? [])]);
     }

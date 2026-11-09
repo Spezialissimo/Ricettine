@@ -1,19 +1,19 @@
 package com.ricettine.config;
 
-import java.time.Duration;
-import org.springframework.beans.factory.annotation.Value;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import java.util.HashMap;
-import java.util.Map;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 
@@ -23,7 +23,8 @@ public class BeansConfig {
 
 	/**
 	 * Session cookie: HttpOnly, SameSite=Lax, 30 days. Secure is left unset so it follows request.isSecure()
-	 * (correct behind a TLS proxy thanks to server.forward-headers-strategy=framework).
+	 * (correct behind a TLS proxy thanks to server.forward-headers-strategy=native; only trusted proxies,
+	 * server.tomcat.remoteip.internal-proxies, have their X-Forwarded-Proto honoured).
 	 */
 	@Bean
 	CookieSerializer cookieSerializer() {
@@ -31,7 +32,7 @@ public class BeansConfig {
 		serializer.setCookieName("SESSION");
 		serializer.setUseHttpOnlyCookie(true);
 		serializer.setSameSite("Lax");
-		serializer.setCookieMaxAge((int) java.time.Duration.ofDays(30).toSeconds());
+		serializer.setCookieMaxAge((int) Duration.ofDays(30).toSeconds());
 		return serializer;
 	}
 

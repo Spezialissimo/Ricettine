@@ -1,14 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { BrowserContext, Page, expect, test } from '@playwright/test';
+import { BrowserContext, Page, expect } from '@playwright/test';
 import exifr from 'exifr';
-import { newUserPage } from './helpers';
-
-const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'portrait-orientation6.jpg');
+import { FIXTURE_PHOTO, newUserPage, test } from '../helpers';
 
 test('fixture is what it claims: landscape pixels, EXIF Orientation 6, GPS present', async () => {
-  const exif = await exifr.parse(readFileSync(FIXTURE), { gps: true, tiff: true, translateValues: false });
+  const exif = await exifr.parse(readFileSync(FIXTURE_PHOTO), { gps: true, tiff: true, translateValues: false });
   expect(exif.Orientation).toBe(6);
   expect(exif.latitude).toBeCloseTo(45.4667, 3);
   expect(exif.longitude).toBeCloseTo(9.1833, 3);
@@ -30,7 +26,7 @@ test.describe.serial('avatar upload', () => {
   test('a portrait phone photo shows upright and is stripped of EXIF/GPS', async () => {
     await page.getByRole('link', { name: 'Settings' }).click();
     await expect(page).toHaveURL(/\/settings\/profile$/);
-    await page.getByLabel('Choose photo').setInputFiles(FIXTURE);
+    await page.getByLabel('Choose photo').setInputFiles(FIXTURE_PHOTO);
     await expect(avatar()).toBeVisible();
 
     await expect

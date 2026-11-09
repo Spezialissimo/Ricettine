@@ -1,16 +1,29 @@
-import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragHandle,
+  CdkDropList,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { StepInput } from '../recipe.model';
 import { countingSteps, countsStep } from './completeness';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 import { EditorStore } from './editor-store';
 import { remapIndex } from './remap-index';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoSlotComponent } from './photo-slot.component';
-
-export const MAX_STEPS = 100;
-export const MAX_STEP_TEXT = 5000;
+import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
 
 /**
  * Numbered steps, each an auto-sizing textarea. "+ Add step" (desktop), the phone bottom bar
@@ -18,7 +31,14 @@ export const MAX_STEP_TEXT = 5000;
  */
 @Component({
   selector: 'app-steps-editor',
-  imports: [TranslocoDirective, CdkDropList, CdkDrag, CdkDragHandle, PhotoDropDirective, PhotoSlotComponent],
+  imports: [
+    TranslocoDirective,
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
+    PhotoDropDirective,
+    PhotoSlotComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './steps-editor.component.scss',
   template: `
@@ -26,19 +46,50 @@ export const MAX_STEP_TEXT = 5000;
       @let steps = store.recipe().steps;
       <ol class="step-list" cdkDropList (cdkDropListDropped)="drop($event)">
         @for (s of steps; track $index; let i = $index) {
-          <li class="step" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="steps.length < 2" [class.active]="active() === i" (focusin)="active.set(i)" (click)="active.set(i)"
-            appPhotoDrop (dropped)="active.set(i); store.uploadPhoto(i, $event)" (rejected)="store.rejectPhoto(i, $event)">
-            <button type="button" class="drag-handle" cdkDragHandle [disabled]="steps.length < 2" [id]="handleId(i)"
-              [attr.aria-label]="t('editor.reorderStep', { n: i + 1 })" (keydown)="onHandleKeydown(i, $event)">⠿</button>
+          <li
+            class="step"
+            cdkDrag
+            cdkDragLockAxis="y"
+            [cdkDragDisabled]="steps.length < 2"
+            [class.active]="active() === i"
+            (focusin)="active.set(i)"
+            (click)="active.set(i)"
+            appPhotoDrop
+            (dropped)="active.set(i); store.uploadPhoto(i, $event)"
+            (rejected)="store.rejectPhoto(i, $event)"
+          >
+            <button
+              type="button"
+              class="drag-handle"
+              cdkDragHandle
+              [disabled]="steps.length < 2"
+              [id]="handleId(i)"
+              [attr.aria-label]="t('editor.reorderStep', { n: i + 1 })"
+              (keydown)="onHandleKeydown(i, $event)"
+            >
+              ⠿
+            </button>
             <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
             <div class="step-body">
-              <textarea [id]="id(i)" rows="2" [maxLength]="maxText" [attr.aria-label]="t('editor.stepN', { n: i + 1 })"
-                [value]="s.text" (input)="setText(i, $event)" (keydown)="onKeydown(i, $event)"></textarea>
+              <textarea
+                [id]="id(i)"
+                rows="2"
+                [maxLength]="maxText"
+                [attr.aria-label]="t('editor.stepN', { n: i + 1 })"
+                [value]="s.text"
+                (input)="setText(i, $event)"
+                (keydown)="onKeydown(i, $event)"
+              ></textarea>
               <app-photo-slot [slot]="i" [capture]="true" />
               @if (active() === i) {
                 <div class="step-actions">
-                  <button type="button" class="btn delete-step" [disabled]="!canDelete(s)"
-                    [attr.aria-describedby]="published() && total() <= 1 ? hintId : null" (click)="remove(i)">
+                  <button
+                    type="button"
+                    class="btn delete-step"
+                    [disabled]="!canDelete(s)"
+                    [attr.aria-describedby]="published() && total() <= 1 ? hintId : null"
+                    (click)="remove(i)"
+                  >
                     {{ t('editor.deleteStep') }}
                   </button>
                 </div>
@@ -51,7 +102,13 @@ export const MAX_STEP_TEXT = 5000;
       @if (published() && total() <= 1) {
         <p class="hint" [id]="hintId">{{ t('editor.needsOne') }}</p>
       }
-      <button type="button" class="btn add-step" [id]="base + '-add'" [disabled]="steps.length >= maxSteps" (click)="addStep()">
+      <button
+        type="button"
+        class="btn add-step"
+        [id]="base + '-add'"
+        [disabled]="steps.length >= maxSteps"
+        (click)="addStep()"
+      >
         {{ t('editor.addStep') }}
       </button>
     </ng-container>
@@ -121,7 +178,10 @@ export class StepsEditorComponent {
     const el = ev.target as HTMLTextAreaElement;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-    this.store.update((r) => ({ ...r, steps: r.steps.map((s, si) => (si === i ? { ...s, text: el.value } : s)) }));
+    this.store.update((r) => ({
+      ...r,
+      steps: r.steps.map((s, si) => (si === i ? { ...s, text: el.value } : s)),
+    }));
   }
 
   protected onKeydown(i: number, ev: KeyboardEvent): void {
@@ -173,7 +233,12 @@ export class StepsEditorComponent {
     const target = i > 0 ? i - 1 : left > 0 ? 0 : null;
     this.active.set(target);
     afterNextRender(
-      () => (document.getElementById(target === null ? this.base + '-add' : this.id(target)) as HTMLElement | null)?.focus(),
+      () =>
+        (
+          document.getElementById(
+            target === null ? this.base + '-add' : this.id(target),
+          ) as HTMLElement | null
+        )?.focus(),
       { injector: this.injector },
     );
   }

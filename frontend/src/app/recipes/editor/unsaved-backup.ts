@@ -30,7 +30,9 @@ type Entries = Record<string, Backup>;
 const parseEntries = (raw: string): Entries | null => {
   try {
     const v = JSON.parse(raw) as unknown;
-    return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length ? (v as Entries) : null;
+    return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length
+      ? (v as Entries)
+      : null;
   } catch {
     return null;
   }
@@ -38,8 +40,15 @@ const parseEntries = (raw: string): Entries | null => {
 
 const valid = (b: unknown): b is Backup => {
   const x = b as Partial<Backup> | null;
-  return !!x && typeof x === 'object' && typeof x.userId === 'string' && typeof x.baseVersion === 'number' &&
-    !!x.input && typeof x.input === 'object' && typeof x.savedAt === 'number';
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    typeof x.userId === 'string' &&
+    typeof x.baseVersion === 'number' &&
+    !!x.input &&
+    typeof x.input === 'object' &&
+    typeof x.savedAt === 'number'
+  );
 };
 
 /**
@@ -85,7 +94,13 @@ export class UnsavedBackup {
    * Replaces this writer's entry. Returns false if storage refused it (e.g. quota); then this writer's
    * older entry is removed too, so an outdated copy is never left looking current.
    */
-  write(recipeId: string, writerId: string, userId: string, input: RecipeInput, amountTexts?: Record<string, string>): boolean {
+  write(
+    recipeId: string,
+    writerId: string,
+    userId: string,
+    input: RecipeInput,
+    amountTexts?: Record<string, string>,
+  ): boolean {
     const b: Backup = { input, baseVersion: input.version, savedAt: Date.now(), userId };
     if (amountTexts && Object.keys(amountTexts).length) b.amountTexts = amountTexts;
     try {
@@ -132,9 +147,11 @@ export class UnsavedBackup {
           }
           const kept: Entries = {};
           for (const [w, b] of Object.entries(entries)) {
-            if (valid(b) && now - b.savedAt <= BACKUP_TTL_MS && b.savedAt - now <= FUTURE_SKEW_MS) kept[w] = b;
+            if (valid(b) && now - b.savedAt <= BACKUP_TTL_MS && b.savedAt - now <= FUTURE_SKEW_MS)
+              kept[w] = b;
           }
-          if (Object.keys(kept).length !== Object.keys(entries).length) this.store(key.slice(KEY_PREFIX.length), kept);
+          if (Object.keys(kept).length !== Object.keys(entries).length)
+            this.store(key.slice(KEY_PREFIX.length), kept);
         } catch {
           // this key is unreadable or locked: leave it
         }
@@ -157,7 +174,8 @@ export class UnsavedBackup {
   }
 
   private store(recipeId: string, entries: Entries): void {
-    if (Object.keys(entries).length) localStorage.setItem(backupKey(recipeId), JSON.stringify(entries));
+    if (Object.keys(entries).length)
+      localStorage.setItem(backupKey(recipeId), JSON.stringify(entries));
     else localStorage.removeItem(backupKey(recipeId));
   }
 }

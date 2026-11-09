@@ -3,6 +3,7 @@ package com.ricettine.cookbook;
 import com.ricettine.account.User;
 import com.ricettine.account.UserRepository;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.Ids;
 import com.ricettine.common.OneTimeToken;
 import com.ricettine.common.OneTimeTokenRepository;
 import com.ricettine.common.OneTimeTokens;
@@ -20,18 +21,17 @@ import com.ricettine.cookbook.CookbookDtos.PersonDto;
 import com.ricettine.cookbook.CookbookDtos.ProfileCookbook;
 import com.ricettine.cookbook.CookbookDtos.PublicCookbook;
 import com.ricettine.cookbook.CookbookDtos.PublicCookbookEntry;
-import com.ricettine.cookbook.CookbookDtos.RecipeRef;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
 import com.ricettine.media.ProcessedUpload;
 import com.ricettine.recipe.RecipeDtos.PhotoDto;
 import com.ricettine.recipe.RecipeDtos.PublicRecipe;
+import com.ricettine.recipe.RecipeDtos.RecipeRef;
 import com.ricettine.recipe.RecipeService;
 import com.ricettine.recipe.Visibility;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
@@ -43,7 +43,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Cookbooks and their entries. {@link #requireMember} and {@link #requireOwner} are the single place where
@@ -68,10 +71,13 @@ public class CookbookService {
 	private final PublicUrls urls;
 	private final OneTimeTokenRepository tokens;
 	private final OneTimeTokens oneTimeTokens;
+	private final TransactionTemplate tx;
 
 	public CookbookService(CookbookRepository cookbooks, CookbookAuthorRepository authors,
 			CookbookEntryRepository entries, UserRepository users, RecipeService recipes, MediaService media,
-			PublicUrls urls, OneTimeTokenRepository tokens, OneTimeTokens oneTimeTokens) {
+			PublicUrls urls, OneTimeTokenRepository tokens, OneTimeTokens oneTimeTokens,
+			PlatformTransactionManager txManager) {
+		this.tx = new TransactionTemplate(txManager);
 		this.cookbooks = cookbooks;
 		this.authors = authors;
 		this.entries = entries;
@@ -95,13 +101,9 @@ public class CookbookService {
 	@Transactional(readOnly = true)
 	public List<ProfileCookbook> listedByOwner(UUID ownerId, boolean includeUnlisted) {
 		List<CookbookRepository.SummaryRow> rows = cookbooks.ownedSummaries(ownerId, includeUnlisted);
-		Map<UUID, String> byId = cookbooks.findAllById(rows.stream().map(CookbookRepository.SummaryRow::id).toList())
-			.stream().collect(Collectors.toMap(Cookbook::getId, Cookbook::getShareToken));
-		return rows.stream().map(r -> {
-			String token = byId.get(r.id());
-			return new ProfileCookbook(r.id(), r.name(), r.visibility(), (int) r.recipeCount(), token,
-					r.coverMediaId() == null ? null : media.url(r.coverMediaId(), ImageVariant.THUMB) + query(token));
-		}).toList();
+		return rows.stream().map(r -> new ProfileCookbook(r.id(), r.name(), r.visibility(), (int) r.recipeCount(),
+				r.shareToken(), r.coverMediaId() == null ? null
+						: media.url(r.coverMediaId(), ImageVariant.THUMB) + query(r.shareToken()))).toList();
 	}
 
 	@Transactional(readOnly = true)
@@ -149,20 +151,25 @@ public class CookbookService {
 	}
 
 	/**
-	 * Owner only: registers the (already processed) upload as the cover, swaps the reference and deletes the old
-	 * cover media; the old blobs go after commit, the new ones are removed if this rolls back.
+	 * Owner only: stores the (already processed) upload's blobs with no transaction held, then one short transaction
+	 * locks the cookbook, re-checks the owner, registers the media, swaps the cover reference and deletes the old
+	 * cover media (its blobs go after commit). If anything fails the new blobs are removed.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public CookbookDto setCover(UUID userId, UUID id, ProcessedUpload upload) {
-		Cookbook c = lock(id);
-		requireOwnerOf(c, userId);
-		String old = c.getCoverMediaId();
-		c.setCoverMediaId(media.register(upload, userId, MediaKind.COOKBOOK, null, id));
-		c.touch();
-		cookbooks.saveAndFlush(c);
-		if (old != null) {
-			media.delete(old);
-		}
-		return toDto(c, CookbookRole.OWNER, userId);
+		return media.storeThen(upload, mediaId -> tx.execute(status -> {
+			Cookbook c = lock(id);
+			requireOwnerOf(c, userId);
+			String old = c.getCoverMediaId();
+			media.registerStored(mediaId, userId, MediaKind.COOKBOOK, null, id);
+			c.setCoverMediaId(mediaId);
+			c.touch();
+			cookbooks.saveAndFlush(c);
+			if (old != null) {
+				media.delete(old);
+			}
+			return toDto(c, CookbookRole.OWNER, userId);
+		}));
 	}
 
 	/** Owner only; idempotent. */
@@ -194,7 +201,7 @@ public class CookbookService {
 		role(c, userId);
 		UUID recipeId = recipes.resolveAddable(ref, userId);
 		if (entries.existsById(new CookbookEntry.Key(id, recipeId))) {
-			return new AddResult(entryDto(id, recipeId, userId), false);
+			return new AddResult(entryDto(c, recipeId, userId), false);
 		}
 		if (entries.countByCookbookId(id) >= CookbookValidator.MAX_ENTRIES) {
 			throw new ApiException(HttpStatus.CONFLICT, "cookbook_full");
@@ -202,7 +209,7 @@ public class CookbookService {
 		entries.saveAndFlush(new CookbookEntry(id, recipeId, userId));
 		c.touch();
 		cookbooks.saveAndFlush(c);
-		return new AddResult(entryDto(id, recipeId, userId), true);
+		return new AddResult(entryDto(c, recipeId, userId), true);
 	}
 
 	/** Idempotent: removing what is not there changes nothing. */
@@ -252,13 +259,7 @@ public class CookbookService {
 	@Transactional(readOnly = true)
 	public PublicRecipe publicRecipe(String token, String recipeId, UUID viewerId) {
 		Cookbook c = byToken(token);
-		UUID rid;
-		try {
-			rid = UUID.fromString(recipeId);
-		}
-		catch (IllegalArgumentException e) {
-			throw new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found");
-		}
+		UUID rid = Ids.parse(recipeId, "recipe_not_found");
 		if (!entries.existsById(new CookbookEntry.Key(c.getId(), rid))) {
 			throw new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found");
 		}
@@ -267,8 +268,6 @@ public class CookbookService {
 
 	private Cookbook byToken(String token) {
 		return cookbooks.findByShareToken(token)
-			.filter(c -> MessageDigest.isEqual(c.getShareToken().getBytes(StandardCharsets.UTF_8),
-					token.getBytes(StandardCharsets.UTF_8)))
 			.orElseThrow(CookbookService::notFound);
 	}
 
@@ -327,11 +326,7 @@ public class CookbookService {
 		UUID cookbookId = tokens.findActive(Tokens.hash(token), INVITE_PURPOSE).map(OneTimeToken::getCookbookId)
 			.orElseThrow(CookbookService::invalidInvite);
 		Cookbook c = cookbooks.lockById(cookbookId).orElseThrow(CookbookService::invalidInvite);
-		OneTimeTokens.ClaimedToken claimed = oneTimeTokens.claim(token, TokenPurpose.COOKBOOK_INVITE)
-			.orElseThrow(CookbookService::invalidInvite);
-		if (!c.getId().equals(claimed.cookbookId())) {
-			throw invalidInvite();
-		}
+		oneTimeTokens.claim(token, TokenPurpose.COOKBOOK_INVITE).orElseThrow(CookbookService::invalidInvite);
 		if (c.getOwnerId().equals(userId) || authors.existsByCookbookIdAndUserId(cookbookId, userId)) {
 			throw new ApiException(HttpStatus.CONFLICT, "already_member");
 		}
@@ -432,10 +427,10 @@ public class CookbookService {
 				u.getAvatarKey() == null ? null : media.url(u.getAvatarKey(), ImageVariant.AVATAR));
 	}
 
-	private CookbookEntryDto entryDto(UUID cookbookId, UUID recipeId, UUID viewerId) {
-		CookbookEntryRepository.Row row = entries.row(cookbookId, recipeId)
+	private CookbookEntryDto entryDto(Cookbook cookbook, UUID recipeId, UUID viewerId) {
+		CookbookEntryRepository.Row row = entries.row(cookbook.getId(), recipeId)
 			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found"));
-		return entryDtos(List.of(row), viewerId, find(cookbookId).getShareToken()).get(0);
+		return entryDtos(List.of(row), viewerId, cookbook.getShareToken()).get(0);
 	}
 
 	private List<CookbookEntryDto> entryDtos(List<CookbookEntryRepository.Row> rows, UUID viewerId,

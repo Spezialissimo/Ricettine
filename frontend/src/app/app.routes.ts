@@ -28,17 +28,20 @@ export const routes: Routes = [
       // public: readable without an account, so outside the authGuard shell (own minimal header)
       {
         path: 'r/:token',
-        loadComponent: () => import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+        loadComponent: () =>
+          import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
       },
       {
         path: 'c/:token',
         pathMatch: 'full',
-        loadComponent: () => import('./cookbooks/view/cookbook-view.page').then((m) => m.CookbookViewPage),
+        loadComponent: () =>
+          import('./cookbooks/view/cookbook-view.page').then((m) => m.CookbookViewPage),
       },
       {
         path: 'c/:token/r/:recipeId',
         data: { via: 'cookbook' },
-        loadComponent: () => import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+        loadComponent: () =>
+          import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
       },
       {
         path: '',
@@ -51,33 +54,55 @@ export const routes: Routes = [
             title: 'titles.profile',
             loadComponent: () => import('./profile/profile.page').then((m) => m.UserProfilePage),
           },
-          { path: 'recipes', title: 'titles.myRecipes', component: MyRecipesPage, pathMatch: 'full' },
+          {
+            path: 'recipes',
+            title: 'titles.myRecipes',
+            component: MyRecipesPage,
+            pathMatch: 'full',
+          },
           { path: 'recipes/new', title: 'titles.newRecipe', component: NewRecipePage },
           {
             path: 'recipes/:id/edit',
             title: 'titles.editRecipe',
-            loadComponent: () => import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
+            loadComponent: () =>
+              import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
             canDeactivate: [leaveEditorGuard],
           },
           {
             path: 'cookbooks',
             title: 'titles.cookbooks',
             pathMatch: 'full',
-            loadComponent: () => import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
+            loadComponent: () =>
+              import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
           },
-          { path: 'cookbooks/:id', title: 'titles.cookbook', loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage) },
+          {
+            path: 'cookbooks/:id',
+            title: 'titles.cookbook',
+            loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage),
+          },
           {
             path: 'cookbook-invite/:token',
             title: 'titles.cookbookInvite',
-            loadComponent: () => import('./cookbooks/accept-invite.page').then((m) => m.AcceptInvitePage),
+            loadComponent: () =>
+              import('./cookbooks/accept-invite.page').then((m) => m.AcceptInvitePage),
           },
           { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
           { path: 'settings/profile', title: 'titles.profile', component: ProfilePage },
           { path: 'settings/password', title: 'titles.password', component: PasswordPage },
           { path: 'settings/delete', title: 'titles.deleteAccount', component: DeleteAccountPage },
           { path: 'admin', pathMatch: 'full', redirectTo: 'admin/invites' },
-          { path: 'admin/invites', title: 'titles.invites', component: InvitesPage, canActivate: [adminGuard] },
-          { path: 'admin/users', title: 'titles.users', component: UsersPage, canActivate: [adminGuard] },
+          {
+            path: 'admin/invites',
+            title: 'titles.invites',
+            component: InvitesPage,
+            canActivate: [adminGuard],
+          },
+          {
+            path: 'admin/users',
+            title: 'titles.users',
+            component: UsersPage,
+            canActivate: [adminGuard],
+          },
         ],
       },
       { path: '**', redirectTo: '' },

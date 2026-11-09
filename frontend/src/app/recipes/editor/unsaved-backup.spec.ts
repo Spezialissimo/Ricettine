@@ -19,7 +19,13 @@ describe('UnsavedBackup', () => {
     backup.write('r1', 'tabA', 'u1', emptyInput({ title: 'Pie', version: 4 }), { '0.0': 'abc' });
     expect(backupKey('r1')).toBe('ricettine.unsaved.r1');
     expect(raw()).toEqual({
-      tabA: { input: emptyInput({ title: 'Pie', version: 4 }), baseVersion: 4, savedAt: 1234, userId: 'u1', amountTexts: { '0.0': 'abc' } },
+      tabA: {
+        input: emptyInput({ title: 'Pie', version: 4 }),
+        baseVersion: 4,
+        savedAt: 1234,
+        userId: 'u1',
+        amountTexts: { '0.0': 'abc' },
+      },
     });
     expect(backup.read('r1', 'u1')).toEqual({ writerId: 'tabA', ...raw().tabA });
   });
@@ -45,7 +51,10 @@ describe('UnsavedBackup', () => {
   it('ignores unreadable or malformed entries', () => {
     localStorage.setItem('ricettine.unsaved.r1', '{not json');
     expect(backup.read('r1', 'u1')).toBeNull();
-    localStorage.setItem('ricettine.unsaved.r1', JSON.stringify({ t: { userId: 'u1', baseVersion: 'x' } }));
+    localStorage.setItem(
+      'ricettine.unsaved.r1',
+      JSON.stringify({ t: { userId: 'u1', baseVersion: 'x' } }),
+    );
     expect(backup.read('r1', 'u1')).toBeNull();
   });
 
@@ -69,7 +78,11 @@ describe('UnsavedBackup', () => {
     backup.write('r1', 'tabB', 'u1', emptyInput({ title: 'other tab' }));
     const real = Storage.prototype.setItem;
     let calls = 0;
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+      this: Storage,
+      k: string,
+      v: string,
+    ) {
       if (calls++ === 0) throw new DOMException('quota', 'QuotaExceededError'); // the big write fails, the shrink works
       real.call(this, k, v);
     });
@@ -90,8 +103,14 @@ describe('UnsavedBackup', () => {
   });
 
   describe('sweep', () => {
-    const entry = (savedAt: number) => ({ input: emptyInput(), baseVersion: 0, savedAt, userId: 'u2' });
-    const put = (id: string, v: unknown) => localStorage.setItem(backupKey(id), typeof v === 'string' ? v : JSON.stringify(v));
+    const entry = (savedAt: number) => ({
+      input: emptyInput(),
+      baseVersion: 0,
+      savedAt,
+      userId: 'u2',
+    });
+    const put = (id: string, v: unknown) =>
+      localStorage.setItem(backupKey(id), typeof v === 'string' ? v : JSON.stringify(v));
 
     it('removes expired entries (any recipe, any user) and keeps fresh ones', () => {
       vi.spyOn(Date, 'now').mockReturnValue(10 * BACKUP_TTL_MS);
@@ -139,9 +158,16 @@ describe('UnsavedBackup', () => {
     const set = (id: string, v: string) => localStorage.setItem(`ricettine.unsaved.${id}`, v);
 
     it('removes keys whose value is broken JSON, not a plain object, or keeps no entry', () => {
-      for (const [id, v] of [['a', '{broken'], ['b', '{}'], ['c', '[]'], ['d', '"x"']]) set(id, v);
+      for (const [id, v] of [
+        ['a', '{broken'],
+        ['b', '{}'],
+        ['c', '[]'],
+        ['d', '"x"'],
+      ])
+        set(id, v);
       backup.sweep();
-      for (const id of ['a', 'b', 'c', 'd']) expect(localStorage.getItem(`ricettine.unsaved.${id}`)).toBeNull();
+      for (const id of ['a', 'b', 'c', 'd'])
+        expect(localStorage.getItem(`ricettine.unsaved.${id}`)).toBeNull();
     });
 
     it('drops entries saved more than a minute in the future and keeps valid ones', () => {
@@ -152,7 +178,9 @@ describe('UnsavedBackup', () => {
       raw.soon = { ...raw.ok, savedAt: now + 10 * 1000 };
       set('r1', JSON.stringify(raw));
       backup.sweep();
-      expect(Object.keys(JSON.parse(localStorage.getItem('ricettine.unsaved.r1')!)).sort()).toEqual(['ok', 'soon']);
+      expect(Object.keys(JSON.parse(localStorage.getItem('ricettine.unsaved.r1')!)).sort()).toEqual(
+        ['ok', 'soon'],
+      );
     });
   });
 });

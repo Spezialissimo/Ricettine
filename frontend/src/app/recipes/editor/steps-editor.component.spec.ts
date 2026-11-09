@@ -1,13 +1,17 @@
 import { CdkDropList } from '@angular/cdk/drag-drop';
 import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { StepsEditorComponent } from './steps-editor.component';
 
 async function mount(texts: string[] = [], status: 'DRAFT' | 'PUBLISHED' = 'DRAFT') {
-  const store = fakeEditorStore({ steps: texts.map((text) => ({ text, photoMediaId: null })) }, status);
+  const store = fakeEditorStore(
+    { steps: texts.map((text) => ({ text, photoMediaId: null })) },
+    status,
+  );
   TestBed.configureTestingModule({
     providers: [provideTestTransloco(), { provide: EditorStore, useValue: store }],
   });
@@ -16,7 +20,8 @@ async function mount(texts: string[] = [], status: 'DRAFT' | 'PUBLISHED' = 'DRAF
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, store };
 }
-const areas = (el: HTMLElement) => Array.from(el.querySelectorAll('textarea')) as HTMLTextAreaElement[];
+const areas = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll('textarea')) as HTMLTextAreaElement[];
 const type = (el: HTMLTextAreaElement, value: string) => {
   el.value = value;
   el.dispatchEvent(new Event('input'));
@@ -27,7 +32,9 @@ describe('StepsEditorComponent', () => {
 
   it('renders numbered steps with textareas and edits their text', async () => {
     const { f, el, store } = await mount(['Boil', 'Serve']);
-    expect(Array.from(el.querySelectorAll('.step-number')).map((n) => n.textContent?.trim())).toEqual(['1', '2']);
+    expect(
+      Array.from(el.querySelectorAll('.step-number')).map((n) => n.textContent?.trim()),
+    ).toEqual(['1', '2']);
     type(areas(el)[1], 'Serve hot');
     await settle(f);
     expect(store.recipe().steps.map((s) => s.text)).toEqual(['Boil', 'Serve hot']);
@@ -55,7 +62,12 @@ describe('StepsEditorComponent', () => {
     for (const mod of [{ ctrlKey: true }, { metaKey: true }]) {
       const first = areas(el)[0];
       first.focus();
-      const ev = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true, bubbles: true, ...mod });
+      const ev = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        cancelable: true,
+        bubbles: true,
+        ...mod,
+      });
       first.dispatchEvent(ev);
       expect(ev.defaultPrevented).toBe(true);
       await settle(f);
@@ -111,8 +123,10 @@ describe('StepsEditorComponent', () => {
   });
 
   describe('reordering', () => {
-    const handles = (el: HTMLElement) => Array.from(el.querySelectorAll('button.drag-handle')) as HTMLButtonElement[];
-    const texts = (store: { recipe: () => { steps: { text: string }[] } }) => store.recipe().steps.map((s) => s.text);
+    const handles = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('button.drag-handle')) as HTMLButtonElement[];
+    const texts = (store: { recipe: () => { steps: { text: string }[] } }) =>
+      store.recipe().steps.map((s) => s.text);
     const key = (h: HTMLElement, k: string) => {
       const ev = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true });
       h.dispatchEvent(ev);
@@ -131,7 +145,10 @@ describe('StepsEditorComponent', () => {
 
     it('each step has a 44 px named handle with touch-action none; the textarea is not a handle', async () => {
       const { el } = await mount(['A', 'B']);
-      expect(handles(el).map((h) => h.getAttribute('aria-label'))).toEqual(['Reorder step 1', 'Reorder step 2']);
+      expect(handles(el).map((h) => h.getAttribute('aria-label'))).toEqual([
+        'Reorder step 1',
+        'Reorder step 2',
+      ]);
       expect(el.querySelectorAll('[cdkDragHandle], .cdk-drag-handle').length).toBe(2);
       expect(areas(el)[0].closest('.cdk-drag-handle')).toBeNull();
       expect(handles(el)[0].closest('li')?.classList.contains('cdk-drag')).toBe(true);

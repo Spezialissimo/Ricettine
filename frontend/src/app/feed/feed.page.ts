@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { mediaUrl } from '../core/media';
 import { AppDatePipe } from '../shared/app-date.pipe';
 import { FeedApi } from './feed.api';
@@ -28,7 +28,11 @@ import { FeedItem } from './feed.model';
               <li class="card">
                 <a class="recipe" [routerLink]="['/r', r.shareToken]">
                   @if (thumb(r); as src) {
-                    <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title })" />
+                    <img
+                      class="thumb"
+                      [src]="src"
+                      [alt]="t('recipes.coverAlt', { title: r.title })"
+                    />
                   } @else {
                     <span class="thumb none" aria-hidden="true"></span>
                   }
@@ -37,7 +41,9 @@ import { FeedItem } from './feed.model';
                     <span class="meta">{{ r.publishedAt | appDate }}</span>
                   </span>
                 </a>
-                <a class="author" [routerLink]="['/u', r.author.username]">{{ t('recipes.by', { name: r.author.displayName }) }}</a>
+                <a class="author" [routerLink]="['/u', r.author.username]">{{
+                  t('recipes.by', { name: r.author.displayName })
+                }}</a>
               </li>
             }
           </ul>
@@ -75,7 +81,7 @@ export class FeedPage {
       this.items.set(page.items);
       this.nextCursor.set(page.nextCursor);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
@@ -89,7 +95,7 @@ export class FeedPage {
       this.items.update((list) => [...(list ?? []), ...page.items]);
       this.nextCursor.set(page.nextCursor);
     } catch (e) {
-      this.moreError.set(errorKey(toApiError(e)));
+      this.moreError.set(errorKeyOf(e));
     } finally {
       this.loadingMore.set(false);
     }

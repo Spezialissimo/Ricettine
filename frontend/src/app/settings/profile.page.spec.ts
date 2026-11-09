@@ -3,15 +3,28 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthStore, Me } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { ProfilePage } from './profile.page';
 
-const me: Me = { id: '1', email: 'a@b.c', username: 'ann', displayName: 'Ann', avatarUrl: null, admin: false };
+const me: Me = {
+  id: '1',
+  email: 'a@b.c',
+  username: 'ann',
+  displayName: 'Ann',
+  avatarUrl: null,
+  admin: false,
+};
 
 describe('ProfilePage', () => {
   function setup(user: Me = me) {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+      ],
     });
     TestBed.inject(AuthStore).setMe(user);
     const http = TestBed.inject(HttpTestingController);
@@ -80,12 +93,15 @@ describe('ProfilePage', () => {
     await settle(f);
     pick(el, new File([new Uint8Array([1])], 'x.jpg', { type: 'image/jpeg' }));
     await settle(f);
-    http.expectOne('/api/me/avatar').flush({ code: 'unsupported_image' }, { status: 415, statusText: 'x' });
+    http
+      .expectOne('/api/me/avatar')
+      .flush({ code: 'unsupported_image' }, { status: 415, statusText: 'x' });
     await settle(f);
     expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.unsupported_image);
   });
 
-  const removeButton = (el: HTMLElement) => el.querySelector('button[data-action="remove-avatar"]') as HTMLButtonElement | null;
+  const removeButton = (el: HTMLElement) =>
+    el.querySelector('button[data-action="remove-avatar"]') as HTMLButtonElement | null;
 
   it('has no remove button without an avatar', async () => {
     const { f, el } = setup();
@@ -115,7 +131,9 @@ describe('ProfilePage', () => {
     await settle(f);
     removeButton(el)!.click();
     await settle(f);
-    http.expectOne('/api/me/avatar').flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
+    http
+      .expectOne('/api/me/avatar')
+      .flush({ code: 'internal_error' }, { status: 500, statusText: 'x' });
     await settle(f);
     expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.internal_error);
     expect(TestBed.inject(AuthStore).me()?.avatarUrl).toBe('/media/avatars/x.jpg');

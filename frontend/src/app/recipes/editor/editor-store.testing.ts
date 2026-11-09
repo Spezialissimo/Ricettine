@@ -3,12 +3,25 @@ import { Recipe, RecipeInput } from '../recipe.model';
 import { EditorStore } from './editor-store';
 
 export const emptyInput = (over: Partial<RecipeInput> = {}): RecipeInput => ({
-  version: 1, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
-  visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [], ...over,
+  version: 1,
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  visibility: 'PRIVATE',
+  coverMediaId: null,
+  groups: [],
+  steps: [],
+  ...over,
 });
 
 /** Minimal stand-in for components that only read `recipe` and call `update` (the sheets and chips). */
-export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe['status'] = 'DRAFT') {
+export function fakeEditorStore(
+  over: Partial<RecipeInput> = {},
+  status: Recipe['status'] = 'DRAFT',
+) {
   const recipe = signal(emptyInput(over));
   const server = signal(serverRecipe({ status }));
   const epoch = signal(0);
@@ -39,11 +52,30 @@ export function fakeEditorStore(over: Partial<RecipeInput> = {}, status: Recipe[
     stepRemoved: () => {},
     stepMoved: () => {},
     update: (fn: (r: RecipeInput) => RecipeInput) => recipe.set(fn(recipe())),
-  } as unknown as EditorStore & { recipe: () => RecipeInput; bumpEpoch: () => void; restoreAmountTexts: (t: Record<string, string>) => void };
+  } as unknown as EditorStore & {
+    recipe: () => RecipeInput;
+    bumpEpoch: () => void;
+    restoreAmountTexts: (t: Record<string, string>) => void;
+  };
 }
 
 export const serverRecipe = (over: Partial<Recipe> = {}): Recipe => ({
-  id: 'r1', status: 'DRAFT', visibility: 'PRIVATE', title: '', portions: 1, prepMinutes: null, cookMinutes: null,
-  source: null, notes: null, cover: null, groups: [], steps: [], version: 1, shareUrl: null,
-  createdAt: '2026-11-03T10:00:00Z', updatedAt: '2026-11-03T10:00:00Z', publishedAt: null, ...over,
+  id: 'r1',
+  status: 'DRAFT',
+  visibility: 'PRIVATE',
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  cover: null,
+  groups: [],
+  steps: [],
+  version: 1,
+  shareUrl: null,
+  createdAt: '2026-11-03T10:00:00Z',
+  updatedAt: '2026-11-03T10:00:00Z',
+  publishedAt: null,
+  ...over,
 });

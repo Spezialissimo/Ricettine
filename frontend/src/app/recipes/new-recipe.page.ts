@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { RecipeApi } from './recipe.api';
 
 /** Creates an empty draft and moves on to its editor (the new URL replaces this one in history). */
@@ -16,7 +16,9 @@ import { RecipeApi } from './recipe.api';
         <p class="alert" role="alert">{{ t(e) }}</p>
         <button type="button" class="retry" (click)="start()">{{ t('common.retry') }}</button>
       } @else {
-        <p class="loading" role="status"><span class="spinner" aria-hidden="true"></span> {{ t('recipes.creating') }}</p>
+        <p class="loading" role="status">
+          <span class="spinner" aria-hidden="true"></span> {{ t('recipes.creating') }}
+        </p>
       }
     </ng-container>
   `,
@@ -36,7 +38,7 @@ export class NewRecipePage {
       const recipe = await this.api.create();
       await this.router.navigateByUrl(`/recipes/${recipe.id}/edit`, { replaceUrl: true });
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 }

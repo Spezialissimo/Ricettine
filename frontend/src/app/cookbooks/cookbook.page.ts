@@ -2,10 +2,9 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
-import { ConfirmDeleteCookbookDialog } from './confirm-delete-cookbook.dialog';
+import { errorKeyOf } from '../core/api-error';
+import { confirmSheet } from '../shared/confirm-dialog.component';
+import { openSheet } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookInput, tokenFromShareUrl } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
@@ -17,7 +16,13 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
 /** One cookbook: its recipes, and (owner only) Edit and Delete. Every member can remove entries. */
 @Component({
   selector: 'app-cookbook-page',
-  imports: [RouterLink, TranslocoDirective, CookbookSharePanelComponent, MembersPanelComponent, PhotoPickerComponent],
+  imports: [
+    RouterLink,
+    TranslocoDirective,
+    CookbookSharePanelComponent,
+    MembersPanelComponent,
+    PhotoPickerComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbooks.scss',
   template: `
@@ -31,50 +36,88 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
           @if (b.role === 'OWNER') {
             <div class="actions">
               <button type="button" class="btn" (click)="edit(b)">{{ t('cookbooks.edit') }}</button>
-              <button type="button" class="btn danger" (click)="confirmDelete(b)">{{ t('cookbooks.delete') }}</button>
+              <button type="button" class="btn danger" (click)="confirmDelete(b)">
+                {{ t('cookbooks.delete') }}
+              </button>
             </div>
           }
         </div>
         <div class="badges">
-          <span class="badge" [attr.data-badge]="b.role">{{ t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor') }}</span>
-          <span class="badge" [attr.data-badge]="b.visibility">{{ t('cookbooks.visibility.' + b.visibility) }}</span>
+          <span class="badge" [attr.data-badge]="b.role">{{
+            t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor')
+          }}</span>
+          <span class="badge" [attr.data-badge]="b.visibility">{{
+            t('cookbooks.visibility.' + b.visibility)
+          }}</span>
         </div>
-        @if (mediaUrl(b.cover?.displayUrl); as src) { <img class="cover" [src]="src" alt="" /> }
+        @if (mediaUrl(b.cover?.displayUrl); as src) {
+          <img class="cover" [src]="src" alt="" />
+        }
         @if (b.role === 'OWNER') {
           <div class="cover-actions">
-            <app-photo-picker [label]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
+            <app-photo-picker
+              [label]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
               [ariaLabel]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
-              (picked)="setCover(b, $event)" (rejected)="actionError.set($event)" />
+              (picked)="setCover(b, $event)"
+              (rejected)="actionError.set($event)"
+            />
             @if (b.cover) {
-              <button type="button" class="btn" (click)="removeCover(b)">{{ t('cookbooks.cover.remove') }}</button>
+              <button type="button" class="btn" (click)="removeCover(b)">
+                {{ t('cookbooks.cover.remove') }}
+              </button>
             }
           </div>
         }
-        @if (b.description) { <p class="desc">{{ b.description }}</p> }
+        @if (b.description) {
+          <p class="desc">{{ b.description }}</p>
+        }
         <app-cookbook-share-panel [book]="b" (updated)="book.set($event)" />
         <app-members-panel [book]="b" (changed)="load()" />
-        @if (actionError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+        @if (actionError(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
         @if (b.recipes.length === 0) {
           <p class="empty">{{ t('cookbooks.noRecipes') }}</p>
         } @else {
           <ul class="entries">
             @for (r of b.recipes; track r.recipeId) {
               <li class="entry">
-                @if (mediaUrl(r.coverThumbUrl); as src) { <img class="thumb" [src]="src" alt="" loading="lazy" /> }
+                @if (mediaUrl(r.coverThumbUrl); as src) {
+                  <img class="thumb" [src]="src" alt="" loading="lazy" />
+                }
                 <div class="entry-body">
                   @if (token(b); as tok) {
-                    <a class="entry-title" [routerLink]="['/c', tok, 'r', r.recipeId]">{{ r.title }}</a>
+                    <a class="entry-title" [routerLink]="['/c', tok, 'r', r.recipeId]">{{
+                      r.title
+                    }}</a>
                   } @else {
                     <span class="entry-title">{{ r.title }}</span>
                   }
-                  <span class="entry-meta">{{ t('recipes.by', { name: r.author?.displayName ?? t('cookbooks.deletedUser') }) }}</span>
-                  <span class="entry-meta">{{ t('cookbooks.addedBy', { name: r.addedBy?.displayName ?? t('cookbooks.deletedUser') }) }}</span>
+                  <span class="entry-meta">{{
+                    t('recipes.by', { name: r.author?.displayName ?? t('cookbooks.deletedUser') })
+                  }}</span>
+                  <span class="entry-meta">{{
+                    t('cookbooks.addedBy', {
+                      name: r.addedBy?.displayName ?? t('cookbooks.deletedUser'),
+                    })
+                  }}</span>
                 </div>
                 @if (r.mine) {
-                  <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']" [attr.aria-label]="t('cookbooks.editRecipe', { title: r.title })">{{ t('cookbooks.edit') }}</a>
+                  <a
+                    class="btn"
+                    [routerLink]="['/recipes', r.recipeId, 'edit']"
+                    [attr.aria-label]="t('cookbooks.editRecipe', { title: r.title })"
+                    >{{ t('cookbooks.edit') }}</a
+                  >
                 }
-                <button type="button" class="btn" [attr.aria-label]="t('cookbooks.removeAria', { title: r.title })"
-                  (click)="removeEntry(b, r.recipeId)">{{ t('cookbooks.remove') }}</button>
+                <button
+                  type="button"
+                  class="btn"
+                  [attr.aria-label]="t('cookbooks.removeAria', { title: r.title })"
+                  (click)="removeEntry(b, r.recipeId)"
+                >
+                  {{ t('cookbooks.remove') }}
+                </button>
               </li>
             }
           </ul>
@@ -107,32 +150,38 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.get(this.id));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
   protected async edit(b: Cookbook): Promise<void> {
-    openEditorSheet(this.dialog, this.injector, CookbookFormDialog, {
+    void openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.editTitle'),
       data: {
         initial: { name: b.name, description: b.description, visibility: b.visibility },
-        submit: async (input: CookbookInput) => this.book.set(await this.api.patch(b.id, { ...input, description: input.description ?? '' })),
+        submit: async (input: CookbookInput) =>
+          this.book.set(
+            await this.api.patch(b.id, { ...input, description: input.description ?? '' }),
+          ),
       },
     });
   }
 
   protected async confirmDelete(b: Cookbook): Promise<void> {
     this.actionError.set(null);
-    const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteCookbookDialog, {
-      label: this.i18n.translate('cookbooks.deleteConfirm.title'),
-      data: { name: b.name },
+    const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+      titleKey: 'cookbooks.deleteConfirm.title',
+      bodyKey: 'cookbooks.deleteConfirm.body',
+      params: { name: b.name },
+      confirmKey: 'cookbooks.deleteConfirm.confirm',
+      danger: true,
     });
-    if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+    if (!confirmed) return;
     try {
       await this.api.remove(b.id);
       await this.router.navigateByUrl('/cookbooks');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -141,7 +190,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.setCover(b.id, file));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -150,7 +199,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.removeCover(b.id));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -158,9 +207,11 @@ export class CookbookPage {
     this.actionError.set(null);
     try {
       await this.api.removeRecipe(b.id, recipeId);
-      this.book.update((cur) => (cur ? { ...cur, recipes: cur.recipes.filter((r) => r.recipeId !== recipeId) } : cur));
+      this.book.update((cur) =>
+        cur ? { ...cur, recipes: cur.recipes.filter((r) => r.recipeId !== recipeId) } : cur,
+      );
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 }

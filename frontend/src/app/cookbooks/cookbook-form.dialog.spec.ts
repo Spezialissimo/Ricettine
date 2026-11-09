@@ -1,7 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { clearOverlays, settle } from '../testing/spec-helpers';
 import { CookbookFormDialog, CookbookFormData } from './cookbook-form.dialog';
 
 async function open(data: CookbookFormData) {
@@ -18,7 +19,7 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, v: string) => {
 };
 
 describe('CookbookFormDialog', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('blocks a blank name client-side and does not submit', async () => {
     const submit = vi.fn();
@@ -54,18 +55,30 @@ describe('CookbookFormDialog', () => {
     ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.click();
     (ov.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await settle(f);
-    expect(submit).toHaveBeenCalledWith({ name: 'Desserts', description: null, visibility: 'PUBLIC' });
+    expect(submit).toHaveBeenCalledWith({
+      name: 'Desserts',
+      description: null,
+      visibility: 'PUBLIC',
+    });
     expect(closed).toHaveBeenCalledWith(true);
   });
 
   it('prefills when editing and maps a server field error to its message', async () => {
     const submit = vi.fn().mockRejectedValue(
-      new HttpErrorResponse({ status: 400, error: { code: 'validation_failed', fields: { name: 'too_long' } } }),
+      new HttpErrorResponse({
+        status: 400,
+        error: { code: 'validation_failed', fields: { name: 'too_long' } },
+      }),
     );
-    const { ov, f } = await open({ initial: { name: 'Old', description: 'D', visibility: 'PUBLIC' }, submit });
+    const { ov, f } = await open({
+      initial: { name: 'Old', description: 'D', visibility: 'PUBLIC' },
+      submit,
+    });
     expect(ov.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Old');
     expect(ov.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('D');
-    expect(ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.checked).toBe(true);
+    expect(ov.querySelector<HTMLInputElement>('input[type="radio"][value="PUBLIC"]')!.checked).toBe(
+      true,
+    );
     (ov.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await settle(f);
     expect(ov.querySelector('.field-error')?.textContent).toContain(en.errors.field.too_long);

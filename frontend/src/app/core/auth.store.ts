@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { toApiError } from './api-error';
 import { PendingSaves } from './pending-saves';
 
 export type Me = {
@@ -39,7 +40,7 @@ export class AuthStore {
   }
 
   /**
-   * Sends unsaved work of open pages first (the session must still be valid for that), then logs out.
+   * Sends unsaved work of open pages first (the session must still be valid for that), then logs out. Rejects with an ApiError (and keeps `me`) unless the server confirmed or the session was already gone.
    * Each open editor deletes its own local backup once its flush saved it; anything not saved (failed,
    * timed out) stays in the backup for the next login.
    */
@@ -47,11 +48,13 @@ export class AuthStore {
     await this.pending.flushAll();
     try {
       await firstValueFrom(this.http.post<void>('/api/auth/logout', null));
-    } catch {
-      // e.g. 401 on an expired session: nothing to revoke server-side, still sign out locally.
-    } finally {
-      this._me.set(null);
+    } catch (e) {
+      // 401: the session is already gone, nothing to revoke. Anything else (offline, 5xx) leaves the
+      // server session alive, so stay signed in and let the caller show the error and retry.
+      const err = toApiError(e);
+      if (err.status !== 401) throw err;
     }
+    this._me.set(null);
   }
 
   setMe(me: Me | null): void {

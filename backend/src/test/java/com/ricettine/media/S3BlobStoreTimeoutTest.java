@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.core.exception.ApiCallTimeoutException;
 
 class S3BlobStoreTimeoutTest {
 
@@ -31,7 +32,7 @@ class S3BlobStoreTimeoutTest {
 			S3BlobStore store = S3BlobStore.create("b", "us-east-1", "http://127.0.0.1:" + server.getLocalPort(), true,
 					new S3BlobStore.S3Timeouts(Duration.ofSeconds(1), Duration.ofMillis(500), Duration.ofMillis(500)));
 			assertTimeoutPreemptively(Duration.ofSeconds(5),
-					() -> assertThatThrownBy(() -> store.put("k", new byte[] {1}, "image/jpeg")).isNotNull());
+					() -> assertThatThrownBy(() -> store.put("k", new byte[] {1}, "image/jpeg")).isInstanceOf(ApiCallTimeoutException.class));
 		}
 		finally {
 			System.clearProperty("aws.accessKeyId");

@@ -17,20 +17,48 @@ export function photoProblem(file: File): string | null {
   selector: 'app-photo-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    :host { display: inline-flex; }
-    button {
-      min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; width: 100%;
-      padding: 0 16px; border: 1px solid #e2dcd3; border-radius: 10px; background: #fff; color: inherit;
-      font: inherit; font-weight: 600; cursor: pointer;
+    :host {
+      display: inline-flex;
     }
-    :host(.primary) button { background: #c8553d; border-color: #c8553d; color: #fff; }
+    button {
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0 16px;
+      border: 1px solid #e2dcd3;
+      border-radius: 10px;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    :host(.primary) button {
+      background: #c8553d;
+      border-color: #c8553d;
+      color: #fff;
+    }
   `,
   template: `
     <button type="button" [attr.aria-label]="ariaLabel() || null" (click)="file.click()">
-      @if (icon()) { <span aria-hidden="true">{{ icon() }}&nbsp;</span> }{{ label() }}
+      @if (icon()) {
+        <span aria-hidden="true">{{ icon() }}&nbsp;</span>
+      }
+      {{ label() }}
     </button>
-    <input #file type="file" hidden aria-hidden="true" tabindex="-1" [accept]="accept"
-      [attr.capture]="capture() ? 'environment' : null" (change)="onChange(file)" />
+    <input
+      #file
+      type="file"
+      hidden
+      aria-hidden="true"
+      tabindex="-1"
+      [accept]="accept"
+      [attr.capture]="capture() ? 'environment' : null"
+      (change)="onChange(file)"
+    />
   `,
 })
 export class PhotoPickerComponent {

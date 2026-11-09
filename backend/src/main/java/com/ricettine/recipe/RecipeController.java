@@ -2,6 +2,7 @@ package com.ricettine.recipe;
 
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.ApiException;
+import com.ricettine.common.Ids;
 import com.ricettine.recipe.RecipeDtos.PublishRequest;
 import com.ricettine.recipe.RecipeDtos.RecipeDto;
 import com.ricettine.recipe.RecipeDtos.RecipeInput;
@@ -74,11 +75,6 @@ public class RecipeController {
 
 	/** A malformed id can't be anyone's recipe: same 404 as an unknown one. */
 	static UUID parse(String id) {
-		try {
-			return UUID.fromString(id);
-		}
-		catch (IllegalArgumentException e) {
-			throw new ApiException(HttpStatus.NOT_FOUND, "recipe_not_found");
-		}
+		return Ids.parse(id, "recipe_not_found");
 	}
 }

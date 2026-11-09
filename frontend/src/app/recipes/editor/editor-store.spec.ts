@@ -6,12 +6,19 @@ import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
-import { EditorStore, conflictText, isUntouchedDraft, withoutBlankIngredients } from './editor-store';
+import {
+  EditorStore,
+  conflictText,
+  isUntouchedDraft,
+  withoutBlankIngredients,
+} from './editor-store';
 import { emptyInput, serverRecipe } from './editor-store.testing';
 import { Backup } from './unsaved-backup';
 
 function setup(api: Partial<RecipeApi>) {
-  TestBed.configureTestingModule({ providers: [EditorStore, { provide: RecipeApi, useValue: api }] });
+  TestBed.configureTestingModule({
+    providers: [EditorStore, { provide: RecipeApi, useValue: api }],
+  });
   return TestBed.inject(EditorStore);
 }
 
@@ -20,7 +27,9 @@ describe('EditorStore', () => {
   afterEach(() => vi.useRealTimers());
 
   it('loads the server copy as the working RecipeInput', async () => {
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Lasagne', version: 3 })) });
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Lasagne', version: 3 })),
+    });
     expect(store.loaded()).toBe(false);
     await store.load('r1');
     expect(store.loaded()).toBe(true);
@@ -31,7 +40,13 @@ describe('EditorStore', () => {
   });
 
   it('reports a load failure', async () => {
-    const store = setup({ get: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 404, error: { code: 'recipe_not_found' } })) });
+    const store = setup({
+      get: vi
+        .fn()
+        .mockRejectedValue(
+          new HttpErrorResponse({ status: 404, error: { code: 'recipe_not_found' } }),
+        ),
+    });
     await store.load('nope');
     expect(store.loaded()).toBe(false);
     expect(store.loadError()).toBe('errors.recipe_not_found');
@@ -52,17 +67,29 @@ describe('EditorStore', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(store.recipe()).toMatchObject({ title: 'AB', version: 2 }); // the echo never clobbers newer typing
     await vi.advanceTimersByTimeAsync(800);
-    expect(save).toHaveBeenLastCalledWith('r1', expect.objectContaining({ title: 'AB', version: 2 }));
+    expect(save).toHaveBeenLastCalledWith(
+      'r1',
+      expect.objectContaining({ title: 'AB', version: 2 }),
+    );
     await vi.advanceTimersByTimeAsync(0);
     expect(store.recipe().version).toBe(3);
     expect(store.status()).toBe('saved');
   });
 
   it('exposes server field errors and clears them after a good save', async () => {
-    const save = vi.fn().mockRejectedValueOnce(
-      new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } }),
-    ).mockResolvedValue(serverRecipe({ title: 'X', version: 2 }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T' })), save });
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new HttpErrorResponse({
+          status: 400,
+          error: { code: 'recipe_incomplete', fields: { title: 'required' } },
+        }),
+      )
+      .mockResolvedValue(serverRecipe({ title: 'X', version: 2 }));
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T' })),
+      save,
+    });
     await store.load('r1');
     store.update((r) => ({ ...r, title: '' }));
     await store.flush();
@@ -75,8 +102,15 @@ describe('EditorStore', () => {
   });
 
   it('loadLatest replaces the working copy and clears the conflict', async () => {
-    const get = vi.fn().mockResolvedValueOnce(serverRecipe()).mockResolvedValueOnce(serverRecipe({ title: 'Theirs', version: 5 }));
-    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce(serverRecipe())
+      .mockResolvedValueOnce(serverRecipe({ title: 'Theirs', version: 5 }));
+    const save = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
     const store = setup({ get, save });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'Mine' }));
@@ -87,11 +121,75 @@ describe('EditorStore', () => {
     expect(store.recipe()).toMatchObject({ title: 'Theirs', version: 5 });
   });
 
+  it('conflictText includes ingredient lines, source, times and portions', () => {
+    const r = emptyInput({
+      title: 'Pie',
+      notes: 'Note',
+      portions: 4,
+      prepMinutes: 10,
+      cookMinutes: 45,
+      source: 'Nonna',
+      groups: [
+        {
+          name: null,
+          ingredients: [
+            { amount: 1.5, unit: 'cup', name: 'flour', note: 'sifted' },
+            { amount: null, unit: null, name: 'salt', note: null },
+            { amount: 2, unit: null, name: 'eggs', note: null },
+          ],
+        },
+      ],
+      steps: [{ text: 'Stir', photoMediaId: null }],
+    });
+    const text = conflictText(r);
+    for (const part of [
+      'Pie',
+      'Note',
+      'Stir',
+      '1.5 cup flour, sifted',
+      'salt',
+      '2 eggs',
+      'Nonna',
+      '10',
+      '45',
+      '4',
+    ]) {
+      expect(text).toContain(part);
+    }
+    expect(text).not.toContain('null');
+  });
+
+  it('an ingredient-only edit still shows up in the conflict block', async () => {
+    const get = vi.fn().mockResolvedValue(serverRecipe());
+    const save = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
+    const store = setup({ get, save });
+    await store.load('r1');
+    store.update((r) => ({
+      ...r,
+      groups: [
+        { name: null, ingredients: [{ amount: 300, unit: 'g', name: 'butter', note: null }] },
+      ],
+    }));
+    await store.flush();
+    expect(store.status()).toBe('conflict');
+    expect(conflictText(store.recipe())).toContain('300 g butter');
+  });
+
   it('keeps an edit typed while publish is in flight and saves it with the published version', async () => {
     let resolvePublish!: (r: Recipe) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolvePublish = r)));
-    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 3 }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    const save = vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 3 }));
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      save,
+      publish,
+    });
     await store.load('r1');
     const epoch = store.epoch();
     const done = store.publish();
@@ -114,9 +212,15 @@ describe('EditorStore', () => {
   });
 
   it('a publish with nothing typed meanwhile adopts the server copy', async () => {
-    const publish = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Server', version: 2 }));
+    const publish = vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Server', version: 2 }));
     const save = vi.fn();
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      save,
+      publish,
+    });
     await store.load('r1');
     const epoch = store.epoch();
     expect(await store.publish()).toBe('published');
@@ -128,14 +232,42 @@ describe('EditorStore', () => {
   });
 
   it('resetLink flushes typing first, sends the current version and adopts the server copy', async () => {
-    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3, shareUrl: 'https://x.test/r/OLD' }));
-    const resetLink = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 4, shareUrl: 'https://x.test/r/NEW' }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    const save = vi.fn().mockResolvedValue(
+      serverRecipe({
+        status: 'PUBLISHED',
+        title: 'Typed',
+        version: 3,
+        shareUrl: 'https://x.test/r/OLD',
+      }),
+    );
+    const resetLink = vi.fn().mockResolvedValue(
+      serverRecipe({
+        status: 'PUBLISHED',
+        title: 'Typed',
+        version: 4,
+        shareUrl: 'https://x.test/r/NEW',
+      }),
+    );
+    const store = setup({
+      get: vi.fn().mockResolvedValue(
+        serverRecipe({
+          status: 'PUBLISHED',
+          title: 'T',
+          version: 2,
+          shareUrl: 'https://x.test/r/OLD',
+        }),
+      ),
+      save,
+      resetLink,
+    });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'Typed' }));
     const epoch = store.epoch();
     expect(await store.resetLink()).toBe('reset');
-    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed', version: 2 }));
+    expect(save).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({ title: 'Typed', version: 2 }),
+    );
     expect(resetLink).toHaveBeenCalledWith('r1', 3);
     expect(store.server()?.shareUrl).toBe('https://x.test/r/NEW');
     expect(store.recipe()).toMatchObject({ title: 'Typed', version: 4 });
@@ -147,8 +279,21 @@ describe('EditorStore', () => {
   it('edits typed during the reset request are kept and saved at the new version', async () => {
     let resolveReset!: (r: Recipe) => void;
     const resetLink = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolveReset = r)));
-    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 4 }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    const save = vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T!', version: 4 }));
+    const store = setup({
+      get: vi.fn().mockResolvedValue(
+        serverRecipe({
+          status: 'PUBLISHED',
+          title: 'T',
+          version: 2,
+          shareUrl: 'https://x.test/r/OLD',
+        }),
+      ),
+      save,
+      resetLink,
+    });
     await store.load('r1');
     const epoch = store.epoch();
     const done = store.resetLink();
@@ -157,7 +302,14 @@ describe('EditorStore', () => {
     store.update((r) => ({ ...r, title: 'T!' }));
     await vi.advanceTimersByTimeAsync(800);
     expect(save).not.toHaveBeenCalled(); // held while the reset is in flight
-    resolveReset(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 3, shareUrl: 'https://x.test/r/NEW' }));
+    resolveReset(
+      serverRecipe({
+        status: 'PUBLISHED',
+        title: 'T',
+        version: 3,
+        shareUrl: 'https://x.test/r/NEW',
+      }),
+    );
     expect(await done).toBe('reset');
     expect(store.recipe()).toMatchObject({ title: 'T!', version: 3 });
     expect(store.server()?.shareUrl).toBe('https://x.test/r/NEW');
@@ -167,9 +319,24 @@ describe('EditorStore', () => {
   });
 
   it('a reset with a stale version moves the store into conflict and adopts nothing', async () => {
-    const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const resetLink = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
     const save = vi.fn();
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2, shareUrl: 'https://x.test/r/OLD' })), save, resetLink });
+    const store = setup({
+      get: vi.fn().mockResolvedValue(
+        serverRecipe({
+          status: 'PUBLISHED',
+          title: 'T',
+          version: 2,
+          shareUrl: 'https://x.test/r/OLD',
+        }),
+      ),
+      save,
+      resetLink,
+    });
     await store.load('r1');
     const epoch = store.epoch();
     expect(await store.resetLink()).toBe('conflict');
@@ -184,9 +351,17 @@ describe('EditorStore', () => {
   });
 
   it('resetLink does not call the server when the flush ends in a conflict', async () => {
-    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const save = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
     const resetLink = vi.fn();
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })),
+      save,
+      resetLink,
+    });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'Typed' }));
     expect(await store.resetLink()).toBe('conflict');
@@ -195,8 +370,14 @@ describe('EditorStore', () => {
 
   it('a failed resetLink resumes autosave and rethrows', async () => {
     const resetLink = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 500 }));
-    const save = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3 }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })), save, resetLink });
+    const save = vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Typed', version: 3 }));
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T', version: 2 })),
+      save,
+      resetLink,
+    });
     await store.load('r1');
     // Attach the rejection handler at once: the request fails while timers advance below.
     const done = expect(store.resetLink()).rejects.toBeTruthy();
@@ -211,12 +392,21 @@ describe('EditorStore', () => {
     let rejectPublish!: (e: unknown) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((_, rej) => (rejectPublish = rej)));
     const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'T!', version: 2 }));
-    const store = setup({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    const store = setup({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      save,
+      publish,
+    });
     await store.load('r1');
     const done = store.publish();
     await vi.advanceTimersByTimeAsync(0);
     store.update((r) => ({ ...r, title: 'T!' }));
-    rejectPublish(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { steps: 'required' } } }));
+    rejectPublish(
+      new HttpErrorResponse({
+        status: 400,
+        error: { code: 'recipe_incomplete', fields: { steps: 'required' } },
+      }),
+    );
     await expect(done).rejects.toBeTruthy();
     await vi.advanceTimersByTimeAsync(800);
     expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'T!', version: 1 }));
@@ -273,7 +463,14 @@ describe('EditorStore', () => {
 
 describe('EditorStore unsaved backup', () => {
   const KEY = 'ricettine.unsaved.r1';
-  const me = (id: string) => ({ id, email: `${id}@x.test`, username: id, displayName: id, avatarUrl: null, admin: false });
+  const me = (id: string) => ({
+    id,
+    email: `${id}@x.test`,
+    username: id,
+    displayName: id,
+    avatarUrl: null,
+    admin: false,
+  });
   /** The newest backup entry of r1 (any tab), or null. */
   const stored = (key = KEY) => {
     const raw = localStorage.getItem(key);
@@ -281,12 +478,26 @@ describe('EditorStore unsaved backup', () => {
     const entries = Object.values(JSON.parse(raw) as Record<string, Backup>);
     return entries.length ? entries.reduce((a, b) => (b.savedAt >= a.savedAt ? b : a)) : null;
   };
-  const putBackup = (input: Partial<ReturnType<typeof emptyInput>>, baseVersion: number, userId = 'u1', writer = 'earlier-visit',
-    amountTexts?: Record<string, string>) =>
-    localStorage.setItem(KEY, JSON.stringify({
-      ...JSON.parse(localStorage.getItem(KEY) ?? '{}'),
-      [writer]: { input: emptyInput({ ...input, version: baseVersion }), baseVersion, savedAt: Date.now(), userId, amountTexts },
-    }));
+  const putBackup = (
+    input: Partial<ReturnType<typeof emptyInput>>,
+    baseVersion: number,
+    userId = 'u1',
+    writer = 'earlier-visit',
+    amountTexts?: Record<string, string>,
+  ) =>
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        ...JSON.parse(localStorage.getItem(KEY) ?? '{}'),
+        [writer]: {
+          input: emptyInput({ ...input, version: baseVersion }),
+          baseVersion,
+          savedAt: Date.now(),
+          userId,
+          amountTexts,
+        },
+      }),
+    );
   function setupAs(api: Partial<RecipeApi>, userId: string | null = 'u1') {
     const store = setup(api);
     TestBed.inject(AuthStore).setMe(userId ? me(userId) : null);
@@ -308,7 +519,11 @@ describe('EditorStore unsaved backup', () => {
     const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ version: 3 })), save });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'Offline pie' }));
-    expect(stored()).toMatchObject({ input: { title: 'Offline pie' }, baseVersion: 3, userId: 'u1' }); // before any request
+    expect(stored()).toMatchObject({
+      input: { title: 'Offline pie' },
+      baseVersion: 3,
+      userId: 'u1',
+    }); // before any request
     await vi.advanceTimersByTimeAsync(800);
     expect(store.status()).toBe('offline');
     expect(stored()?.input.title).toBe('Offline pie');
@@ -320,15 +535,54 @@ describe('EditorStore unsaved backup', () => {
     expect(stored()).toBeNull();
   });
 
+  it('loadLatest keeps text typed while the fetch is pending: still in the editor and in the backup', async () => {
+    let resolveGet!: (r: Recipe) => void;
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce(serverRecipe())
+      .mockReturnValueOnce(new Promise<Recipe>((r) => (resolveGet = r)));
+    const save = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
+    const store = setupAs({ get, save });
+    await store.load('r1');
+    store.update((r) => ({ ...r, title: 'Mine' }));
+    await store.flush();
+    expect(store.status()).toBe('conflict');
+    const pending = store.loadLatest();
+    await vi.advanceTimersByTimeAsync(0);
+    store.update((r) => ({ ...r, notes: 'typed meanwhile' }));
+    resolveGet(serverRecipe({ title: 'Theirs', version: 5 }));
+    await pending;
+    expect(store.recipe().notes).toBe('typed meanwhile');
+    expect(stored()?.input.notes).toBe('typed meanwhile');
+  });
+
   it('a backup with the same base version is applied at load and saved', async () => {
     putBackup({ title: 'Typed before the tab closed', notes: 'n' }, 3);
-    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'Typed before the tab closed', notes: 'n', version: 4 }));
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old', version: 3 })), save });
+    const save = vi
+      .fn()
+      .mockResolvedValue(
+        serverRecipe({ title: 'Typed before the tab closed', notes: 'n', version: 4 }),
+      );
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Old', version: 3 })),
+      save,
+    });
     await store.load('r1');
-    expect(store.recipe()).toMatchObject({ title: 'Typed before the tab closed', notes: 'n', version: 3 });
+    expect(store.recipe()).toMatchObject({
+      title: 'Typed before the tab closed',
+      notes: 'n',
+      version: 3,
+    });
     expect(store.restored()).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
-    expect(save).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Typed before the tab closed', version: 3 }));
+    expect(save).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({ title: 'Typed before the tab closed', version: 3 }),
+    );
     await vi.advanceTimersByTimeAsync(0);
     expect(store.status()).toBe('saved');
     expect(stored()).toBeNull();
@@ -355,7 +609,10 @@ describe('EditorStore unsaved backup', () => {
   it('a backup that matches the server copy is dropped without a save or a notice', async () => {
     putBackup({ title: 'Same' }, 2);
     const save = vi.fn();
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Same', version: 3 })), save });
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Same', version: 3 })),
+      save,
+    });
     await store.load('r1');
     expect(store.status()).toBe('idle');
     expect(store.restored()).toBe(false);
@@ -366,7 +623,8 @@ describe('EditorStore unsaved backup', () => {
 
   it('two tabs on one recipe: A saving never erases the text of B, which is in a conflict', async () => {
     const save = vi.fn().mockImplementation(async (_id: string, i: { title: string }) => {
-      if (i.title === 'B text') throw new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } });
+      if (i.title === 'B text')
+        throw new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } });
       return serverRecipe({ title: i.title, version: 2 });
     });
     const api = { get: vi.fn().mockResolvedValue(serverRecipe()), save };
@@ -392,7 +650,11 @@ describe('EditorStore unsaved backup', () => {
   });
 
   it("entering a conflict writes this tab's backup again (e.g. after another tab opened the recipe and took the entry over)", async () => {
-    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }));
+    const save = vi
+      .fn()
+      .mockRejectedValue(
+        new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
+      );
     const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'Mine' }));
@@ -403,23 +665,53 @@ describe('EditorStore unsaved backup', () => {
   });
 
   it('a nameless ingredient row holding an amount is never sent, so the backup keeps it and a reload restores it', async () => {
-    const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] }));
+    const save = vi
+      .fn()
+      .mockResolvedValue(
+        serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] }),
+      );
     const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
     await store.load('r1');
-    store.update((r) => ({ ...r, title: 'T', groups: [{ name: null, ingredients: [{ amount: 2, unit: 'g', name: '', note: null }] }] }));
+    store.update((r) => ({
+      ...r,
+      title: 'T',
+      groups: [{ name: null, ingredients: [{ amount: 2, unit: 'g', name: '', note: null }] }],
+    }));
     await store.flush();
     expect(store.autosave.dirty()).toBe(false);
-    expect(stored()?.input.groups[0].ingredients[0]).toMatchObject({ amount: 2, unit: 'g', name: '' });
+    expect(stored()?.input.groups[0].ingredients[0]).toMatchObject({
+      amount: 2,
+      unit: 'g',
+      name: '',
+    });
 
     TestBed.resetTestingModule();
-    const again = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] })), save });
+    const again = setupAs({
+      get: vi
+        .fn()
+        .mockResolvedValue(
+          serverRecipe({ title: 'T', version: 2, groups: [{ name: null, ingredients: [] }] }),
+        ),
+      save,
+    });
     await again.load('r1');
-    expect(again.recipe().groups[0].ingredients[0]).toMatchObject({ amount: 2, unit: 'g', name: '' });
+    expect(again.recipe().groups[0].ingredients[0]).toMatchObject({
+      amount: 2,
+      unit: 'g',
+      name: '',
+    });
     expect(again.unnamedIngredients()).toBe(1);
   });
 
   it('invalid amount text is kept in the backup and handed back on reload', async () => {
-    const save = vi.fn().mockResolvedValue(serverRecipe({ version: 2, groups: [{ name: null, ingredients: [{ amount: 1, unit: null, name: 'milk', note: null }] }] }));
+    const save = vi.fn().mockResolvedValue(
+      serverRecipe({
+        version: 2,
+        groups: [
+          { name: null, ingredients: [{ amount: 1, unit: null, name: 'milk', note: null }] },
+        ],
+      }),
+    );
     const ing = { amount: 1, unit: null, name: 'milk', note: null };
     const server = serverRecipe({ groups: [{ name: null, ingredients: [ing] }] });
     const store = setupAs({ get: vi.fn().mockResolvedValue(server), save });
@@ -437,8 +729,15 @@ describe('EditorStore unsaved backup', () => {
 
   it('a restored backup the server refuses (4xx) offers the saved version, which discards it', async () => {
     putBackup({ title: '' }, 1);
-    const get = vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Saved', version: 1 }));
-    const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 400, error: { code: 'recipe_incomplete', fields: { title: 'required' } } }));
+    const get = vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'Saved', version: 1 }));
+    const save = vi.fn().mockRejectedValue(
+      new HttpErrorResponse({
+        status: 400,
+        error: { code: 'recipe_incomplete', fields: { title: 'required' } },
+      }),
+    );
     const store = setupAs({ get, save });
     await store.load('r1');
     await vi.advanceTimersByTimeAsync(0);
@@ -453,11 +752,22 @@ describe('EditorStore unsaved backup', () => {
 
   it('an 8-day-old backup is discarded on load', async () => {
     const now = Date.now();
-    localStorage.setItem(KEY, JSON.stringify({ old: {
-      input: emptyInput({ title: 'Ancient', version: 3 }), baseVersion: 3, savedAt: now - 8 * 24 * 60 * 60 * 1000, userId: 'u1',
-    } }));
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        old: {
+          input: emptyInput({ title: 'Ancient', version: 3 }),
+          baseVersion: 3,
+          savedAt: now - 8 * 24 * 60 * 60 * 1000,
+          userId: 'u1',
+        },
+      }),
+    );
     const save = vi.fn();
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })), save });
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })),
+      save,
+    });
     await store.load('r1');
     expect(store.recipe().title).toBe('Server');
     expect(store.restored()).toBe(false);
@@ -476,13 +786,27 @@ describe('EditorStore unsaved backup', () => {
     expect(await TestBed.inject(PendingSaves).flushAll()).toBe(true);
   });
 
-  it('a clean logout flush clears the open recipe\'s backup only; a backup of a recipe not open survives', async () => {
+  it("a clean logout flush clears the open recipe's backup only; a backup of a recipe not open survives", async () => {
     const other = 'ricettine.unsaved.rB';
-    localStorage.setItem(other, JSON.stringify({ tabX: { input: emptyInput({ title: 'B text' }), baseVersion: 1, savedAt: Date.now(), userId: 'u1' } }));
+    localStorage.setItem(
+      other,
+      JSON.stringify({
+        tabX: {
+          input: emptyInput({ title: 'B text' }),
+          baseVersion: 1,
+          savedAt: Date.now(),
+          userId: 'u1',
+        },
+      }),
+    );
     const save = vi.fn().mockResolvedValue(serverRecipe({ title: 'A text', version: 2 }));
     TestBed.configureTestingModule({
-      providers: [EditorStore, { provide: RecipeApi, useValue: { get: vi.fn().mockResolvedValue(serverRecipe()), save } },
-        provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        EditorStore,
+        { provide: RecipeApi, useValue: { get: vi.fn().mockResolvedValue(serverRecipe()), save } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     });
     const store = TestBed.inject(EditorStore);
     const auth = TestBed.inject(AuthStore);
@@ -492,7 +816,9 @@ describe('EditorStore unsaved backup', () => {
     expect(stored()).not.toBeNull();
     const out = auth.logout();
     await vi.advanceTimersByTimeAsync(0);
-    TestBed.inject(HttpTestingController).expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/auth/logout')
+      .flush(null, { status: 204, statusText: 'No Content' });
     await out;
     expect(auth.me()).toBeNull();
     expect(stored()).toBeNull(); // A: saved by this logout's flush
@@ -522,7 +848,10 @@ describe('EditorStore unsaved backup', () => {
   it("never applies another user's backup", async () => {
     putBackup({ title: 'Not yours' }, 3, 'u2');
     const save = vi.fn();
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })), save });
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'Server', version: 3 })),
+      save,
+    });
     await store.load('r1');
     expect(store.recipe().title).toBe('Server');
     expect(store.restored()).toBe(false);
@@ -570,7 +899,11 @@ describe('EditorStore unsaved backup', () => {
     let resolvePublish!: (r: Recipe) => void;
     const publish = vi.fn().mockReturnValue(new Promise<Recipe>((r) => (resolvePublish = r)));
     const save = vi.fn();
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })), save, publish });
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe({ title: 'T' })),
+      save,
+      publish,
+    });
     await store.load('r1');
     const done = store.publish();
     await vi.advanceTimersByTimeAsync(0);
@@ -594,7 +927,11 @@ describe('EditorStore unsaved backup', () => {
 
   it('deleting the recipe deletes its backup', async () => {
     const save = vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 }));
-    const store = setupAs({ get: vi.fn().mockResolvedValue(serverRecipe()), save, remove: vi.fn().mockResolvedValue(undefined) });
+    const store = setupAs({
+      get: vi.fn().mockResolvedValue(serverRecipe()),
+      save,
+      remove: vi.fn().mockResolvedValue(undefined),
+    });
     await store.load('r1');
     store.update((r) => ({ ...r, title: 'x' }));
     await store.remove();
@@ -605,9 +942,18 @@ describe('EditorStore unsaved backup', () => {
 describe('withoutBlankIngredients', () => {
   it('holds back ingredient rows without a name, keeps everything else', () => {
     const ing = (name: string) => ({ amount: null, unit: null, name, note: null });
-    const r = emptyInput({ title: 'T', groups: [{ name: 'A', ingredients: [ing('milk'), ing(' ')] }, { name: null, ingredients: [ing('')] }] });
+    const r = emptyInput({
+      title: 'T',
+      groups: [
+        { name: 'A', ingredients: [ing('milk'), ing(' ')] },
+        { name: null, ingredients: [ing('')] },
+      ],
+    });
     const out = withoutBlankIngredients(r);
-    expect(out.groups).toEqual([{ name: 'A', ingredients: [ing('milk')] }, { name: null, ingredients: [] }]);
+    expect(out.groups).toEqual([
+      { name: 'A', ingredients: [ing('milk')] },
+      { name: null, ingredients: [] },
+    ]);
     expect(out.title).toBe('T');
     expect(r.groups[0].ingredients.length).toBe(2); // working copy untouched
   });
@@ -618,26 +964,41 @@ describe('isUntouchedDraft', () => {
     const fresh = serverRecipe({ title: null });
     expect(toInput(fresh).title).toBe('');
     expect(isUntouchedDraft(fresh, toInput(fresh))).toBe(true);
-    expect(isUntouchedDraft(serverRecipe({ title: '' }), toInput(serverRecipe({ title: '' })))).toBe(true);
+    expect(
+      isUntouchedDraft(serverRecipe({ title: '' }), toInput(serverRecipe({ title: '' }))),
+    ).toBe(true);
   });
   it('is true only for a draft with every field empty or default', () => {
     expect(isUntouchedDraft(serverRecipe(), emptyInput())).toBe(true);
-    expect(isUntouchedDraft(serverRecipe(), emptyInput({ source: '' , notes: '  ', title: ' ' }))).toBe(true);
+    expect(
+      isUntouchedDraft(serverRecipe(), emptyInput({ source: '', notes: '  ', title: ' ' })),
+    ).toBe(true);
     expect(isUntouchedDraft(serverRecipe({ status: 'PUBLISHED' }), emptyInput())).toBe(false);
     expect(isUntouchedDraft(serverRecipe(), emptyInput({ portions: 2 }))).toBe(false);
     expect(isUntouchedDraft(serverRecipe(), emptyInput({ prepMinutes: 5 }))).toBe(false);
     expect(isUntouchedDraft(serverRecipe(), emptyInput({ visibility: 'PUBLIC' }))).toBe(false);
-    expect(isUntouchedDraft(serverRecipe(), emptyInput({ steps: [{ text: '', photoMediaId: null }] }))).toBe(false);
-    expect(isUntouchedDraft(serverRecipe(), emptyInput({ groups: [{ name: null, ingredients: [] }] }))).toBe(false);
+    expect(
+      isUntouchedDraft(serverRecipe(), emptyInput({ steps: [{ text: '', photoMediaId: null }] })),
+    ).toBe(false);
+    expect(
+      isUntouchedDraft(serverRecipe(), emptyInput({ groups: [{ name: null, ingredients: [] }] })),
+    ).toBe(false);
   });
 });
 
 describe('conflictText', () => {
   it('joins title, notes and step texts with blank lines, skipping empty ones', () => {
-    const text = conflictText(emptyInput({
-      title: 'Lasagne', notes: 'Less salt',
-      steps: [{ text: 'Brown', photoMediaId: null }, { text: ' ', photoMediaId: null }, { text: 'Bake', photoMediaId: null }],
-    }));
+    const text = conflictText(
+      emptyInput({
+        title: 'Lasagne',
+        notes: 'Less salt',
+        steps: [
+          { text: 'Brown', photoMediaId: null },
+          { text: ' ', photoMediaId: null },
+          { text: 'Bake', photoMediaId: null },
+        ],
+      }),
+    );
     expect(text).toBe('Lasagne\n\nLess salt\n\nBrown\n\nBake');
   });
 });

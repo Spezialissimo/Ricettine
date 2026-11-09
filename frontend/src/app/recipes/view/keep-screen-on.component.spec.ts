@@ -1,11 +1,16 @@
 import { TestBed } from '@angular/core/testing';
-import { provideTestTransloco, settle } from '../../testing/transloco';
+import { provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { KeepScreenOnComponent } from './keep-screen-on.component';
 
 class FakeSentinel extends EventTarget {
   released = false;
   releases = 0;
-  async release() { this.released = true; this.releases++; this.dispatchEvent(new Event('release')); }
+  async release() {
+    this.released = true;
+    this.releases++;
+    this.dispatchEvent(new Event('release'));
+  }
 }
 
 function installWakeLock(reject = false) {
@@ -31,7 +36,10 @@ async function mount() {
   await settle(f);
   const el = f.nativeElement as HTMLElement;
   const box = () => el.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
-  const toggle = async () => { box()!.click(); await settle(f); };
+  const toggle = async () => {
+    box()!.click();
+    await settle(f);
+  };
   return { f, el, box, toggle };
 }
 

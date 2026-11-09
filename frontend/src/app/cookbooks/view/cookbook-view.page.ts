@@ -26,7 +26,9 @@ import { PublicCookbook } from '../cookbook.model';
           @if (auth.me()) {
             <a class="btn" routerLink="/recipes">{{ t('nav.recipes') }}</a>
           } @else {
-            <a class="btn primary" routerLink="/login" [queryParams]="{ next: '/c/' + token }">{{ t('auth.login') }}</a>
+            <a class="btn primary" routerLink="/login" [queryParams]="{ next: '/c/' + token }">{{
+              t('auth.login')
+            }}</a>
           }
         </div>
       </header>
@@ -40,17 +42,23 @@ import { PublicCookbook } from '../cookbook.model';
         } @else if (error(); as e) {
           <div class="state">
             <p class="alert" role="alert">{{ t(e) }}</p>
-            <button type="button" class="btn primary" (click)="load()">{{ t('common.retry') }}</button>
+            <button type="button" class="btn primary" (click)="load()">
+              {{ t('common.retry') }}
+            </button>
           </div>
         } @else if (book(); as b) {
           @if (cover(b); as src) {
             <img class="cover" [src]="src" alt="" loading="eager" fetchpriority="high" />
           }
           <h1>{{ b.name }}</h1>
-          @if (b.description) { <p class="desc">{{ b.description }}</p> }
+          @if (b.description) {
+            <p class="desc">{{ b.description }}</p>
+          }
           <p class="people">{{ t('cookbooks.by', { names: people(b) }) }}</p>
           @if (b.cookbookId) {
-            <a class="btn mine" [routerLink]="['/cookbooks', b.cookbookId]">{{ t('cookbooks.openMine') }}</a>
+            <a class="btn mine" [routerLink]="['/cookbooks', b.cookbookId]">{{
+              t('cookbooks.openMine')
+            }}</a>
           }
           <h2>{{ t('cookbooks.recipesHeading') }}</h2>
           @if (b.recipes.length === 0) {
@@ -60,10 +68,16 @@ import { PublicCookbook } from '../cookbook.model';
               @for (r of b.recipes; track r.recipeId) {
                 <li class="card">
                   <a [routerLink]="['/c', token, 'r', r.recipeId]">
-                    @if (thumb(r.coverThumbUrl); as src) { <img class="thumb" [src]="src" alt="" loading="lazy" /> }
+                    @if (thumb(r.coverThumbUrl); as src) {
+                      <img class="thumb" [src]="src" alt="" loading="lazy" />
+                    }
                     <span class="body">
                       <span class="title">{{ r.title }}</span>
-                      <span class="meta">{{ t('recipes.by', { name: r.author?.displayName ?? t('cookbooks.deletedUser') }) }}</span>
+                      <span class="meta">{{
+                        t('recipes.by', {
+                          name: r.author?.displayName ?? t('cookbooks.deletedUser'),
+                        })
+                      }}</span>
                     </span>
                   </a>
                 </li>
@@ -105,7 +119,10 @@ export class CookbookViewPage {
   }
 
   protected people(b: PublicCookbook): string {
-    return [b.owner, ...b.authors].filter((p) => p !== null).map((p) => p.displayName).join(', ');
+    return [b.owner, ...b.authors]
+      .filter((p) => p !== null)
+      .map((p) => p.displayName)
+      .join(', ');
   }
   protected cover(b: PublicCookbook): string | null {
     return mediaUrl(b.cover?.displayUrl);

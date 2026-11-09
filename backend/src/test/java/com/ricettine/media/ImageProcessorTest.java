@@ -11,8 +11,10 @@ import com.drew.metadata.exif.GpsDirectory;
 import com.ricettine.common.ApiException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.util.Base64;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
 class ImageProcessorTest {
@@ -119,7 +121,7 @@ class ImageProcessorTest {
 
 	@Test
 	void decodesWebp() throws Exception {
-		byte[] webp = java.util.Base64.getDecoder().decode(TINY_WEBP);
+		byte[] webp = Base64.getDecoder().decode(TINY_WEBP);
 		BufferedImage img = decode(processor.process(webp, Set.of(ImageVariant.THUMB)).get(ImageVariant.THUMB));
 		assertThat(img.getWidth()).isEqualTo(1);
 		assertThat(img.getHeight()).isEqualTo(1);
@@ -230,7 +232,7 @@ class ImageProcessorTest {
 			}
 		}
 		inMean /= (double) raster.getWidth() * raster.getHeight();
-		assertThat(meanLuma(out)).isCloseTo(inMean, org.assertj.core.data.Offset.offset(3.0));
+		assertThat(meanLuma(out)).isCloseTo(inMean, Offset.offset(3.0));
 	}
 
 	@Test
@@ -282,16 +284,21 @@ class ImageProcessorTest {
 				});
 	}
 
+	private static boolean isProgressiveJpeg(byte[] b) {
+		ImageProcessor.JpegFrame f = ImageProcessor.jpegFrame(b);
+		return f != null && f.progressive();
+	}
+
 	@Test
 	void progressiveSofVariantsAreDetected() {
 		for (int sof : new int[] {0xC2, 0xC6, 0xCA, 0xCE}) {
-			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isTrue();
+			assertThat(isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isTrue();
 		}
 		for (int sof : new int[] {0xC0, 0xC1, 0xC3, 0xC9}) {
-			assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isFalse();
+			assertThat(isProgressiveJpeg(TestImages.jpegHeaderOnly(sof, 10, 10))).as("SOF %x", sof).isFalse();
 		}
-		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.progressiveJpeg(64, 48))).isTrue();
-		assertThat(ImageProcessor.isProgressiveJpeg(TestImages.jpegWithExif(64, 48, 6))).isFalse();
+		assertThat(isProgressiveJpeg(TestImages.progressiveJpeg(64, 48))).isTrue();
+		assertThat(isProgressiveJpeg(TestImages.jpegWithExif(64, 48, 6))).isFalse();
 	}
 
 	@Test

@@ -102,11 +102,6 @@ public class ImageProcessor {
 	record JpegFrame(boolean progressive, int width, int height, boolean clean) {
 	}
 
-	static boolean isProgressiveJpeg(byte[] b) {
-		JpegFrame f = jpegFrame(b);
-		return f != null && f.progressive();
-	}
-
 	/**
 	 * Scans the JPEG marker segments up to the first frame header. Progressive = SOF2/SOF6/SOF10/SOF14 (Huffman or
 	 * arithmetic, plain or differential). Like libjpeg, stray bytes between segments are skipped (the frame is then

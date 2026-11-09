@@ -16,10 +16,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Recipe> findForUpdateByIdAndAuthorId(UUID id, UUID authorId);
 
-	/** Share-locks the recipe: concurrent photo uploads proceed together, while a save or delete waits. */
-	@Lock(LockModeType.PESSIMISTIC_READ)
-	Optional<Recipe> findForShareByIdAndAuthorId(UUID id, UUID authorId);
-
 	Optional<Recipe> findByShareTokenAndStatus(String shareToken, RecipeStatus status);
 
 	boolean existsByIdAndAuthorId(UUID id, UUID authorId);

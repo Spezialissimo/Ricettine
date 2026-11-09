@@ -17,10 +17,16 @@ export class RecipeApi {
     return firstValueFrom(this.http.put<Recipe>(`/api/recipes/${encodeURIComponent(id)}`, input));
   }
   publish(id: string, version: number): Promise<Recipe> {
-    return firstValueFrom(this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/publish`, { version }));
+    return firstValueFrom(
+      this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/publish`, { version }),
+    );
   }
   resetLink(id: string, version: number): Promise<Recipe> {
-    return firstValueFrom(this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/share-link/reset`, { version }));
+    return firstValueFrom(
+      this.http.post<Recipe>(`/api/recipes/${encodeURIComponent(id)}/share-link/reset`, {
+        version,
+      }),
+    );
   }
   byToken(token: string): Promise<PublicRecipe> {
     return firstValueFrom(this.http.get<PublicRecipe>(`/api/r/${encodeURIComponent(token)}`));
@@ -31,7 +37,9 @@ export class RecipeApi {
   uploadPhoto(id: string, file: File): Promise<Photo> {
     const body = new FormData();
     body.append('file', file);
-    return firstValueFrom(this.http.post<Photo>(`/api/recipes/${encodeURIComponent(id)}/photos`, body));
+    return firstValueFrom(
+      this.http.post<Photo>(`/api/recipes/${encodeURIComponent(id)}/photos`, body),
+    );
   }
   mine(): Promise<RecipeSummary[]> {
     return firstValueFrom(this.http.get<RecipeSummary[]>('/api/recipes/mine'));

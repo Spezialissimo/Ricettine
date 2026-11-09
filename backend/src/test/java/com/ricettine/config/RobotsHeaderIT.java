@@ -6,33 +6,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ricettine.IntegrationTest;
-import com.ricettine.Sessions;
-import com.ricettine.account.AccountDtos.NewAccountRequest;
-import com.ricettine.account.AccountService;
 import com.ricettine.account.User;
 import com.ricettine.media.ImageVariant;
 import com.ricettine.media.MediaKind;
 import com.ricettine.media.MediaService;
 import com.ricettine.media.TestImages;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Every response, whatever its status or who wrote it, tells crawlers not to index or follow. */
 class RobotsHeaderIT extends IntegrationTest {
 
 	static final String NOINDEX = "noindex, nofollow";
 
-	@Autowired JdbcTemplate jdbc;
-	@Autowired AccountService accounts;
 	@Autowired MediaService media;
-
-	@BeforeEach
-	void setUp() {
-		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
-	}
 
 	@Test
 	void spaPathsCarryIt() throws Exception {
@@ -51,12 +39,12 @@ class RobotsHeaderIT extends IntegrationTest {
 
 	@Test
 	void mediaAndActuatorCarryIt() throws Exception {
-		User u = accounts.create(new NewAccountRequest("o@x.com", Sessions.PASSWORD, "owner", "Owner"), true);
+		User u = data.account("o@x.com", "owner", "Owner", true);
 		String id = media.register(media.process(TestImages.orientation6(), Set.of(ImageVariant.AVATAR)), u.getId(),
 				MediaKind.AVATAR, null);
 		mvc.perform(get(media.url(id, ImageVariant.AVATAR))).andExpect(status().isOk())
 				.andExpect(header().string("X-Robots-Tag", NOINDEX));
-		mvc.perform(get("/actuator/health")).andExpect(header().string("X-Robots-Tag", NOINDEX));
+		mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(header().string("X-Robots-Tag", NOINDEX));
 	}
 
 	@Test
