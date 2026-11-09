@@ -1,6 +1,7 @@
 package com.ricettine.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -96,7 +97,7 @@ public class SecurityConfig {
 		return (req, res, ex) -> problem(res, HttpStatus.FORBIDDEN, "forbidden");
 	}
 
-	private static void problem(HttpServletResponse res, HttpStatus status, String code) throws java.io.IOException {
+	private static void problem(HttpServletResponse res, HttpStatus status, String code) throws IOException {
 		res.setStatus(status.value());
 		res.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 		res.setCharacterEncoding("UTF-8");

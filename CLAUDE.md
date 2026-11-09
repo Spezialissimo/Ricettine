@@ -3,21 +3,20 @@
 Self-hosted recipe app: Spring Boot 4 (Java 25) backend + Angular 22 frontend, shipped as one Docker image with Postgres via `compose.yaml`. The backend serves the built SPA and `/api`.
 
 ## Layout
-- `backend/` — Maven, package `com.ricettine.<feature>` (account, admin, auth, invite, media, recipe, setup, config, common). Flyway migrations in `src/main/resources/db/migration` (`V<n>__name.sql`; never edit an applied one). Integration tests extend `IntegrationTest` (Testcontainers).
+- `backend/` — Maven, package `com.ricettine.<feature>` (account, admin, auth, common, config, cookbook, feed, invite, media, profile, recipe, setup). Flyway migrations in `src/main/resources/db/migration` (`V<n>__name.sql`; never edit an applied one). Integration tests extend `IntegrationTest` (Testcontainers).
 - `frontend/` — standalone Angular, vitest unit tests, Transloco i18n in `public/i18n` (all UI text goes through keys).
 - `e2e/` — Playwright, projects `mobile`, `desktop`, `restart`, run against the built image.
-- `scripts/` — `e2e.sh`, `smoke.sh` (each builds the image and tears its stack down with `-v`).
+- `scripts/` — `e2e.sh`, `smoke.sh`, `https-smoke.sh`, `multiarch-check.sh`, `backup-restore-check.sh` (each builds the image and tears its stack down with `-v`), `infra-check.sh` (lint, runs its tools in Docker), `aws-verify.sh` (read-only checks of a deployed AWS stack, needs AWS credentials).
+- `deploy/`, `infra/` — backup/restore scripts and Caddyfile; Terraform for AWS. `compose*.yaml` overlays at the root.
 - `docs/superpowers/` — spec, plans and follow-ups. Read on demand, not every session.
 
 ## Commands
-- Backend tests: `cd backend && ./mvnw verify` (needs Docker)
-- Frontend tests / build: `cd frontend && npx ng test --watch=false` / `npx ng build`
-- Frontend dev: `cd frontend && npx ng serve` (proxies `/api` to `localhost:8080`)
-- Browser e2e: `scripts/e2e.sh` · Smoke: `scripts/smoke.sh` · HTTPS (Caddy overlays): `scripts/https-smoke.sh` · Lint workflows, shell, Caddyfiles: `scripts/infra-check.sh` · Multi-arch: `scripts/multiarch-check.sh`
+- Backend/frontend tests, dev server and every check script with what it covers: README "Development and checks" (backend `./mvnw verify` needs Docker; frontend `npx ng test --watch=false` and `npx ng build`).
+- Scripts you will run most: `scripts/e2e.sh` (Playwright, needs the built image) · `scripts/smoke.sh` · `scripts/infra-check.sh` (workflows, shell, Caddyfiles, Terraform with mock providers) · `scripts/backup-restore-check.sh` (backup, wipe, restore drill).
 - `compose.yaml` is image-only (published image); scripts export `COMPOSE_FILE=compose.yaml:compose.build.yaml` to build locally
 - Locally Docker runs on Colima: `export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`
 
-CI (`.github/workflows/ci.yml`) runs backend, frontend, e2e, smoke, smoke-arm64 and infra (`infra-check.sh` plus the backup/restore drill) on every PR, and `publish` on pushes to main and `v*` tags.
+CI (`.github/workflows/ci.yml`) runs backend, frontend, e2e, smoke, smoke-arm64 and infra (`infra-check.sh` plus the backup/restore drill) on every PR; `https-smoke.sh`, `multiarch-check.sh` and `aws-verify.sh` are manual, and `publish` on pushes to main and `v*` tags.
 
 ## Conventions
 - Small PRs, one feature slice each. Every PR has backend integration tests plus Playwright specs that pass in both `mobile` and `desktop`. Automate checks instead of listing manual steps.

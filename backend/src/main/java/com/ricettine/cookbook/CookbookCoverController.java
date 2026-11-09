@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,7 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
  * owner) in one short transaction.
  */
 @RestController
-@org.springframework.web.bind.annotation.RequestMapping("/api/cookbooks/{id}/cover")
+@RequestMapping("/api/cookbooks/{id}/cover")
 class CookbookCoverController {
 
 	static final Set<ImageVariant> VARIANTS = Set.of(ImageVariant.THUMB, ImageVariant.DISPLAY);

@@ -8,9 +8,7 @@ import { EditorStore } from './editor-store';
 import { remapIndex } from './remap-index';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoSlotComponent } from './photo-slot.component';
-
-export const MAX_STEPS = 100;
-export const MAX_STEP_TEXT = 5000;
+import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
 
 /**
  * Numbered steps, each an auto-sizing textarea. "+ Add step" (desktop), the phone bottom bar

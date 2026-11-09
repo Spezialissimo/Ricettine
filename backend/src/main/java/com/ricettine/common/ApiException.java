@@ -1,5 +1,7 @@
 package com.ricettine.common;
 
+import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 
@@ -9,7 +11,7 @@ public class ApiException extends RuntimeException {
 	private final String code;
 	private final Map<String, String> fields;
 	private Map<String, Object> properties = Map.of();
-	private java.time.Duration retryAfter;
+	private Duration retryAfter;
 
 	public ApiException(HttpStatus status, String code) {
 		this(status, code, null);
@@ -25,18 +27,18 @@ public class ApiException extends RuntimeException {
 
 	/** Extra top-level ProblemDetail properties (e.g. {@code mediaIds}). */
 	public ApiException with(String name, Object value) {
-		properties = new java.util.LinkedHashMap<>(properties);
+		properties = new LinkedHashMap<>(properties);
 		properties.put(name, value);
 		return this;
 	}
 
 	/** Renders a {@code Retry-After} header (whole seconds, at least 1) and a {@code retryAfter} property. */
-	public ApiException retryAfter(java.time.Duration d) {
+	public ApiException retryAfter(Duration d) {
 		this.retryAfter = d;
 		return this;
 	}
 
-	public java.time.Duration getRetryAfter() {
+	public Duration getRetryAfter() {
 		return retryAfter;
 	}
 

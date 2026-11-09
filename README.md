@@ -89,19 +89,16 @@ To restore, replacing the current data: `deploy/restore.sh backups/ricettine-<UT
 
 Restore onto the same or a newer app version. Restoring an older dump over a newer schema is not supported; restore into a fresh stack instead (`docker compose down -v`, `docker compose up -d`, then `deploy/restore.sh`). `scripts/backup-restore-check.sh` runs a full backup, wipe, restore and failed-restore drill.
 
-## Development
+## Development and checks
 
-- Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
-- Frontend: `cd frontend && npm ci && npx ng serve` (proxies `/api` to `localhost:8080`).
-- Multi-arch check: `scripts/multiarch-check.sh` (builds amd64 + arm64, smoke-tests both; amd64 runs under QEMU on an arm64 host).
-- HTTPS smoke test: `scripts/https-smoke.sh` (needs ports 80 and 443 free; checks both Caddy overlays). Lint: `scripts/infra-check.sh`.
-- Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`).
+- Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker). CI: `backend`.
+- Frontend: `cd frontend && npm ci && npx ng test --watch=false`, build with `npx ng build`, dev server `npx ng serve` (proxies `/api` to `localhost:8080`). CI: `frontend`.
+- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports, against the built image). CI: `e2e`.
+- Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`). CI: `smoke` and `smoke-arm64`.
+- Lint: `scripts/infra-check.sh` (workflows, shell scripts, Caddyfiles, Terraform with mock providers; tools run in Docker). CI: `infra`.
+- Backup drill: `scripts/backup-restore-check.sh` (backup, wipe, restore, failed restore). CI: `infra`.
+- HTTPS smoke test: `scripts/https-smoke.sh` (needs ports 80 and 443 free; checks both Caddy overlays). Manual.
+- Multi-arch check: `scripts/multiarch-check.sh` (builds amd64 + arm64, smoke-tests both; amd64 runs under QEMU on an arm64 host). Manual.
+- AWS deployment check: `scripts/aws-verify.sh <domain>` (read-only, needs the AWS CLI and credentials). Manual.
 
-## Tests
-
-- Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker).
-- Frontend: `cd frontend && npx ng test --watch=false`.
-- Smoke: `scripts/smoke.sh`.
-- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports).
-
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request and on pushes to `main`.
+CI (`.github/workflows/ci.yml`) runs the ones marked with a job on every pull request and on pushes to `main`.

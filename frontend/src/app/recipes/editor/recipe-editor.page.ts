@@ -16,9 +16,7 @@ import { PhotoSlotComponent } from './photo-slot.component';
 import { SharePanelComponent } from './share-panel.component';
 import { StepsEditorComponent } from './steps-editor.component';
 import { countingIngredients, countingSteps } from './completeness';
-
-export const MAX_TITLE = 200;
-export const MAX_NOTES = 10_000;
+import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
 
 /**
  * The recipe editor. One DOM for both layouts (CSS at $bp-desktop): two columns on desktop (details,

@@ -1,6 +1,7 @@
 package com.ricettine.feed;
 
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -38,7 +39,7 @@ final class FeedCursor {
 			// reject non-canonical forms so one key has one cursor
 			return encode(at, id).equals(cursor) ? Optional.of(new Key(at, id)) : Optional.empty();
 		}
-		catch (IllegalArgumentException | java.time.DateTimeException | ArithmeticException e) {
+		catch (IllegalArgumentException | DateTimeException | ArithmeticException e) {
 			return Optional.empty();
 		}
 	}

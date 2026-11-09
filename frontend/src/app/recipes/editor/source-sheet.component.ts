@@ -3,8 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
 import { uid } from '../../shared/sheet';
-
-export const MAX_SOURCE = 500;
+import { MAX_SOURCE } from '../recipe-limits';
 
 /** Source: free text (a link, a book, a person). Blank means no source. */
 @Component({

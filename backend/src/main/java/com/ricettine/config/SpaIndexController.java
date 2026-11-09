@@ -14,7 +14,7 @@ class SpaIndexController {
 
 	@GetMapping("/")
 	ResponseEntity<Resource> index() {
-		Resource index = new ClassPathResource("static/index.html");
+		Resource index = new ClassPathResource(SpaWebConfig.INDEX);
 		if (!index.exists()) {
 			return ResponseEntity.notFound().build();
 		}

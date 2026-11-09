@@ -5,14 +5,14 @@ import { Translation, TranslocoLoader, provideTransloco } from '@jsverse/translo
 import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
-export class HttpTranslocoLoader implements TranslocoLoader {
+class HttpTranslocoLoader implements TranslocoLoader {
   private readonly http = inject(HttpClient);
   getTranslation(lang: string): Observable<Translation> {
     return this.http.get<Translation>(`/i18n/${lang}.json`);
   }
 }
 
-export const translocoConfig = {
+const translocoConfig = {
   availableLangs: ['en'],
   defaultLang: 'en',
   reRenderOnLangChange: true,

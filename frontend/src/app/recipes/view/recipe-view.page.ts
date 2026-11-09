@@ -17,7 +17,7 @@ import { KeepScreenOnComponent } from './keep-screen-on.component';
 import { PortionsStepperComponent } from './portions-stepper.component';
 
 /** Only web links become links; any other source text is shown as plain text. */
-export const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
+const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 
 /**
  * The read-only recipe page at /r/:token: readable without an account, with its own minimal header.

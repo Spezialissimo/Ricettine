@@ -207,6 +207,18 @@ class CookbookApiIT extends IntegrationTest {
 			.andExpect(jsonPath("$.code").value("validation_failed"));
 	}
 
+	/** A non-null shareToken is a token, even a blank one: it finds nothing (404), and with a recipeId it is two refs (400). */
+	@Test
+	void blankShareTokenCountsAsSet() throws Exception {
+		String id = data.createCookbook(me);
+		String recipe = data.publishedRecipe(me, "PUBLIC");
+		addByToken(me, id, "").andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("recipe_not_found"));
+		add(me, id, "{\"recipeId\":\"" + recipe + "\",\"shareToken\":\"\"}")
+			.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation_failed"));
+		assertThat(fetch(me, id).get("recipes")).isEmpty();
+	}
+
 	@Test
 	void removeEntryIsIdempotent() throws Exception {
 		String id = data.createCookbook(me);

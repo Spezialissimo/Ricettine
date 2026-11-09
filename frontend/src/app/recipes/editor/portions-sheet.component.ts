@@ -3,9 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
 import { uid } from '../../shared/sheet';
-
-export const MIN_PORTIONS = 1;
-export const MAX_PORTIONS = 100;
+import { MAX_PORTIONS, MIN_PORTIONS } from '../recipe-limits';
 
 /** Portions: a −/+ stepper (1-100). Every tap applies to the store right away. */
 @Component({

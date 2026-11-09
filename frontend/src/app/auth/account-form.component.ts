@@ -10,9 +10,9 @@ const RESERVED_USERNAMES = new Set([
   'invite', 'me', 'new',
 ]);
 
-export const reservedUsername: ValidatorFn = (c) => (RESERVED_USERNAMES.has(c.value) ? { reserved: true } : null);
-export const notBlank: ValidatorFn = (c) => (String(c.value ?? '').trim() ? null : { required: true });
-export const maxTrimmed =
+const reservedUsername: ValidatorFn = (c) => (RESERVED_USERNAMES.has(c.value) ? { reserved: true } : null);
+const notBlank: ValidatorFn = (c) => (String(c.value ?? '').trim() ? null : { required: true });
+const maxTrimmed =
   (n: number): ValidatorFn =>
   (c) => (String(c.value ?? '').trim().length > n ? { maxlength: true } : null);
 

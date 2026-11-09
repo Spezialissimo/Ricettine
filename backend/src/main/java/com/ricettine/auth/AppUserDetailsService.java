@@ -1,5 +1,8 @@
 package com.ricettine.auth;
 
+import static org.springframework.security.core.userdetails.User.withUserDetails;
+import static org.springframework.security.core.userdetails.User.withUsername;
+
 import com.ricettine.account.User;
 import com.ricettine.account.UserRepository;
 import java.util.ArrayList;
@@ -38,7 +41,7 @@ public class AppUserDetailsService implements UserDetailsService {
 	 * serialized into spring_session_attributes.
 	 */
 	static UserDetails sessionPrincipal(User u) {
-		return org.springframework.security.core.userdetails.User.withUserDetails(toDetails(u)).password("").build();
+		return withUserDetails(toDetails(u)).password("").build();
 	}
 
 	static UserDetails toDetails(User u) {
@@ -47,7 +50,7 @@ public class AppUserDetailsService implements UserDetailsService {
 		if (u.isAdmin()) {
 			authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 		}
-		return org.springframework.security.core.userdetails.User.withUsername(u.getId().toString())
+		return withUsername(u.getId().toString())
 			.password(u.getPasswordHash()).authorities(authorities).build();
 	}
 }

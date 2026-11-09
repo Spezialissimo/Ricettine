@@ -3,12 +3,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
 import { uid } from '../../shared/sheet';
+import { MAX_MINUTES } from '../recipe-limits';
 
 export type TimeKind = 'prep' | 'cook';
 export type TimeSheetData = { tab: TimeKind };
 
-export const MAX_MINUTES = 10080;
-export const TIME_PRESETS = [5, 10, 15, 30, 45, 60, 90, 120] as const;
+const TIME_PRESETS = [5, 10, 15, 30, 45, 60, 90, 120] as const;
 
 /** i18n key + params for a duration: 30 → "30m", 60 → "1h", 90 → "1h 30". */
 export function durationKey(minutes: number): { key: string; params: { h: number; m: number } } {

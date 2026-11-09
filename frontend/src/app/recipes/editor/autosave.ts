@@ -4,10 +4,10 @@ import { Recipe, RecipeInput } from '../recipe.model';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | 'offline';
 
-export const AUTOSAVE_DEBOUNCE_MS = 800;
-export const AUTOSAVE_MAX_WAIT_MS = 5000;
+const AUTOSAVE_DEBOUNCE_MS = 800;
+const AUTOSAVE_MAX_WAIT_MS = 5000;
 /** Waits before retrying a save that failed for a transient reason; the last one repeats. */
-export const AUTOSAVE_RETRY_DELAYS_MS: readonly number[] = [2000, 5000, 15_000, 30_000];
+const AUTOSAVE_RETRY_DELAYS_MS: readonly number[] = [2000, 5000, 15_000, 30_000];
 
 export interface AutosaveDeps {
   /** Sends the working copy (PUT); resolves with the server's new RecipeDto. */
