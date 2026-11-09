@@ -25,10 +25,17 @@ export class AdminApi {
   }
 
   setAdmin(id: string, admin: boolean): Promise<AdminUser> {
-    return firstValueFrom(this.http.post<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}/admin`, { admin }));
+    return firstValueFrom(
+      this.http.post<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}/admin`, { admin }),
+    );
   }
 
   passwordReset(id: string): Promise<PasswordReset> {
-    return firstValueFrom(this.http.post<PasswordReset>(`/api/admin/users/${encodeURIComponent(id)}/password-reset`, null));
+    return firstValueFrom(
+      this.http.post<PasswordReset>(
+        `/api/admin/users/${encodeURIComponent(id)}/password-reset`,
+        null,
+      ),
+    );
   }
 }

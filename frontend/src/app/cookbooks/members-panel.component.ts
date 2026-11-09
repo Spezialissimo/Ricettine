@@ -1,5 +1,15 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, Injector, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Injector,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
@@ -20,21 +30,86 @@ import { RemoveMemberDialog } from './remove-member.dialog';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
-    :host { display: block; margin: 0 0 t.$space-4; }
-    h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
-    ul { list-style: none; margin: 0 0 t.$space-2; padding: 0; display: flex; flex-direction: column; gap: t.$space-2; }
-    li { display: flex; align-items: center; gap: t.$space-3; justify-content: space-between; padding: t.$space-2 t.$space-3;
-      background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; }
-    .who { display: flex; align-items: center; gap: t.$space-2; min-width: 0; overflow-wrap: anywhere; }
-    .avatar { width: 32px; height: 32px; border-radius: 50%; background: t.$border; object-fit: cover; flex: none;
-      display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
-    .role { color: t.$muted; font-size: 0.8rem; }
-    .muted { color: t.$muted; font-size: 0.85rem; }
-    .alert { color: #b3261e; }
-    button { @include t.touch-target; padding: 0 t.$space-4; border: 1px solid t.$border; border-radius: 10px;
-      background: t.$bg; color: t.$ink; font: inherit; font-weight: 600; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: default; }
-    .danger { color: #b3261e; border-color: #b3261e; }
+    :host {
+      display: block;
+      margin: 0 0 t.$space-4;
+    }
+    h2 {
+      margin: 0 0 t.$space-2;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: t.$muted;
+      font-weight: 600;
+    }
+    ul {
+      list-style: none;
+      margin: 0 0 t.$space-2;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: t.$space-2;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      gap: t.$space-3;
+      justify-content: space-between;
+      padding: t.$space-2 t.$space-3;
+      background: t.$surface;
+      border: 1px solid t.$border;
+      border-radius: t.$radius;
+    }
+    .who {
+      display: flex;
+      align-items: center;
+      gap: t.$space-2;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: t.$border;
+      object-fit: cover;
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .role {
+      color: t.$muted;
+      font-size: 0.8rem;
+    }
+    .muted {
+      color: t.$muted;
+      font-size: 0.85rem;
+    }
+    .alert {
+      color: #b3261e;
+    }
+    button {
+      @include t.touch-target;
+      padding: 0 t.$space-4;
+      border: 1px solid t.$border;
+      border-radius: 10px;
+      background: t.$bg;
+      color: t.$ink;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .danger {
+      color: #b3261e;
+      border-color: #b3261e;
+    }
   `,
   template: `
     <section *transloco="let t" aria-labelledby="cb-members-heading">
@@ -43,7 +118,11 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         @if (book().owner; as o) {
           <li data-member="owner">
             <span class="who">
-              @if (src(o); as s) { <img class="avatar" [src]="s" alt="" /> } @else { <span class="avatar" aria-hidden="true">{{ initial(o) }}</span> }
+              @if (src(o); as s) {
+                <img class="avatar" [src]="s" alt="" />
+              } @else {
+                <span class="avatar" aria-hidden="true">{{ initial(o) }}</span>
+              }
               <span>{{ o.displayName }}</span>
             </span>
             <span class="role">{{ t('cookbooks.roleOwner') }}</span>
@@ -52,12 +131,22 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         @for (a of book().authors; track a.id ?? a.username) {
           <li data-member="author">
             <span class="who">
-              @if (src(a); as s) { <img class="avatar" [src]="s" alt="" /> } @else { <span class="avatar" aria-hidden="true">{{ initial(a) }}</span> }
+              @if (src(a); as s) {
+                <img class="avatar" [src]="s" alt="" />
+              } @else {
+                <span class="avatar" aria-hidden="true">{{ initial(a) }}</span>
+              }
               <span>{{ a.displayName }}</span>
             </span>
             @if (book().role === 'OWNER' && a.id) {
-              <button type="button" class="danger" [attr.aria-label]="t('cookbooks.removeMemberAria', { name: a.displayName })"
-                (click)="remove(a)">{{ t('cookbooks.remove') }}</button>
+              <button
+                type="button"
+                class="danger"
+                [attr.aria-label]="t('cookbooks.removeMemberAria', { name: a.displayName })"
+                (click)="remove(a)"
+              >
+                {{ t('cookbooks.remove') }}
+              </button>
             } @else {
               <span class="role">{{ t('cookbooks.roleAuthor') }}</span>
             }
@@ -65,7 +154,9 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         }
       </ul>
       @if (book().role === 'OWNER') {
-        <button type="button" [disabled]="list.busy()" (click)="list.create()">{{ t('cookbooks.invite') }}</button>
+        <button type="button" [disabled]="list.busy()" (click)="list.create()">
+          {{ t('cookbooks.invite') }}
+        </button>
         @if (list.created(); as c) {
           <app-copy-link [url]="c.url" [expiresAt]="c.expiresAt" />
         }
@@ -74,8 +165,12 @@ import { RemoveMemberDialog } from './remove-member.dialog';
           <ul class="invites">
             @for (i of list.invites(); track i.id) {
               <li class="invite" [attr.data-invite]="i.id">
-                <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') }) }}</span>
-                <button type="button" (click)="list.revoke(i.id)">{{ t('cookbooks.revokeInvite') }}</button>
+                <span class="muted">{{
+                  t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') })
+                }}</span>
+                <button type="button" (click)="list.revoke(i.id)">
+                  {{ t('cookbooks.revokeInvite') }}
+                </button>
               </li>
             }
           </ul>
@@ -83,7 +178,9 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       } @else {
         <button type="button" class="danger" (click)="leave()">{{ t('cookbooks.leave') }}</button>
       }
-      @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+      @if (error(); as e) {
+        <p class="alert" role="alert">{{ t(e) }}</p>
+      }
     </section>
   `,
 })
@@ -118,7 +215,8 @@ export class MembersPanelComponent {
   }
 
   protected src = (p: Person): string | null => mediaUrl(p.avatarUrl);
-  protected initial = (p: Person): string => [...(p.displayName || p.username)][0]?.toUpperCase() ?? '?';
+  protected initial = (p: Person): string =>
+    [...(p.displayName || p.username)][0]?.toUpperCase() ?? '?';
 
   protected async remove(a: Person): Promise<void> {
     await this.removeAuthor(a.id as string, { name: a.displayName, self: false }, false);
@@ -129,12 +227,21 @@ export class MembersPanelComponent {
     if (id) await this.removeAuthor(id, { name: this.book().name, self: true }, true);
   }
 
-  private async removeAuthor(userId: string, data: { name: string; self: boolean }, leaving: boolean): Promise<void> {
+  private async removeAuthor(
+    userId: string,
+    data: { name: string; self: boolean },
+    leaving: boolean,
+  ): Promise<void> {
     this.error.set(null);
-    const res = await openSheet<{ removeRecipes: boolean } | false>(this.dialog, this.injector, RemoveMemberDialog, {
-      label: this.i18n.translate(data.self ? 'cookbooks.leave' : 'cookbooks.removeMember'),
-      data,
-    });
+    const res = await openSheet<{ removeRecipes: boolean } | false>(
+      this.dialog,
+      this.injector,
+      RemoveMemberDialog,
+      {
+        label: this.i18n.translate(data.self ? 'cookbooks.leave' : 'cookbooks.removeMember'),
+        data,
+      },
+    );
     if (!res) return;
     try {
       await this.api.removeAuthor(this.book().id, userId, res.removeRecipes);

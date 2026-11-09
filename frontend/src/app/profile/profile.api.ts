@@ -8,6 +8,8 @@ export class ProfileApi {
   private readonly http = inject(HttpClient);
 
   get(username: string): Promise<Profile> {
-    return firstValueFrom(this.http.get<Profile>(`/api/users/${encodeURIComponent(username)}/profile`));
+    return firstValueFrom(
+      this.http.get<Profile>(`/api/users/${encodeURIComponent(username)}/profile`),
+    );
   }
 }

@@ -6,9 +6,15 @@ import { PortionsStepperComponent } from './portions-stepper.component';
 
 @Component({
   imports: [PortionsStepperComponent],
-  template: `<app-portions-stepper [value]="value()" [written]="4" (valueChange)="value.set($event)" />`,
+  template: `<app-portions-stepper
+    [value]="value()"
+    [written]="4"
+    (valueChange)="value.set($event)"
+  />`,
 })
-class Host { readonly value = signal(4); }
+class Host {
+  readonly value = signal(4);
+}
 
 async function mount(start: number) {
   TestBed.configureTestingModule({ providers: [provideTestTransloco()] });
@@ -16,7 +22,8 @@ async function mount(start: number) {
   f.componentInstance.value.set(start);
   await settle(f);
   const el = f.nativeElement as HTMLElement;
-  const btn = (name: string) => el.querySelector(`button[aria-label="${name}"]`) as HTMLButtonElement;
+  const btn = (name: string) =>
+    el.querySelector(`button[aria-label="${name}"]`) as HTMLButtonElement;
   return { f, el, btn, host: f.componentInstance };
 }
 
@@ -47,7 +54,8 @@ describe('PortionsStepperComponent', () => {
 
   it('offers Reset only when different from the written portions', async () => {
     const r = await mount(4);
-    const reset = () => Array.from(r.el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Reset');
+    const reset = () =>
+      Array.from(r.el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Reset');
     expect(reset()).toBeUndefined();
     r.btn('More portions').click();
     await settle(r.f);

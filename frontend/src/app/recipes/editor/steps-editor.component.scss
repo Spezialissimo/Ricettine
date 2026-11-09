@@ -1,44 +1,141 @@
 @use '../../../styles/tokens' as t;
 
-:host { display: block; }
-.step-list { list-style: none; margin: 0 0 t.$space-3; padding: 0; display: grid; gap: t.$space-3; }
-.step { display: flex; gap: t.$space-2; align-items: flex-start; }
+:host {
+  display: block;
+}
+.step-list {
+  list-style: none;
+  margin: 0 0 t.$space-3;
+  padding: 0;
+  display: grid;
+  gap: t.$space-3;
+}
+.step {
+  display: flex;
+  gap: t.$space-2;
+  align-items: flex-start;
+}
 .drag-handle {
   @include t.touch-target;
-  flex: none; touch-action: none; cursor: grab; display: inline-flex; align-items: center; justify-content: center;
-  border: 0; background: transparent; color: t.$muted; font-size: 1.3rem; padding: 0;
+  flex: none;
+  touch-action: none;
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: t.$muted;
+  font-size: 1.3rem;
+  padding: 0;
 }
-.cdk-drag-preview { box-sizing: border-box; display: flex; gap: t.$space-2; background: t.$bg; border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
-.cdk-drag-placeholder { opacity: 0.35; }
-.cdk-drag-animating { transition: transform 200ms ease; }
-.step-list.cdk-drop-list-dragging .step:not(.cdk-drag-placeholder) { transition: transform 200ms ease; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+.cdk-drag-preview {
+  box-sizing: border-box;
+  display: flex;
+  gap: t.$space-2;
+  background: t.$bg;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+.cdk-drag-animating {
+  transition: transform 200ms ease;
+}
+.step-list.cdk-drop-list-dragging .step:not(.cdk-drag-placeholder) {
+  transition: transform 200ms ease;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
 .step-number {
-  flex: none; width: 28px; height: 28px; margin-top: 8px; border-radius: 50%; display: inline-flex;
-  align-items: center; justify-content: center; background: t.$accent; color: #fff; font-weight: 700; font-size: 0.85rem;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-top: 8px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: t.$accent;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
-.step-body { flex: 1; min-width: 0; display: grid; gap: t.$space-2; }
+.step-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: t.$space-2;
+}
 textarea {
-  width: 100%; min-height: t.$touch-target; font: inherit; padding: t.$space-2; border: 1px solid t.$border;
-  border-radius: 8px; background: t.$bg; color: t.$ink; resize: vertical; field-sizing: content;
+  width: 100%;
+  min-height: t.$touch-target;
+  font: inherit;
+  padding: t.$space-2;
+  border: 1px solid t.$border;
+  border-radius: 8px;
+  background: t.$bg;
+  color: t.$ink;
+  resize: vertical;
+  field-sizing: content;
 }
-.step.drop-over { outline: 2px dashed t.$accent; outline-offset: 4px; border-radius: 8px; }
-.step.active textarea { border-color: t.$accent; }
-.hint { margin: 0 0 t.$space-2; color: t.$muted; font-size: 0.85rem; }
+.step.drop-over {
+  outline: 2px dashed t.$accent;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.step.active textarea {
+  border-color: t.$accent;
+}
+.hint {
+  margin: 0 0 t.$space-2;
+  color: t.$muted;
+  font-size: 0.85rem;
+}
 .btn {
   @include t.touch-target;
-  display: inline-flex; align-items: center; justify-content: center; padding: 0 t.$space-4;
-  border: 1px solid t.$border; border-radius: 10px; background: t.$bg; color: t.$ink; font-weight: 600; cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 t.$space-4;
+  border: 1px solid t.$border;
+  border-radius: 10px;
+  background: t.$bg;
+  color: t.$ink;
+  font-weight: 600;
+  cursor: pointer;
 }
-.btn:disabled { opacity: 0.5; cursor: default; }
-.delete-step { color: #b3261e; }
-.add-step { border-style: dashed; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.delete-step {
+  color: #b3261e;
+}
+.add-step {
+  border-style: dashed;
+}
 
 @media (max-width: calc(#{t.$bp-desktop} - 1px)) {
-  .add-step { display: none; } // the phone bottom bar has "+ Next step"
+  .add-step {
+    display: none;
+  } // the phone bottom bar has "+ Next step"
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cdk-drag-animating, .step-list.cdk-drop-list-dragging .step:not(.cdk-drag-placeholder) { transition: none; }
+  .cdk-drag-animating,
+  .step-list.cdk-drop-list-dragging .step:not(.cdk-drag-placeholder) {
+    transition: none;
+  }
 }
-.drag-handle:disabled { visibility: hidden; }
+.drag-handle:disabled {
+  visibility: hidden;
+}

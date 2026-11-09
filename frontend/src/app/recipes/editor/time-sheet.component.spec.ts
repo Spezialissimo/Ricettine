@@ -42,7 +42,9 @@ describe('TimeSheetComponent', () => {
     const { f, el, store } = await mount('prep');
     const hours = el.querySelector('input[name="hours"]') as HTMLInputElement;
     const minutes = el.querySelector('input[name="minutes"]') as HTMLInputElement;
-    expect(el.querySelector(`label[for="${hours.id}"]`)?.textContent).toContain(en.editor.time.hours);
+    expect(el.querySelector(`label[for="${hours.id}"]`)?.textContent).toContain(
+      en.editor.time.hours,
+    );
     type(hours, '1');
     type(minutes, '20');
     await settle(f);
@@ -52,7 +54,10 @@ describe('TimeSheetComponent', () => {
   it('has a tab per time; the Cook tab edits cookMinutes', async () => {
     const { f, el, store } = await mount('prep', { prepMinutes: 15 });
     const tabs = Array.from(el.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
-    expect(tabs.map((t) => t.textContent?.trim())).toEqual([en.editor.time.prep, en.editor.time.cook]);
+    expect(tabs.map((t) => t.textContent?.trim())).toEqual([
+      en.editor.time.prep,
+      en.editor.time.cook,
+    ]);
     expect(tabs[0].getAttribute('aria-selected')).toBe('true');
     tabs[1].click();
     await settle(f);

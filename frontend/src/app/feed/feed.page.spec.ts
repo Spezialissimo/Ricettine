@@ -9,13 +9,24 @@ import { FeedItem } from './feed.model';
 import { FeedPage } from './feed.page';
 
 const item = (id: string, over: Partial<FeedItem> = {}): FeedItem => ({
-  id, title: `Recipe ${id}`, author: { username: 'ann', displayName: 'Ann', avatarUrl: null },
-  shareToken: `tok-${id}`, coverThumbUrl: null, publishedAt: '2026-11-03T10:00:00Z', ...over,
+  id,
+  title: `Recipe ${id}`,
+  author: { username: 'ann', displayName: 'Ann', avatarUrl: null },
+  shareToken: `tok-${id}`,
+  coverThumbUrl: null,
+  publishedAt: '2026-11-03T10:00:00Z',
+  ...over,
 });
 
 async function mount(page: FeedApi['page']) {
   TestBed.configureTestingModule({
-    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(), { provide: FeedApi, useValue: { page } }],
+    providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideRouter([]),
+      provideTestTransloco(),
+      { provide: FeedApi, useValue: { page } },
+    ],
   });
   const f = TestBed.createComponent(FeedPage);
   await settle(f);
@@ -26,7 +37,8 @@ const more = (el: HTMLElement) => el.querySelector('button.more') as HTMLButtonE
 describe('FeedPage', () => {
   it('renders cards linking to the share token, with author, date and thumb', async () => {
     const { el } = await mount(async () => ({
-      items: [item('a', { coverThumbUrl: '/media/m/T.jpg?s=tok-a' }), item('b')], nextCursor: null,
+      items: [item('a', { coverThumbUrl: '/media/m/T.jpg?s=tok-a' }), item('b')],
+      nextCursor: null,
     }));
     expect(el.querySelector('h1')?.textContent).toContain('Latest recipes');
     const links = Array.from(el.querySelectorAll('a.recipe')) as HTMLAnchorElement[];
@@ -42,7 +54,8 @@ describe('FeedPage', () => {
   });
 
   it('loads more with the cursor and appends', async () => {
-    const page = vi.fn()
+    const page = vi
+      .fn()
       .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
       .mockResolvedValueOnce({ items: [item('b')], nextCursor: null });
     const { f, el } = await mount(page);
@@ -55,7 +68,10 @@ describe('FeedPage', () => {
   });
 
   it('disables Load more while loading', async () => {
-    const page = vi.fn().mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' }).mockReturnValueOnce(new Promise(() => {}));
+    const page = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
+      .mockReturnValueOnce(new Promise(() => {}));
     const { f, el } = await mount(page);
     more(el)!.click();
     await settle(f);
@@ -63,7 +79,10 @@ describe('FeedPage', () => {
   });
 
   it('a second Load more click while one is pending does not fetch again', async () => {
-    const page = vi.fn().mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' }).mockReturnValueOnce(new Promise(() => {}));
+    const page = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
+      .mockReturnValueOnce(new Promise(() => {}));
     const { el } = await mount(page);
     const button = more(el)!;
     button.click();
@@ -72,7 +91,8 @@ describe('FeedPage', () => {
   });
 
   it('a double click on Retry after a failed page fetches once', async () => {
-    const page = vi.fn()
+    const page = vi
+      .fn()
       .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
       .mockRejectedValueOnce(new HttpErrorResponse({ status: 500 }))
       .mockReturnValueOnce(new Promise(() => {}));
@@ -87,7 +107,8 @@ describe('FeedPage', () => {
   });
 
   it('keeps page 1 and offers Retry when page 2 fails', async () => {
-    const page = vi.fn()
+    const page = vi
+      .fn()
       .mockResolvedValueOnce({ items: [item('a')], nextCursor: 'c1' })
       .mockRejectedValueOnce(new HttpErrorResponse({ status: 500 }))
       .mockResolvedValueOnce({ items: [item('b')], nextCursor: null });
@@ -110,7 +131,10 @@ describe('FeedPage', () => {
   });
 
   it('shows a load error with Retry', async () => {
-    const page = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 500 })).mockResolvedValueOnce({ items: [item('a')], nextCursor: null });
+    const page = vi
+      .fn()
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 500 }))
+      .mockResolvedValueOnce({ items: [item('a')], nextCursor: null });
     const { f, el } = await mount(page);
     expect(el.querySelector('[role="alert"]')).toBeTruthy();
     (el.querySelector('button.retry') as HTMLButtonElement).click();

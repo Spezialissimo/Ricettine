@@ -1,5 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Injector,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKeyOf } from '../../core/api-error';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
@@ -15,15 +22,46 @@ import { openSheet } from '../../shared/sheet';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../../styles/tokens' as t;
-    :host { display: block; }
-    h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
-    .hint { margin: 0; color: t.$muted; }
-    .alert { color: #b3261e; }
-    .reset { @include t.touch-target; margin-top: t.$space-2; padding: 0 t.$space-4; border: 1px solid t.$border;
-      border-radius: 10px; background: t.$bg; color: t.$ink; font-weight: 600; cursor: pointer; }
-    .reset:disabled { opacity: 0.5; cursor: default; }
-    .reset-done { margin: t.$space-2 0 0; color: t.$muted; }
-    .reset-done:empty { margin: 0; }
+    :host {
+      display: block;
+    }
+    h2 {
+      margin: 0 0 t.$space-2;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: t.$muted;
+      font-weight: 600;
+    }
+    .hint {
+      margin: 0;
+      color: t.$muted;
+    }
+    .alert {
+      color: #b3261e;
+    }
+    .reset {
+      @include t.touch-target;
+      margin-top: t.$space-2;
+      padding: 0 t.$space-4;
+      border: 1px solid t.$border;
+      border-radius: 10px;
+      background: t.$bg;
+      color: t.$ink;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .reset:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .reset-done {
+      margin: t.$space-2 0 0;
+      color: t.$muted;
+    }
+    .reset-done:empty {
+      margin: 0;
+    }
   `,
   template: `
     <section *transloco="let t" aria-labelledby="share-heading">
@@ -31,16 +69,33 @@ import { openSheet } from '../../shared/sheet';
       @if (store.server(); as s) {
         @if (s.status === 'PUBLISHED' && s.shareUrl) {
           <app-copy-link [url]="s.shareUrl" />
-          <button type="button" class="reset" [disabled]="busy() || conflict()" (click)="reset()"
-            [attr.aria-describedby]="conflict() ? 'reset-conflict-hint' : null">{{ t('editor.resetLink') }}</button>
-          @if (conflict()) { <p class="hint" id="reset-conflict-hint">{{ t('editor.resetLinkLoadLatest') }}</p> }
-          <p class="reset-done" role="status">@if (done()) { {{ t('editor.linkReset') }} }</p>
-          @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+          <button
+            type="button"
+            class="reset"
+            [disabled]="busy() || conflict()"
+            (click)="reset()"
+            [attr.aria-describedby]="conflict() ? 'reset-conflict-hint' : null"
+          >
+            {{ t('editor.resetLink') }}
+          </button>
+          @if (conflict()) {
+            <p class="hint" id="reset-conflict-hint">{{ t('editor.resetLinkLoadLatest') }}</p>
+          }
+          <p class="reset-done" role="status">
+            @if (done()) {
+              {{ t('editor.linkReset') }}
+            }
+          </p>
+          @if (error(); as e) {
+            <p class="alert" role="alert">{{ t(e) }}</p>
+          }
         } @else {
           <p class="hint">{{ t('editor.publishToShare') }}</p>
         }
         @if (s.status === 'PUBLISHED') {
-          <button type="button" class="reset" (click)="addToCookbook(s.id)">{{ t('cookbooks.addToCookbook') }}</button>
+          <button type="button" class="reset" (click)="addToCookbook(s.id)">
+            {{ t('cookbooks.addToCookbook') }}
+          </button>
         } @else {
           <p class="hint">{{ t('cookbooks.publishFirst') }}</p>
         }

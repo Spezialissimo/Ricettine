@@ -17,21 +17,43 @@ import { SettingsApi } from './settings.api';
       <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <label>
           {{ t('settings.currentPassword') }}
-          <input type="password" name="currentPassword" formControlName="currentPassword"
-            autocomplete="current-password" [class.invalid]="bad('currentPassword')" />
+          <input
+            type="password"
+            name="currentPassword"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+            [class.invalid]="bad('currentPassword')"
+          />
         </label>
         <label>
           {{ t('auth.newPassword') }}
-          <input type="password" name="newPassword" formControlName="newPassword"
-            autocomplete="new-password" [class.invalid]="bad('newPassword')" />
+          <input
+            type="password"
+            name="newPassword"
+            formControlName="newPassword"
+            autocomplete="new-password"
+            [class.invalid]="bad('newPassword')"
+          />
           <span class="hint">{{ t('auth.passwordHint') }}</span>
           @if (bad('newPassword')) {
-            <span class="error">{{ t(form.controls.newPassword.errors?.['maxlength'] ? 'errors.password_too_long' : 'errors.password_too_short') }}</span>
+            <span class="error">{{
+              t(
+                form.controls.newPassword.errors?.['maxlength']
+                  ? 'errors.password_too_long'
+                  : 'errors.password_too_short'
+              )
+            }}</span>
           }
         </label>
-        @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
-        @if (done()) { <p class="ok" role="status">{{ t('settings.passwordDone') }}</p> }
-        <button type="submit" class="primary" [disabled]="busy()">{{ t('settings.passwordSubmit') }}</button>
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
+        @if (done()) {
+          <p class="ok" role="status">{{ t('settings.passwordDone') }}</p>
+        }
+        <button type="submit" class="primary" [disabled]="busy()">
+          {{ t('settings.passwordSubmit') }}
+        </button>
       </form>
       <a class="btn-back" routerLink="/settings/profile">{{ t('common.back') }}</a>
     </ng-container>

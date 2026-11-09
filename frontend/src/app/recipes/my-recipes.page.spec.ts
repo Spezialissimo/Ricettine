@@ -10,14 +10,22 @@ import { RecipeApi } from './recipe.api';
 import { RecipeSummary } from './recipe.model';
 
 const sum = (over: Partial<RecipeSummary>): RecipeSummary => ({
-  id: 'x', title: 'T', status: 'DRAFT', visibility: 'PRIVATE', coverThumbUrl: null,
-  updatedAt: '2026-11-03T10:00:00Z', ...over,
+  id: 'x',
+  title: 'T',
+  status: 'DRAFT',
+  visibility: 'PRIVATE',
+  coverThumbUrl: null,
+  updatedAt: '2026-11-03T10:00:00Z',
+  ...over,
 });
 
 function setup(api: Partial<RecipeApi>) {
   TestBed.configureTestingModule({
     providers: [
-      provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideRouter([]),
+      provideTestTransloco(),
       { provide: RecipeApi, useValue: api },
     ],
   });
@@ -28,7 +36,13 @@ describe('MyRecipesPage', () => {
     setup({
       mine: async () => [
         sum({ id: 'a', title: 'Lasagne', status: 'DRAFT' }),
-        sum({ id: 'b', title: '', status: 'PUBLISHED', visibility: 'PRIVATE', coverThumbUrl: '/media/m/THUMB.jpg' }),
+        sum({
+          id: 'b',
+          title: '',
+          status: 'PUBLISHED',
+          visibility: 'PRIVATE',
+          coverThumbUrl: '/media/m/THUMB.jpg',
+        }),
         sum({ id: 'c', title: 'Tiramisu', status: 'PUBLISHED', visibility: 'PUBLIC' }),
       ],
     });
@@ -37,7 +51,11 @@ describe('MyRecipesPage', () => {
     const el = f.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain('My recipes');
     const links = Array.from(el.querySelectorAll('a.recipe')) as HTMLAnchorElement[];
-    expect(links.map((l) => l.getAttribute('href'))).toEqual(['/recipes/a/edit', '/recipes/b/edit', '/recipes/c/edit']);
+    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+      '/recipes/a/edit',
+      '/recipes/b/edit',
+      '/recipes/c/edit',
+    ]);
     expect(links[0].textContent).toContain('Lasagne');
     expect(links[0].textContent).toContain('Draft');
     expect(links[1].textContent).toContain('Untitled recipe');
@@ -82,7 +100,8 @@ describe('NewRecipePage', () => {
 
   it('shows a spinner while pending, then an error with retry on failure', async () => {
     let reject!: (e: unknown) => void;
-    const create = vi.fn()
+    const create = vi
+      .fn()
       .mockReturnValueOnce(new Promise((_, r) => (reject = r)))
       .mockResolvedValueOnce({ id: 'n2' });
     setup({ create });

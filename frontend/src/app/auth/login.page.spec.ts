@@ -7,7 +7,14 @@ import { settle } from '../testing/spec-helpers';
 import { AuthStore } from '../core/auth.store';
 import { LoginPage } from './login.page';
 
-const me = { id: '1', email: 'a@b.c', username: 'abc', displayName: 'Abc', avatarUrl: null, admin: false };
+const me = {
+  id: '1',
+  email: 'a@b.c',
+  username: 'abc',
+  displayName: 'Abc',
+  avatarUrl: null,
+  admin: false,
+};
 
 describe('LoginPage', () => {
   let http: HttpTestingController;
@@ -16,7 +23,10 @@ describe('LoginPage', () => {
   function setup(next?: string) {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { queryParamMap: convertToParamMap(next ? { next } : {}) } },
@@ -53,7 +63,9 @@ describe('LoginPage', () => {
   it('shows errors.bad_credentials on a 401', async () => {
     const f = setup();
     await submit(f);
-    http.expectOne('/api/auth/login').flush({ code: 'bad_credentials' }, { status: 401, statusText: 'x' });
+    http
+      .expectOne('/api/auth/login')
+      .flush({ code: 'bad_credentials' }, { status: 401, statusText: 'x' });
     await settle(f);
     expect((f.nativeElement as HTMLElement).querySelector('[role=alert]')?.textContent).toContain(
       en.errors.bad_credentials,

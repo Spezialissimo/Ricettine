@@ -2,7 +2,12 @@ export type CookbookVisibility = 'PRIVATE' | 'PUBLIC';
 type CookbookRole = 'OWNER' | 'AUTHOR';
 
 /** A user as shown in a cookbook; the whole person is null when they deleted their account. */
-export type Person = { id?: string; username: string; displayName: string; avatarUrl: string | null };
+export type Person = {
+  id?: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+};
 
 export type CookbookSummary = {
   id: string;
@@ -39,10 +44,15 @@ export type Cookbook = {
 };
 
 /** Create body; on patch a missing field means unchanged. */
-export type CookbookInput = { name: string; description: string | null; visibility: CookbookVisibility };
+export type CookbookInput = {
+  name: string;
+  description: string | null;
+  visibility: CookbookVisibility;
+};
 
 /** Exactly one of the two is set. */
-export type RecipeRef = { recipeId: string; shareToken?: undefined } | { shareToken: string; recipeId?: undefined };
+export type RecipeRef =
+  { recipeId: string; shareToken?: undefined } | { shareToken: string; recipeId?: undefined };
 
 export const MAX_NAME = 100;
 export const MAX_DESCRIPTION = 1000;
@@ -50,7 +60,12 @@ export const MAX_DESCRIPTION = 1000;
 /** Length in Unicode code points, as the server counts. */
 export const codePoints = (s: string): number => [...s].length;
 
-type PublicCookbookEntry = { recipeId: string; title: string; author: Person | null; coverThumbUrl: string | null };
+type PublicCookbookEntry = {
+  recipeId: string;
+  title: string;
+  author: Person | null;
+  coverThumbUrl: string | null;
+};
 
 /** The anonymous view of a cookbook; `viewerRole` and `cookbookId` are set for members only. */
 export type PublicCookbook = {
@@ -72,4 +87,8 @@ export const tokenFromShareUrl = (url: string | null): string | null => {
 
 export type CookbookInvite = { id: string; createdAt: string; expiresAt: string };
 export type CookbookInviteCreated = { id: string; url: string; expiresAt: string };
-export type CookbookInvitePreview = { cookbookName: string; owner: Person | null; expiresAt: string };
+export type CookbookInvitePreview = {
+  cookbookName: string;
+  owner: Person | null;
+  expiresAt: string;
+};

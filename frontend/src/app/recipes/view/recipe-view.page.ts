@@ -37,7 +37,9 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           @if (auth.me()) {
             <a class="btn" routerLink="/recipes">{{ t('nav.recipes') }}</a>
           } @else {
-            <a class="btn primary" routerLink="/login" [queryParams]="{ next: loginNext }">{{ t('auth.login') }}</a>
+            <a class="btn primary" routerLink="/login" [queryParams]="{ next: loginNext }">{{
+              t('auth.login')
+            }}</a>
           }
         </div>
       </header>
@@ -54,11 +56,15 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
         } @else if (error(); as e) {
           <div class="state">
             <p class="alert" role="alert">{{ t(e) }}</p>
-            <button type="button" class="btn primary" (click)="load()">{{ t('common.retry') }}</button>
+            <button type="button" class="btn primary" (click)="load()">
+              {{ t('common.retry') }}
+            </button>
           </div>
         } @else if (recipe(); as r) {
           @if (viaCookbook) {
-            <a class="back" [routerLink]="['/c', token]">{{ r.cookbookName ? t('cookbooks.backTo', { name: r.cookbookName }) : t('cookbooks.back') }}</a>
+            <a class="back" [routerLink]="['/c', token]">{{
+              r.cookbookName ? t('cookbooks.backTo', { name: r.cookbookName }) : t('cookbooks.back')
+            }}</a>
           }
           @if (cover(r); as src) {
             <!-- decorative here: the title is the h1 right below; the cover is the page's main image (LCP) -->
@@ -71,15 +77,21 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
               <span class="avatar" aria-hidden="true"></span>
             }
             @if (auth.me()) {
-              <a class="by" [routerLink]="['/u', r.author.username]">{{ t('recipes.by', { name: r.author.displayName }) }}</a>
+              <a class="by" [routerLink]="['/u', r.author.username]">{{
+                t('recipes.by', { name: r.author.displayName })
+              }}</a>
             } @else {
               <span>{{ t('recipes.by', { name: r.author.displayName }) }}</span>
             }
             @if (r.viewerIsAuthor && r.recipeId) {
-              <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']">{{ t('recipes.edit') }}</a>
+              <a class="btn" [routerLink]="['/recipes', r.recipeId, 'edit']">{{
+                t('recipes.edit')
+              }}</a>
             }
             @if (auth.me() && !viaCookbook) {
-              <button type="button" class="btn" (click)="addToCookbook()">{{ t('cookbooks.addToCookbook') }}</button>
+              <button type="button" class="btn" (click)="addToCookbook()">
+                {{ t('cookbooks.addToCookbook') }}
+              </button>
             }
             <app-keep-screen-on class="keep" />
           </div>
@@ -87,15 +99,25 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
           <ul class="chips" role="list">
             @if (r.prepMinutes !== null) {
               @let p = duration(r.prepMinutes);
-              <li class="chip"><span aria-hidden="true">⏱</span> {{ t('editor.chips.prep', { time: t(p.key, p.params) }) }}</li>
+              <li class="chip">
+                <span aria-hidden="true">⏱</span>
+                {{ t('editor.chips.prep', { time: t(p.key, p.params) }) }}
+              </li>
             }
             @if (r.cookMinutes !== null) {
               @let c = duration(r.cookMinutes);
-              <li class="chip"><span aria-hidden="true">🔥</span> {{ t('editor.chips.cook', { time: t(c.key, c.params) }) }}</li>
+              <li class="chip">
+                <span aria-hidden="true">🔥</span>
+                {{ t('editor.chips.cook', { time: t(c.key, c.params) }) }}
+              </li>
             }
             @if (r.source) {
               @if (isWeb(r.source)) {
-                <li><a class="chip" [href]="r.source" rel="noopener noreferrer" target="_blank"><span aria-hidden="true">🔗</span> {{ r.source }}</a></li>
+                <li>
+                  <a class="chip" [href]="r.source" rel="noopener noreferrer" target="_blank"
+                    ><span aria-hidden="true">🔗</span> {{ r.source }}</a
+                  >
+                </li>
               } @else {
                 <li class="chip"><span aria-hidden="true">🔗</span> {{ r.source }}</li>
               }
@@ -106,15 +128,29 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
             <section class="ingredients" aria-labelledby="ing-h" tabindex="0">
               <div class="ing-head">
                 <h2 id="ing-h">{{ t('editor.ingredients') }}</h2>
-                <app-portions-stepper [value]="chosen() ?? r.portions" [written]="r.portions" (valueChange)="chosen.set($event)" />
+                <app-portions-stepper
+                  [value]="chosen() ?? r.portions"
+                  [written]="r.portions"
+                  (valueChange)="chosen.set($event)"
+                />
               </div>
               @for (g of r.groups; track $index) {
-                @if (g.name) { <h3 class="grp">{{ g.name }}</h3> }
+                @if (g.name) {
+                  <h3 class="grp">{{ g.name }}</h3>
+                }
                 <ul class="ingr-list" role="list">
                   @for (i of g.ingredients; track $index) {
                     <li>
-                      @if (i.amount !== null) { <b>{{ amount(i, r.portions) }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b> }
-                      {{ i.name }}@if (i.note) { <span class="note">, {{ i.note }}</span> }
+                      @if (i.amount !== null) {
+                        <b
+                          >{{ amount(i, r.portions)
+                          }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b
+                        >
+                      }
+                      {{ i.name }}
+                      @if (i.note) {
+                        <span class="note">, {{ i.note }}</span>
+                      }
                     </li>
                   }
                 </ul>
@@ -129,7 +165,12 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
                     <div class="step-body">
                       <p>{{ s.text }}</p>
                       @if (stepPhoto(s.photo); as src) {
-                        <img class="step-photo" [src]="src" [alt]="t('recipes.stepAlt', { n: $index + 1 })" loading="lazy" />
+                        <img
+                          class="step-photo"
+                          [src]="src"
+                          [alt]="t('recipes.stepAlt', { n: $index + 1 })"
+                          loading="lazy"
+                        />
                       }
                     </div>
                   </li>
@@ -163,7 +204,9 @@ export class RecipeViewPage {
   protected readonly viaCookbook = this.snapshot.data?.['via'] === 'cookbook';
   protected readonly token = this.snapshot.paramMap.get('token') ?? '';
   private readonly recipeId = this.snapshot.paramMap.get('recipeId') ?? '';
-  protected readonly loginNext = this.viaCookbook ? `/c/${this.token}/r/${this.recipeId}` : `/r/${this.token}`;
+  protected readonly loginNext = this.viaCookbook
+    ? `/c/${this.token}/r/${this.recipeId}`
+    : `/r/${this.token}`;
   protected readonly recipe = signal<PublicRecipe | null>(null);
   protected readonly notFound = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -180,7 +223,9 @@ export class RecipeViewPage {
     this.error.set(null);
     this.notFound.set(false);
     try {
-      const r = this.viaCookbook ? await this.cookbooks.recipeByToken(this.token, this.recipeId) : await this.api.byToken(this.token);
+      const r = this.viaCookbook
+        ? await this.cookbooks.recipeByToken(this.token, this.recipeId)
+        : await this.api.byToken(this.token);
       this.chosen.set(null);
       this.recipe.set(r);
       if (r.title) this.title.set(r.title);
@@ -193,7 +238,10 @@ export class RecipeViewPage {
 
   protected amount(i: Pick<Ingredient, 'amount' | 'unit'>, written: number): string {
     const chosen = this.chosen() ?? written;
-    return displayAmount(scaleAmount(i.amount, written, chosen), i.unit, { scaled: chosen !== written, locale: this.i18n.getActiveLang() });
+    return displayAmount(scaleAmount(i.amount, written, chosen), i.unit, {
+      scaled: chosen !== written,
+      locale: this.i18n.getActiveLang(),
+    });
   }
 
   protected addToCookbook(): void {

@@ -2,13 +2,22 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import {
-  ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter,
+  ActivatedRouteSnapshot,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+  provideRouter,
 } from '@angular/router';
 import { SetupStatus, adminGuard, authGuard, guestGuard, setupGuard } from './auth.guards';
 import { AuthStore, Me } from './auth.store';
 
 const me: Me = {
-  id: '1', email: 'a@b.c', username: 'abc', displayName: 'Abc', avatarUrl: null, admin: false,
+  id: '1',
+  email: 'a@b.c',
+  username: 'abc',
+  displayName: 'Abc',
+  avatarUrl: null,
+  admin: false,
 };
 const route = {} as ActivatedRouteSnapshot;
 const state = (url: string) => ({ url }) as RouterStateSnapshot;

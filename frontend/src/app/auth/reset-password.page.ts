@@ -18,8 +18,13 @@ import { AccountFormComponent, AccountValues } from './account-form.component';
         <a class="btn-link" routerLink="/login">{{ t('reset.goToLogin') }}</a>
       } @else {
         <div class="card">
-          <app-account-form mode="password" submitLabelKey="reset.submit" [busy]="busy()"
-            [error]="error()" (submitted)="submit($event)" />
+          <app-account-form
+            mode="password"
+            submitLabelKey="reset.submit"
+            [busy]="busy()"
+            [error]="error()"
+            (submitted)="submit($event)"
+          />
         </div>
       }
     </ng-container>

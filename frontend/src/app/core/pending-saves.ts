@@ -33,9 +33,11 @@ export class PendingSaves {
    */
   async flushAll(timeoutMs = FLUSH_TIMEOUT_MS): Promise<boolean> {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<false>((resolve) => (timer = setTimeout(() => resolve(false), timeoutMs)));
-    const all = Promise.allSettled([...[...this.flushers].map((f) => f()), ...this.running]).then((rs) =>
-      rs.every((r) => r.status === 'fulfilled'),
+    const timeout = new Promise<false>(
+      (resolve) => (timer = setTimeout(() => resolve(false), timeoutMs)),
+    );
+    const all = Promise.allSettled([...[...this.flushers].map((f) => f()), ...this.running]).then(
+      (rs) => rs.every((r) => r.status === 'fulfilled'),
     );
     const clean = await Promise.race([all, timeout]);
     clearTimeout(timer);

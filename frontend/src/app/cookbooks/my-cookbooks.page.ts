@@ -32,12 +32,25 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
             @for (b of list; track b.id) {
               <li>
                 <a class="cookbook" [routerLink]="['/cookbooks', b.id]">
-                  @if (mediaUrl(b.coverThumbUrl); as src) { <img class="cover-thumb" [src]="src" alt="" loading="lazy" /> }
+                  @if (mediaUrl(b.coverThumbUrl); as src) {
+                    <img class="cover-thumb" [src]="src" alt="" loading="lazy" />
+                  }
                   <span class="name">{{ b.name }}</span>
-                  <span class="count">{{ t(b.recipeCount === 1 ? 'cookbooks.recipeCountOne' : 'cookbooks.recipeCountOther', { count: b.recipeCount }) }}</span>
+                  <span class="count">{{
+                    t(
+                      b.recipeCount === 1
+                        ? 'cookbooks.recipeCountOne'
+                        : 'cookbooks.recipeCountOther',
+                      { count: b.recipeCount }
+                    )
+                  }}</span>
                   <span class="badges">
-                    <span class="badge" [attr.data-badge]="b.role">{{ t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor') }}</span>
-                    <span class="badge" [attr.data-badge]="b.visibility">{{ t('cookbooks.visibility.' + b.visibility) }}</span>
+                    <span class="badge" [attr.data-badge]="b.role">{{
+                      t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor')
+                    }}</span>
+                    <span class="badge" [attr.data-badge]="b.visibility">{{
+                      t('cookbooks.visibility.' + b.visibility)
+                    }}</span>
                   </span>
                 </a>
               </li>
@@ -77,7 +90,9 @@ export class MyCookbooksPage {
     const created: { id: string | null } = { id: null };
     const result = await openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.newTitle'),
-      data: { submit: async (input: CookbookInput) => (created.id = (await this.api.create(input)).id) },
+      data: {
+        submit: async (input: CookbookInput) => (created.id = (await this.api.create(input)).id),
+      },
     });
     if (result === true && created.id) {
       await this.router.navigateByUrl(`/cookbooks/${created.id}`);

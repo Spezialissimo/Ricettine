@@ -8,12 +8,19 @@ import { EditorStore } from './editor-store';
 import { serverRecipe } from './editor-store.testing';
 import { StepsEditorComponent } from './steps-editor.component';
 
-const photo = (id: string): Photo => ({ mediaId: id, thumbUrl: `/media/${id}/thumb.jpg`, displayUrl: `/media/${id}/display.jpg` });
-const jpeg = (size = 1000, type = 'image/jpeg') => new File([new Uint8Array(size)], 'p.jpg', { type });
+const photo = (id: string): Photo => ({
+  mediaId: id,
+  thumbUrl: `/media/${id}/thumb.jpg`,
+  displayUrl: `/media/${id}/display.jpg`,
+});
+const jpeg = (size = 1000, type = 'image/jpeg') =>
+  new File([new Uint8Array(size)], 'p.jpg', { type });
 
 async function mount(api: Partial<RecipeApi>, steps = ['Boil', 'Serve']) {
   const fullApi = {
-    get: vi.fn().mockResolvedValue(serverRecipe({ steps: steps.map((text) => ({ text, photo: null })) })),
+    get: vi
+      .fn()
+      .mockResolvedValue(serverRecipe({ steps: steps.map((text) => ({ text, photo: null })) })),
     save: vi.fn().mockImplementation(async () => serverRecipe({ version: 2 })),
     ...api,
   };
@@ -31,14 +38,19 @@ const choose = (input: HTMLInputElement, file: File) => {
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
 };
-const inputs = (el: HTMLElement) => Array.from(el.querySelectorAll('input[type="file"]')) as HTMLInputElement[];
+const inputs = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll('input[type="file"]')) as HTMLInputElement[];
 const stepEl = (el: HTMLElement, i: number) => el.querySelectorAll('li.step')[i] as HTMLElement;
 const buttonNamed = (root: HTMLElement, name: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === name) as HTMLButtonElement | undefined;
+  Array.from(root.querySelectorAll('button')).find(
+    (b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === name,
+  ) as HTMLButtonElement | undefined;
 
 function dropEvent(type: string, files: File[]): Event {
   const ev = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperty(ev, 'dataTransfer', { value: { files, types: ['Files'], dropEffect: 'none' } });
+  Object.defineProperty(ev, 'dataTransfer', {
+    value: { files, types: ['Files'], dropEffect: 'none' },
+  });
   return ev;
 }
 
@@ -58,7 +70,9 @@ describe('step photos', () => {
 
   it('shows the local preview with "Uploading…", then the server thumb, and stores photoMediaId', async () => {
     let finish!: (p: Photo) => void;
-    const { f, el, store, api } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))) });
+    const { f, el, store, api } = await mount({
+      uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))),
+    });
     choose(inputs(el)[1], jpeg());
     await settle(f);
     expect(api.uploadPhoto).toHaveBeenCalledWith('r1', expect.any(File));
@@ -85,7 +99,9 @@ describe('step photos', () => {
 
   it('keeps one persistent live region per slot and only changes its text while uploading', async () => {
     let finish!: (p: Photo) => void;
-    const { f, el } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))) });
+    const { f, el } = await mount({
+      uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>((r) => (finish = r))),
+    });
     const region = stepEl(el, 1).querySelector('[role="status"]') as HTMLElement;
     expect(region).toBeTruthy();
     expect(region.textContent?.trim()).toBe('');
@@ -116,7 +132,11 @@ describe('step photos', () => {
 
   it('shows the error key when the upload fails, and keeps the reference empty', async () => {
     const { f, el, store } = await mount({
-      uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 415, error: { code: 'unsupported_image' } })),
+      uploadPhoto: vi
+        .fn()
+        .mockRejectedValue(
+          new HttpErrorResponse({ status: 415, error: { code: 'unsupported_image' } }),
+        ),
     });
     choose(inputs(el)[0], jpeg());
     await settle(f);
@@ -134,7 +154,9 @@ describe('step photos', () => {
   });
 
   it('drop: highlights on dragover, uploads the first dropped file onto that step', async () => {
-    const { f, el, store, api } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m2')) });
+    const { f, el, store, api } = await mount({
+      uploadPhoto: vi.fn().mockResolvedValue(photo('m2')),
+    });
     const li = stepEl(el, 1);
     const over = dropEvent('dragover', [jpeg()]);
     li.dispatchEvent(over);
@@ -159,14 +181,23 @@ describe('step photos', () => {
   });
 
   it('attachPhoto goes to the last tapped step', async () => {
-    const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m3')) }, ['a', 'b', 'c']);
-    stepEl(el, 0).querySelector('textarea')!.dispatchEvent(new Event('focusin', { bubbles: true }));
+    const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m3')) }, [
+      'a',
+      'b',
+      'c',
+    ]);
+    stepEl(el, 0)
+      .querySelector('textarea')!
+      .dispatchEvent(new Event('focusin', { bubbles: true }));
     await f.componentInstance.attachPhoto(jpeg());
     expect(store.recipe().steps.map((s) => s.photoMediaId)).toEqual(['m3', null, null]);
   });
 
   it('attachPhoto goes to the last step when none was tapped', async () => {
-    const { f, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m4')) }, ['a', 'b']);
+    const { f, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m4')) }, [
+      'a',
+      'b',
+    ]);
     await f.componentInstance.attachPhoto(jpeg());
     expect(store.recipe().steps.map((s) => s.photoMediaId)).toEqual([null, 'm4']);
   });
@@ -203,9 +234,18 @@ describe('cover photo and photo_not_in_recipe', () => {
 
   it('a save refused with photo_not_in_recipe drops only the ids the server names, says so, and saves again', async () => {
     try {
-      const gone = new HttpErrorResponse({ status: 400, error: { code: 'photo_not_in_recipe', mediaIds: ['stale'] } });
-      const save = vi.fn().mockRejectedValueOnce(gone).mockImplementation(async () => serverRecipe({ version: 2 }));
-      const uploadPhoto = vi.fn().mockResolvedValueOnce(photo('stale')).mockResolvedValueOnce(photo('fresh'));
+      const gone = new HttpErrorResponse({
+        status: 400,
+        error: { code: 'photo_not_in_recipe', mediaIds: ['stale'] },
+      });
+      const save = vi
+        .fn()
+        .mockRejectedValueOnce(gone)
+        .mockImplementation(async () => serverRecipe({ version: 2 }));
+      const uploadPhoto = vi
+        .fn()
+        .mockResolvedValueOnce(photo('stale'))
+        .mockResolvedValueOnce(photo('fresh'));
       const { store } = await mount({ uploadPhoto, save });
       vi.useFakeTimers();
       await store.uploadPhoto(0, jpeg());
@@ -242,7 +282,10 @@ describe('cover photo and photo_not_in_recipe', () => {
 
   it('publish() refuses while a photo is uploading', async () => {
     const publish = vi.fn();
-    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})), publish });
+    const { store } = await mount({
+      uploadPhoto: vi.fn().mockReturnValue(new Promise(() => {})),
+      publish,
+    });
     void store.uploadPhoto('cover', jpeg());
     expect(await store.publish()).toBe('blocked');
     expect(publish).not.toHaveBeenCalled();
@@ -270,7 +313,10 @@ describe('cover photo and photo_not_in_recipe', () => {
 
   describe('failed uploads', () => {
     it('a failed upload keeps its preview and shows Retry; Publish waits; retry re-sends the same file and sets the reference', async () => {
-      const uploadPhoto = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 0 })).mockResolvedValue(photo('m9'));
+      const uploadPhoto = vi
+        .fn()
+        .mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }))
+        .mockResolvedValue(photo('m9'));
       const { f, el, store } = await mount({ uploadPhoto, publish: vi.fn() });
       const file = jpeg();
       choose(inputs(el)[0], file);
@@ -294,7 +340,9 @@ describe('cover photo and photo_not_in_recipe', () => {
 
     it('a 503 busy upload is retryable too', async () => {
       const { f, el, store } = await mount({
-        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 503, error: { code: 'busy' } })),
+        uploadPhoto: vi
+          .fn()
+          .mockRejectedValue(new HttpErrorResponse({ status: 503, error: { code: 'busy' } })),
       });
       choose(inputs(el)[1], jpeg());
       await settle(f);
@@ -304,7 +352,11 @@ describe('cover photo and photo_not_in_recipe', () => {
 
     it('a refused file (4xx) shows the reason without Retry and does not hold Publish', async () => {
       const { f, el, store } = await mount({
-        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 413, error: { code: 'image_too_large' } })),
+        uploadPhoto: vi
+          .fn()
+          .mockRejectedValue(
+            new HttpErrorResponse({ status: 413, error: { code: 'image_too_large' } }),
+          ),
       });
       choose(inputs(el)[0], jpeg());
       await settle(f);
@@ -314,7 +366,9 @@ describe('cover photo and photo_not_in_recipe', () => {
     });
 
     it('Remove gives up a failed upload', async () => {
-      const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 })) });
+      const { f, el, store } = await mount({
+        uploadPhoto: vi.fn().mockRejectedValue(new HttpErrorResponse({ status: 0 })),
+      });
       choose(inputs(el)[0], jpeg());
       await settle(f);
       buttonNamed(el, 'Remove photo of step 1')!.click();
@@ -333,7 +387,10 @@ describe('uploads follow their step when steps change (EditorStore)', () => {
 
   /** A store with steps A, B, C and a never-finishing upload on step B (index 1). */
   async function pending() {
-    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) }, ['A', 'B', 'C']);
+    const { store } = await mount(
+      { uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) },
+      ['A', 'B', 'C'],
+    );
     void store.uploadPhoto(1, jpeg());
     expect(store.uploadFor(1)?.status).toBe('uploading');
     return store;
@@ -380,7 +437,10 @@ describe('uploads follow their step when steps change (EditorStore)', () => {
   });
 
   it('a failed upload (with its Retry) follows its step too, and retry lands on the new index', async () => {
-    const uploadPhoto = vi.fn().mockRejectedValueOnce(new HttpErrorResponse({ status: 0 })).mockResolvedValue(photo('m1'));
+    const uploadPhoto = vi
+      .fn()
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }))
+      .mockResolvedValue(photo('m1'));
     const { store } = await mount({ uploadPhoto }, ['A', 'B', 'C']);
     await store.uploadPhoto(1, jpeg());
     expect(store.uploadFor(1)?.status).toBe('failed');
@@ -392,7 +452,10 @@ describe('uploads follow their step when steps change (EditorStore)', () => {
   });
 
   it('a cover upload is not touched by step changes', async () => {
-    const { store } = await mount({ uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) }, ['A', 'B']);
+    const { store } = await mount(
+      { uploadPhoto: vi.fn().mockReturnValue(new Promise<Photo>(() => {})) },
+      ['A', 'B'],
+    );
     void store.uploadPhoto('cover', jpeg());
     store.stepInserted(0);
     store.stepRemoved(0);

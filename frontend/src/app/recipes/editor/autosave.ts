@@ -88,7 +88,10 @@ export class Autosave {
   private readonly unlistenOnline: () => void;
   private readonly unlistenVisible: () => void;
 
-  constructor(private readonly deps: AutosaveDeps, options: AutosaveOptions = {}) {
+  constructor(
+    private readonly deps: AutosaveDeps,
+    options: AutosaveOptions = {},
+  ) {
     this.debounceMs = options.debounceMs ?? AUTOSAVE_DEBOUNCE_MS;
     this.maxWaitMs = options.maxWaitMs ?? AUTOSAVE_MAX_WAIT_MS;
     this.retryDelays = options.retryDelaysMs ?? AUTOSAVE_RETRY_DELAYS_MS;
@@ -226,7 +229,8 @@ export class Autosave {
       this._error.set(null);
       this.retries = 0;
       this.failedTransiently = false;
-      if (this.dirty()) this.deps.backup?.write(); // newer text still pending: keep it, on the new version
+      if (this.dirty())
+        this.deps.backup?.write(); // newer text still pending: keep it, on the new version
       else this.deps.backup?.clear();
       if (this.dirty()) {
         // Newer edits are waiting: send them right away if a timer already fired during the flight.

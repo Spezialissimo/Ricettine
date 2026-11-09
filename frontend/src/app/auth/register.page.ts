@@ -15,13 +15,21 @@ import { AccountFormComponent, AccountValues } from './account-form.component';
     <ng-container *transloco="let t">
       <h1>{{ t('invite.title') }}</h1>
       @switch (state()) {
-        @case ('checking') { <p class="intro">{{ t('invite.checking') }}</p> }
-        @case ('invalid') { <p class="card" role="alert">{{ t('errors.invite_invalid') }}</p> }
+        @case ('checking') {
+          <p class="intro">{{ t('invite.checking') }}</p>
+        }
+        @case ('invalid') {
+          <p class="card" role="alert">{{ t('errors.invite_invalid') }}</p>
+        }
         @default {
           <p class="intro">{{ t('invite.intro') }}</p>
           <div class="card">
-            <app-account-form submitLabelKey="auth.register" [busy]="busy()" [error]="error()"
-              (submitted)="submit($event)" />
+            <app-account-form
+              submitLabelKey="auth.register"
+              [busy]="busy()"
+              [error]="error()"
+              (submitted)="submit($event)"
+            />
           </div>
         }
       }

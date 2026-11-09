@@ -10,7 +10,12 @@ import { AuthStore, Me } from './auth.store';
 class Blank {}
 
 const me: Me = {
-  id: '1', email: 'a@b.c', username: 'abc', displayName: 'Abc', avatarUrl: null, admin: false,
+  id: '1',
+  email: 'a@b.c',
+  username: 'abc',
+  displayName: 'Abc',
+  avatarUrl: null,
+  admin: false,
 };
 
 describe('authInterceptor', () => {
@@ -46,7 +51,9 @@ describe('authInterceptor', () => {
     const result = new Promise((resolve) =>
       http.request(method, url).subscribe({ next: resolve, error: resolve }),
     );
-    ctl.expectOne((r) => r.url === url && r.method === method).flush(null, { status, statusText: 'x' });
+    ctl
+      .expectOne((r) => r.url === url && r.method === method)
+      .flush(null, { status, statusText: 'x' });
     return result;
   }
 
@@ -101,7 +108,11 @@ describe('authInterceptor', () => {
   });
 
   it('navigates only once for simultaneous 401s', async () => {
-    await Promise.all([fail('PATCH', '/api/me', 401), fail('POST', '/api/x', 401), fail('GET', '/api/y', 401)]);
+    await Promise.all([
+      fail('PATCH', '/api/me', 401),
+      fail('POST', '/api/x', 401),
+      fail('GET', '/api/y', 401),
+    ]);
     expect(navigate).toHaveBeenCalledTimes(1);
   });
   it('401 while never logged in does not navigate', async () => {

@@ -23,7 +23,8 @@ public class BeansConfig {
 
 	/**
 	 * Session cookie: HttpOnly, SameSite=Lax, 30 days. Secure is left unset so it follows request.isSecure()
-	 * (correct behind a TLS proxy thanks to server.forward-headers-strategy=framework).
+	 * (correct behind a TLS proxy thanks to server.forward-headers-strategy=native; only trusted proxies,
+	 * server.tomcat.remoteip.internal-proxies, have their X-Forwarded-Proto honoured).
 	 */
 	@Bean
 	CookieSerializer cookieSerializer() {

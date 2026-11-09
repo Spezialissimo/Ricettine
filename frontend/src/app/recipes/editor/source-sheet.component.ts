@@ -16,8 +16,14 @@ import { MAX_SOURCE } from '../recipe-limits';
       <h2>{{ t('editor.sourceSheet.title') }}</h2>
       <p class="hint" [id]="hintId">{{ t('editor.sourceSheet.hint') }}</p>
       <label [for]="inputId">{{ t('editor.sourceSheet.label') }}</label>
-      <input type="text" [id]="inputId" [attr.aria-describedby]="hintId" [maxLength]="max" [value]="source()"
-        (input)="set($any($event.target).value)" />
+      <input
+        type="text"
+        [id]="inputId"
+        [attr.aria-describedby]="hintId"
+        [maxLength]="max"
+        [value]="source()"
+        (input)="set($any($event.target).value)"
+      />
       <button type="button" class="done" (click)="ref.close()">{{ t('editor.sheetDone') }}</button>
     </ng-container>
   `,

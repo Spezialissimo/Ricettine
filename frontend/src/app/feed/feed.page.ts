@@ -28,7 +28,11 @@ import { FeedItem } from './feed.model';
               <li class="card">
                 <a class="recipe" [routerLink]="['/r', r.shareToken]">
                   @if (thumb(r); as src) {
-                    <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title })" />
+                    <img
+                      class="thumb"
+                      [src]="src"
+                      [alt]="t('recipes.coverAlt', { title: r.title })"
+                    />
                   } @else {
                     <span class="thumb none" aria-hidden="true"></span>
                   }
@@ -37,7 +41,9 @@ import { FeedItem } from './feed.model';
                     <span class="meta">{{ r.publishedAt | appDate }}</span>
                   </span>
                 </a>
-                <a class="author" [routerLink]="['/u', r.author.username]">{{ t('recipes.by', { name: r.author.displayName }) }}</a>
+                <a class="author" [routerLink]="['/u', r.author.username]">{{
+                  t('recipes.by', { name: r.author.displayName })
+                }}</a>
               </li>
             }
           </ul>

@@ -9,16 +9,24 @@ export async function settle(f: { whenStable(): Promise<unknown> }): Promise<voi
 
 /** The button (or, with `selector`, element) whose trimmed text or aria-label is `text`. */
 export const btn = (root: ParentNode, text: string, selector = 'button') =>
-  Array.from(root.querySelectorAll<HTMLElement>(selector)).find((b) => b.textContent?.trim() === text || b.getAttribute('aria-label') === text);
+  Array.from(root.querySelectorAll<HTMLElement>(selector)).find(
+    (b) => b.textContent?.trim() === text || b.getAttribute('aria-label') === text,
+  );
 
 /** The CDK overlay container, where dialogs and sheets render. */
 export const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
 
 /** For `afterEach`: dialogs outlive a TestBed, so empty the overlay container between specs. */
-export const clearOverlays = () => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = ''));
+export const clearOverlays = () =>
+  document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = ''));
 
 /** A cookbook member/author fixture. */
-export const person = (n: string, id?: string) => ({ ...(id ? { id } : {}), username: n, displayName: n.toUpperCase(), avatarUrl: null });
+export const person = (n: string, id?: string) => ({
+  ...(id ? { id } : {}),
+  username: n,
+  displayName: n.toUpperCase(),
+  avatarUrl: null,
+});
 
 /** Types `value` into the input matching `selector`, the way a user would (an `input` event). */
 export function typeInto(root: ParentNode, selector: string, value: string): void {
@@ -28,7 +36,8 @@ export function typeInto(root: ParentNode, selector: string, value: string): voi
 }
 
 /** Submits the form inside `root`. */
-export const submitForm = (root: ParentNode) => root.querySelector('form')!.dispatchEvent(new Event('submit'));
+export const submitForm = (root: ParentNode) =>
+  root.querySelector('form')!.dispatchEvent(new Event('submit'));
 
 /** Fills `input[name=key]` for each entry, then submits the form. */
 export function fillForm(root: ParentNode, values: Record<string, string>): void {
@@ -46,5 +55,13 @@ export function deferred<T>() {
 
 /** Presses Escape on `target` the way the CDK overlay keyboard dispatcher expects it (it reads `keyCode`). */
 export function pressEscape(target: Element): void {
-  target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+  target.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'Escape',
+      code: 'Escape',
+      keyCode: 27,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
 }

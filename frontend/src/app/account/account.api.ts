@@ -19,10 +19,17 @@ export class AccountApi {
   }
 
   register(token: string, v: AccountValues): Promise<Me> {
-    return firstValueFrom(this.http.post<Me>(`/api/invites/${encodeURIComponent(token)}/register`, { ...v, email: v.email.trim() }));
+    return firstValueFrom(
+      this.http.post<Me>(`/api/invites/${encodeURIComponent(token)}/register`, {
+        ...v,
+        email: v.email.trim(),
+      }),
+    );
   }
 
   resetPassword(token: string, newPassword: string): Promise<void> {
-    return firstValueFrom(this.http.post<void>(`/api/password-resets/${encodeURIComponent(token)}`, { newPassword }));
+    return firstValueFrom(
+      this.http.post<void>(`/api/password-resets/${encodeURIComponent(token)}`, { newPassword }),
+    );
   }
 }

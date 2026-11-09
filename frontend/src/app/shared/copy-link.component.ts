@@ -9,13 +9,42 @@ import { AppDatePipe } from './app-date.pipe';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
-    .box { background: t.$surface; border: 1px solid t.$border; border-radius: t.$radius; padding: t.$space-4; }
-    .url { display: block; word-break: break-all; font-family: monospace; margin: 0 0 t.$space-2; user-select: all; }
-    .expiry { margin: 0 0 t.$space-3; color: t.$muted; font-size: 0.85rem; }
-    .row { display: flex; gap: t.$space-2; align-items: center; flex-wrap: wrap; }
-    button { @include t.touch-target; padding: 0 t.$space-4; border: 0; border-radius: t.$radius;
-      background: t.$accent; color: #fff; font-weight: 600; }
-    .ok { color: t.$muted; }
+    .box {
+      background: t.$surface;
+      border: 1px solid t.$border;
+      border-radius: t.$radius;
+      padding: t.$space-4;
+    }
+    .url {
+      display: block;
+      word-break: break-all;
+      font-family: monospace;
+      margin: 0 0 t.$space-2;
+      user-select: all;
+    }
+    .expiry {
+      margin: 0 0 t.$space-3;
+      color: t.$muted;
+      font-size: 0.85rem;
+    }
+    .row {
+      display: flex;
+      gap: t.$space-2;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      @include t.touch-target;
+      padding: 0 t.$space-4;
+      border: 0;
+      border-radius: t.$radius;
+      background: t.$accent;
+      color: #fff;
+      font-weight: 600;
+    }
+    .ok {
+      color: t.$muted;
+    }
   `,
   template: `
     <div class="box" *transloco="let t">
@@ -28,7 +57,9 @@ import { AppDatePipe } from './app-date.pipe';
         @if (canShare) {
           <button type="button" (click)="share()">{{ t('common.share') }}</button>
         }
-        @if (copied()) { <span class="ok" role="status">{{ t('common.copied') }}</span> }
+        @if (copied()) {
+          <span class="ok" role="status">{{ t('common.copied') }}</span>
+        }
       </div>
     </div>
   `,
@@ -39,7 +70,8 @@ export class CopyLinkComponent {
   /** The url last copied: "Copied" shows only while that is still the url (a new link starts fresh). */
   private readonly copiedUrl = signal<string | null>(null);
   readonly copied = computed(() => this.copiedUrl() !== null && this.copiedUrl() === this.url());
-  protected readonly canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  protected readonly canShare =
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   async copy(): Promise<void> {
     try {

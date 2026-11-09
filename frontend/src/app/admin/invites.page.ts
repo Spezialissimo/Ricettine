@@ -14,10 +14,18 @@ import { AdminTabsComponent } from './admin-tabs.component';
   template: `
     <ng-container *transloco="let t">
       <app-admin-tabs />
-      <button type="button" class="primary" data-action="create" [disabled]="list.busy()" (click)="list.create()">
+      <button
+        type="button"
+        class="primary"
+        data-action="create"
+        [disabled]="list.busy()"
+        (click)="list.create()"
+      >
         {{ list.busy() ? t('admin.creating') : t('admin.createInvite') }}
       </button>
-      @if (list.error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+      @if (list.error(); as e) {
+        <p class="alert" role="alert">{{ t(e) }}</p>
+      }
       @if (list.created(); as c) {
         <h2>{{ t('admin.inviteReady') }}</h2>
         <app-copy-link [url]="c.url" [expiresAt]="c.expiresAt" />
@@ -29,8 +37,12 @@ import { AdminTabsComponent } from './admin-tabs.component';
         <ul class="list">
           @for (i of list.invites(); track i.id) {
             <li [attr.data-invite]="i.id">
-              <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') }) }}</span>
-              <button type="button" class="btn" (click)="list.revoke(i.id)">{{ t('admin.revoke') }}</button>
+              <span class="muted">{{
+                t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') })
+              }}</span>
+              <button type="button" class="btn" (click)="list.revoke(i.id)">
+                {{ t('admin.revoke') }}
+              </button>
             </li>
           }
         </ul>

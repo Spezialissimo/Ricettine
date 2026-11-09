@@ -7,7 +7,14 @@ import { fillForm, settle } from '../testing/spec-helpers';
 import { AuthStore } from '../core/auth.store';
 import { RegisterPage } from './register.page';
 
-const me = { id: '1', email: 'a@b.co', username: 'davide', displayName: 'D', avatarUrl: null, admin: false };
+const me = {
+  id: '1',
+  email: 'a@b.co',
+  username: 'davide',
+  displayName: 'D',
+  avatarUrl: null,
+  admin: false,
+};
 
 const ACCOUNT = { email: 'a@b.co', username: 'davide', displayName: 'D', password: 'longenough1' };
 
@@ -17,8 +24,14 @@ describe('RegisterPage', () => {
   function setup() {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideTestTransloco(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+        },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -29,7 +42,9 @@ describe('RegisterPage', () => {
   it('shows the invalid message and no form on 404', async () => {
     const f = setup();
     await settle(f);
-    http.expectOne('/api/invites/tok').flush({ code: 'invite_invalid' }, { status: 404, statusText: 'x' });
+    http
+      .expectOne('/api/invites/tok')
+      .flush({ code: 'invite_invalid' }, { status: 404, statusText: 'x' });
     await settle(f);
     const el = f.nativeElement as HTMLElement;
     expect(el.textContent).toContain(en.errors.invite_invalid);
@@ -48,14 +63,21 @@ describe('RegisterPage', () => {
       await settle(f);
     };
     await fill();
-    http.expectOne('/api/invites/tok/register').flush({ code: 'username_taken' }, { status: 409, statusText: 'x' });
+    http
+      .expectOne('/api/invites/tok/register')
+      .flush({ code: 'username_taken' }, { status: 409, statusText: 'x' });
     await settle(f);
-    expect(el.querySelector('[data-error=username]')?.textContent).toContain(en.errors.username_taken);
+    expect(el.querySelector('[data-error=username]')?.textContent).toContain(
+      en.errors.username_taken,
+    );
 
     await fill();
     const req = http.expectOne('/api/invites/tok/register');
     expect(req.request.body).toEqual({
-      email: 'a@b.co', username: 'davide', displayName: 'D', password: 'longenough1',
+      email: 'a@b.co',
+      username: 'davide',
+      displayName: 'D',
+      password: 'longenough1',
     });
     req.flush(me);
     await settle(f);
@@ -74,12 +96,17 @@ describe('RegisterPage', () => {
     await settle(f);
     http
       .expectOne('/api/invites/tok/register')
-      .flush({ code: 'validation_failed', fields: { displayName: 'validation_failed' } }, { status: 400, statusText: 'x' });
+      .flush(
+        { code: 'validation_failed', fields: { displayName: 'validation_failed' } },
+        { status: 400, statusText: 'x' },
+      );
     await settle(f);
     const err = el.querySelector('[data-error=displayName]')!;
     expect(err.textContent).toContain(en.errors.validation_failed);
     expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-invalid')).toBe('true');
-    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-describedby')).toBe(err.id);
+    expect(el.querySelector('input[name=displayName]')!.getAttribute('aria-describedby')).toBe(
+      err.id,
+    );
     expect(el.querySelector('[data-error=email]')).toBeNull();
     expect(el.querySelector('[data-error=username]')).toBeNull();
     expect(el.querySelector('[role=alert]')).toBeNull();

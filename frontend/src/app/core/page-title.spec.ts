@@ -61,7 +61,9 @@ describe('AppTitleStrategy', () => {
     const h = await setup();
     await h.navigateByUrl('/mine');
     TestBed.inject(PageTitle).set('Tiramisù');
-    TestBed.inject(TranslocoService).setTranslation({ common: { appName: 'Ricettine' } }, 'en', { merge: true });
+    TestBed.inject(TranslocoService).setTranslation({ common: { appName: 'Ricettine' } }, 'en', {
+      merge: true,
+    });
     await new Promise((r) => setTimeout(r));
     expect(title()).toBe('Tiramisù · Ricettine');
   });

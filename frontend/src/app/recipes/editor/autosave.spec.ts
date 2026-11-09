@@ -4,8 +4,18 @@ import { deferred } from '../../testing/spec-helpers';
 import { Autosave } from './autosave';
 
 const input = (over: Partial<RecipeInput> = {}): RecipeInput => ({
-  version: 1, title: '', portions: 1, prepMinutes: null, cookMinutes: null, source: null, notes: null,
-  visibility: 'PRIVATE', coverMediaId: null, groups: [], steps: [], ...over,
+  version: 1,
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  visibility: 'PRIVATE',
+  coverMediaId: null,
+  groups: [],
+  steps: [],
+  ...over,
 });
 
 const httpError = (status: number, body: unknown = null) =>
@@ -138,7 +148,11 @@ describe('Autosave', () => {
     h.edit({ title: '' });
     await vi.advanceTimersByTimeAsync(800);
     expect(h.autosave.status()).toBe('error');
-    expect(h.autosave.error()).toEqual({ status: 400, code: 'recipe_incomplete', fields: { title: 'required' } });
+    expect(h.autosave.error()).toEqual({
+      status: 400,
+      code: 'recipe_incomplete',
+      fields: { title: 'required' },
+    });
     expect(h.autosave.dirty()).toBe(true);
 
     h.saveFn.mockImplementation(okSave);

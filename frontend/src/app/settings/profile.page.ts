@@ -28,36 +28,76 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
           }
           <label class="btn">
             {{ uploading() ? t('settings.avatarUploading') : t('settings.avatarChoose') }}
-            <input type="file" accept="image/jpeg,image/png,image/webp" hidden [disabled]="uploading() || removing()"
-              (change)="onFile($event)" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              [disabled]="uploading() || removing()"
+              (change)="onFile($event)"
+            />
           </label>
           @if (avatar() && !uploading()) {
-            <button type="button" class="btn" data-action="remove-avatar" [disabled]="removing()"
-              (click)="removeAvatar()">{{ t('settings.avatarRemove') }}</button>
+            <button
+              type="button"
+              class="btn"
+              data-action="remove-avatar"
+              [disabled]="removing()"
+              (click)="removeAvatar()"
+            >
+              {{ t('settings.avatarRemove') }}
+            </button>
           }
-          @if (uploading()) { <span class="spinner" role="progressbar" aria-busy="true"></span> }
+          @if (uploading()) {
+            <span class="spinner" role="progressbar" aria-busy="true"></span>
+          }
         </div>
-        @if (avatarError(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+        @if (avatarError(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
       </section>
       <form class="card" (submit)="$event.preventDefault(); save()" novalidate>
         <label>
           {{ t('auth.displayName') }}
-          <input type="text" name="displayName" [formControl]="displayName" autocomplete="name"
-            [class.invalid]="displayName.invalid && attempted()" />
-          @if (displayName.invalid && attempted()) { <span class="error">{{ t('auth.required') }}</span> }
+          <input
+            type="text"
+            name="displayName"
+            [formControl]="displayName"
+            autocomplete="name"
+            [class.invalid]="displayName.invalid && attempted()"
+          />
+          @if (displayName.invalid && attempted()) {
+            <span class="error">{{ t('auth.required') }}</span>
+          }
         </label>
         <label>
           {{ t('auth.username') }}
-          <input type="text" name="username" [formControl]="username" autocomplete="off"
-            autocapitalize="none" autocorrect="off" spellcheck="false"
-            [class.invalid]="username.invalid && attempted()" />
+          <input
+            type="text"
+            name="username"
+            [formControl]="username"
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            [class.invalid]="username.invalid && attempted()"
+          />
           <span class="hint">{{ t('auth.usernameHint') }}</span>
           @if (username.invalid && attempted()) {
-            <span class="error">{{ t(username.errors?.['reserved'] ? 'errors.username_reserved' : 'errors.invalid_username') }}</span>
+            <span class="error">{{
+              t(
+                username.errors?.['reserved']
+                  ? 'errors.username_reserved'
+                  : 'errors.invalid_username'
+              )
+            }}</span>
           }
         </label>
-        @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
-        @if (saved()) { <p class="ok" role="status">{{ t('settings.saved') }}</p> }
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
+        @if (saved()) {
+          <p class="ok" role="status">{{ t('settings.saved') }}</p>
+        }
         <button type="submit" class="primary" [disabled]="busy()">{{ t('common.save') }}</button>
       </form>
       <nav class="links">

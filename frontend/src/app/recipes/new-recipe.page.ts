@@ -16,7 +16,9 @@ import { RecipeApi } from './recipe.api';
         <p class="alert" role="alert">{{ t(e) }}</p>
         <button type="button" class="retry" (click)="start()">{{ t('common.retry') }}</button>
       } @else {
-        <p class="loading" role="status"><span class="spinner" aria-hidden="true"></span> {{ t('recipes.creating') }}</p>
+        <p class="loading" role="status">
+          <span class="spinner" aria-hidden="true"></span> {{ t('recipes.creating') }}
+        </p>
       }
     </ng-container>
   `,

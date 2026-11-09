@@ -7,11 +7,11 @@ Self-hosted recipe app: Spring Boot 4 (Java 25) backend + Angular 22 frontend, s
 - `frontend/` — standalone Angular, vitest unit tests, Transloco i18n in `public/i18n` (all UI text goes through keys).
 - `e2e/` — Playwright, projects `mobile`, `desktop`, `restart`, run against the built image.
 - `scripts/` — `e2e.sh`, `smoke.sh`, `https-smoke.sh`, `multiarch-check.sh`, `backup-restore-check.sh` (each builds the image and tears its stack down with `-v`), `infra-check.sh` (lint, runs its tools in Docker), `aws-verify.sh` (read-only checks of a deployed AWS stack, needs AWS credentials).
-- `deploy/`, `infra/` — backup/restore scripts and Caddyfile; Terraform for AWS. `compose*.yaml` overlays at the root.
+- `deploy/`, `infra/` — backup/restore scripts and Caddyfile, plus `deploy/aws/` (start.sh, systemd units, mount scripts); Terraform for AWS. `compose*.yaml` overlays at the root.
 - `docs/superpowers/` — spec, plans and follow-ups. Read on demand, not every session.
 
 ## Commands
-- Backend/frontend tests, dev server and every check script with what it covers: README "Development and checks" (backend `./mvnw verify` needs Docker; frontend `npx ng test --watch=false` and `npx ng build`).
+- Backend/frontend tests, dev server and every check script with what it covers: README "Development and checks" (backend `./mvnw verify` needs Docker; frontend `npx ng test --watch=false` and `npx ng build`). Formatting: `cd frontend && npm run format:check`; fix with `npx prettier --write .`.
 - Scripts you will run most: `scripts/e2e.sh` (Playwright, needs the built image) · `scripts/smoke.sh` · `scripts/infra-check.sh` (workflows, shell, Caddyfiles, Terraform with mock providers) · `scripts/backup-restore-check.sh` (backup, wipe, restore drill).
 - `compose.yaml` is image-only (published image); scripts export `COMPOSE_FILE=compose.yaml:compose.build.yaml` to build locally
 - Locally Docker runs on Colima: `export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`

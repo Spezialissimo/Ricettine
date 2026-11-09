@@ -24,19 +24,38 @@ export type ConfirmData = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './sheet.scss',
   styles: `
-    .actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .actions button { padding: 0 16px; }
-    .danger { background: #b3261e; border-color: #b3261e; color: #fff; font-weight: 700; }
-    .primary { font-weight: 700; }
-    .hint { overflow-wrap: anywhere; }
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .actions button {
+      padding: 0 16px;
+    }
+    .danger {
+      background: #b3261e;
+      border-color: #b3261e;
+      color: #fff;
+      font-weight: 700;
+    }
+    .primary {
+      font-weight: 700;
+    }
+    .hint {
+      overflow-wrap: anywhere;
+    }
   `,
   template: `
     <ng-container *transloco="let t">
       <h2 [id]="titleId">{{ t(data.titleKey) }}</h2>
       <p class="hint">{{ t(data.bodyKey, data.params ?? {}) }}</p>
       <div class="actions">
-        <button type="button" [class.primary]="data.cancelPrimary" (click)="ref.close(false)">{{ t(data.cancelKey ?? 'common.cancel') }}</button>
-        <button type="button" [class.danger]="data.danger" (click)="ref.close(true)">{{ t(data.confirmKey) }}</button>
+        <button type="button" [class.primary]="data.cancelPrimary" (click)="ref.close(false)">
+          {{ t(data.cancelKey ?? 'common.cancel') }}
+        </button>
+        <button type="button" [class.danger]="data.danger" (click)="ref.close(true)">
+          {{ t(data.confirmKey) }}
+        </button>
       </div>
     </ng-container>
   `,
@@ -48,6 +67,16 @@ class ConfirmDialogComponent {
 }
 
 /** Asks for confirmation in a sheet; true only when the user confirmed (Esc and the backdrop say no). */
-export async function confirmSheet(dialog: Dialog, injector: Injector, i18n: TranslocoService, data: ConfirmData): Promise<boolean> {
-  return (await openSheet<boolean>(dialog, injector, ConfirmDialogComponent, { label: i18n.translate(data.titleKey), data })) === true;
+export async function confirmSheet(
+  dialog: Dialog,
+  injector: Injector,
+  i18n: TranslocoService,
+  data: ConfirmData,
+): Promise<boolean> {
+  return (
+    (await openSheet<boolean>(dialog, injector, ConfirmDialogComponent, {
+      label: i18n.translate(data.titleKey),
+      data,
+    })) === true
+  );
 }

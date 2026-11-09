@@ -1,5 +1,13 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, Injector, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Injector,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
 import { confirmSheet } from '../shared/confirm-dialog.component';
@@ -14,14 +22,44 @@ import { Cookbook } from './cookbook.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
-    :host { display: block; margin: 0 0 t.$space-4; }
-    h2 { margin: 0 0 t.$space-2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: t.$muted; font-weight: 600; }
-    .alert { color: #b3261e; }
-    .reset { @include t.touch-target; margin-top: t.$space-2; padding: 0 t.$space-4; border: 1px solid t.$border;
-      border-radius: 10px; background: t.$bg; color: t.$ink; font: inherit; font-weight: 600; cursor: pointer; }
-    .reset:disabled { opacity: 0.5; cursor: default; }
-    .reset-done { margin: t.$space-2 0 0; color: t.$muted; }
-    .reset-done:empty { margin: 0; }
+    :host {
+      display: block;
+      margin: 0 0 t.$space-4;
+    }
+    h2 {
+      margin: 0 0 t.$space-2;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: t.$muted;
+      font-weight: 600;
+    }
+    .alert {
+      color: #b3261e;
+    }
+    .reset {
+      @include t.touch-target;
+      margin-top: t.$space-2;
+      padding: 0 t.$space-4;
+      border: 1px solid t.$border;
+      border-radius: 10px;
+      background: t.$bg;
+      color: t.$ink;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .reset:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .reset-done {
+      margin: t.$space-2 0 0;
+      color: t.$muted;
+    }
+    .reset-done:empty {
+      margin: 0;
+    }
   `,
   template: `
     @if (book().shareUrl; as url) {
@@ -29,10 +67,18 @@ import { Cookbook } from './cookbook.model';
         <h2 id="cb-share-heading">{{ t('cookbooks.shareTitle') }}</h2>
         <app-copy-link [url]="url" />
         @if (book().role === 'OWNER') {
-          <button type="button" class="reset" [disabled]="busy()" (click)="reset()">{{ t('cookbooks.resetLink') }}</button>
+          <button type="button" class="reset" [disabled]="busy()" (click)="reset()">
+            {{ t('cookbooks.resetLink') }}
+          </button>
         }
-        <p class="reset-done" role="status">@if (done()) { {{ t('cookbooks.linkReset') }} }</p>
-        @if (error(); as e) { <p class="alert" role="alert">{{ t(e) }}</p> }
+        <p class="reset-done" role="status">
+          @if (done()) {
+            {{ t('cookbooks.linkReset') }}
+          }
+        </p>
+        @if (error(); as e) {
+          <p class="alert" role="alert">{{ t(e) }}</p>
+        }
       </section>
     }
   `,

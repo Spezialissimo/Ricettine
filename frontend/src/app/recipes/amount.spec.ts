@@ -22,7 +22,20 @@ describe('parseAmount', () => {
     expect(parseAmount(text)).toBe(expected);
   });
 
-  it.each(['abc', '0', '1/0', '-1', '1000001', '1/2/3', '1.', '0/5', '1,000', '12,345', '1,500.5', '1,000,000'])('rejects %j', (text) => {
+  it.each([
+    'abc',
+    '0',
+    '1/0',
+    '-1',
+    '1000001',
+    '1/2/3',
+    '1.',
+    '0/5',
+    '1,000',
+    '12,345',
+    '1,500.5',
+    '1,000,000',
+  ])('rejects %j', (text) => {
     expect(parseAmount(text)).toBe('invalid');
   });
 });

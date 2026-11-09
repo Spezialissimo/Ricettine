@@ -27,13 +27,21 @@ import { RecipeSummary } from './recipe.model';
               <li>
                 <a class="recipe" [routerLink]="['/recipes', r.id, 'edit']">
                   @if (thumb(r); as src) {
-                    <img class="thumb" [src]="src" [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })" />
+                    <img
+                      class="thumb"
+                      [src]="src"
+                      [alt]="t('recipes.coverAlt', { title: r.title || t('recipes.untitled') })"
+                    />
                   } @else {
                     <span class="thumb none" aria-hidden="true"></span>
                   }
                   <span class="body">
-                    <span class="name" [class.untitled]="!r.title">{{ r.title || t('recipes.untitled') }}</span>
-                    <span class="badge" [attr.data-badge]="badge(r)">{{ t('recipes.status.' + badge(r)) }}</span>
+                    <span class="name" [class.untitled]="!r.title">{{
+                      r.title || t('recipes.untitled')
+                    }}</span>
+                    <span class="badge" [attr.data-badge]="badge(r)">{{
+                      t('recipes.status.' + badge(r))
+                    }}</span>
                   </span>
                 </a>
               </li>

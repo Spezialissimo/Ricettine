@@ -8,7 +8,11 @@ import { firstValueFrom } from 'rxjs';
 const DESKTOP_QUERY = '(min-width: 768px)';
 
 function isDesktop(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_QUERY).matches;
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(DESKTOP_QUERY).matches
+  );
 }
 
 /**

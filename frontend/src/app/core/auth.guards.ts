@@ -13,7 +13,9 @@ export class SetupStatus {
   async required(): Promise<boolean> {
     if (this.done) return false;
     try {
-      const s = await firstValueFrom(this.http.get<{ setupRequired: boolean }>('/api/setup/status'));
+      const s = await firstValueFrom(
+        this.http.get<{ setupRequired: boolean }>('/api/setup/status'),
+      );
       if (!s.setupRequired) this.done = true;
       return s.setupRequired;
     } catch {
