@@ -2,10 +2,9 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
-import { ConfirmDeleteCookbookDialog } from './confirm-delete-cookbook.dialog';
+import { errorKeyOf } from '../core/api-error';
+import { confirmSheet } from '../shared/confirm-dialog.component';
+import { openSheet } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookInput, tokenFromShareUrl } from './cookbook.model';
 import { CookbookSharePanelComponent } from './cookbook-share-panel.component';
@@ -107,12 +106,12 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.get(this.id));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
   protected async edit(b: Cookbook): Promise<void> {
-    openEditorSheet(this.dialog, this.injector, CookbookFormDialog, {
+    void openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.editTitle'),
       data: {
         initial: { name: b.name, description: b.description, visibility: b.visibility },
@@ -123,16 +122,19 @@ export class CookbookPage {
 
   protected async confirmDelete(b: Cookbook): Promise<void> {
     this.actionError.set(null);
-    const ref = openEditorSheet(this.dialog, this.injector, ConfirmDeleteCookbookDialog, {
-      label: this.i18n.translate('cookbooks.deleteConfirm.title'),
-      data: { name: b.name },
+    const confirmed = await confirmSheet(this.dialog, this.injector, this.i18n, {
+      titleKey: 'cookbooks.deleteConfirm.title',
+      bodyKey: 'cookbooks.deleteConfirm.body',
+      params: { name: b.name },
+      confirmKey: 'cookbooks.deleteConfirm.confirm',
+      danger: true,
     });
-    if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) !== true) return;
+    if (!confirmed) return;
     try {
       await this.api.remove(b.id);
       await this.router.navigateByUrl('/cookbooks');
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -141,7 +143,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.setCover(b.id, file));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -150,7 +152,7 @@ export class CookbookPage {
     try {
       this.book.set(await this.api.removeCover(b.id));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 
@@ -160,7 +162,7 @@ export class CookbookPage {
       await this.api.removeRecipe(b.id, recipeId);
       this.book.update((cur) => (cur ? { ...cur, recipes: cur.recipes.filter((r) => r.recipeId !== recipeId) } : cur));
     } catch (e) {
-      this.actionError.set(errorKey(toApiError(e)));
+      this.actionError.set(errorKeyOf(e));
     }
   }
 }

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInvitePreview } from './cookbook.model';
 
@@ -45,7 +45,7 @@ export class AcceptInvitePage {
     try {
       this.preview.set(await this.api.previewInvite(this.token));
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
@@ -56,7 +56,7 @@ export class AcceptInvitePage {
       const book = await this.api.acceptInvite(this.token);
       await this.router.navigateByUrl(`/cookbooks/${book.id}`);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }

@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { person } from './helpers';
+import { expect } from '@playwright/test';
+import { person, test } from '../helpers';
 
 test('repeated wrong passwords for one account lock the login form with a clear message', async ({ page }, testInfo) => {
   const who = person(testInfo, 'ratelimit');

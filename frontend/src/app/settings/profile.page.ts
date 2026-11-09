@@ -1,13 +1,12 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { DISPLAY_NAME_VALIDATORS, USERNAME_VALIDATORS } from '../auth/account-form.component';
-import { ApiError, errorKey, toApiError } from '../core/api-error';
-import { AuthStore, Me } from '../core/auth.store';
+import { errorKeyOf } from '../core/api-error';
+import { AuthStore } from '../core/auth.store';
 import { mediaUrl } from '../core/media';
+import { SettingsApi } from './settings.api';
 
 const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
 
@@ -69,7 +68,7 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
   `,
 })
 export class ProfilePage {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(SettingsApi);
   private readonly auth = inject(AuthStore);
   readonly displayName = new FormControl(this.auth.me()?.displayName ?? '', {
     nonNullable: true,
@@ -107,13 +106,13 @@ export class ProfilePage {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const updated = await firstValueFrom(this.http.patch<Me>('/api/me', body));
+      const updated = await this.api.updateProfile(body);
       this.auth.setMe(updated);
       this.displayName.setValue(updated.displayName);
       this.username.setValue(updated.username);
       this.saved.set(true);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e) as ApiError));
+      this.error.set(errorKeyOf(e));
     } finally {
       this.busy.set(false);
     }
@@ -133,9 +132,9 @@ export class ProfilePage {
     try {
       const form = new FormData();
       form.append('file', file);
-      this.auth.setMe(await firstValueFrom(this.http.put<Me>('/api/me/avatar', form)));
+      this.auth.setMe(await this.api.uploadAvatar(form));
     } catch (e) {
-      this.avatarError.set(errorKey(toApiError(e)));
+      this.avatarError.set(errorKeyOf(e));
     } finally {
       this.uploading.set(false);
       input.value = ''; // allow re-selecting the same file
@@ -147,9 +146,9 @@ export class ProfilePage {
     this.removing.set(true);
     this.avatarError.set(null);
     try {
-      this.auth.setMe(await firstValueFrom(this.http.delete<Me>('/api/me/avatar')));
+      this.auth.setMe(await this.api.removeAvatar());
     } catch (e) {
-      this.avatarError.set(errorKey(toApiError(e)));
+      this.avatarError.set(errorKeyOf(e));
     } finally {
       this.removing.set(false);
     }

@@ -1,9 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { btn, settle } from '../testing/spec-helpers';
 import { AcceptInvitePage } from './accept-invite.page';
 import { CookbookApi } from './cookbook.api';
+
+const btnOrLink = (root: ParentNode, text: string) => btn(root, text, 'button, a');
 
 const problem = (status: number, code: string) =>
   new HttpErrorResponse({ status, error: { status, code, title: code } });
@@ -20,8 +23,6 @@ async function mount(api: Partial<CookbookApi>) {
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, nav };
 }
-const btn = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button, a')).find((b) => b.textContent?.trim() === text) as HTMLElement | undefined;
 const preview = { cookbookName: 'Weeknight', owner: { username: 'ann', displayName: 'ANN', avatarUrl: null }, expiresAt: '2026-11-11T10:00:00Z' };
 
 describe('AcceptInvitePage', () => {
@@ -39,7 +40,7 @@ describe('AcceptInvitePage', () => {
   it('Not now goes to the cookbooks list without accepting', async () => {
     const acceptInvite = vi.fn();
     const { el } = await mount({ previewInvite: vi.fn().mockResolvedValue(preview), acceptInvite });
-    expect(btn(el, en.cookbooks.notNow)!.getAttribute('href')).toBe('/cookbooks');
+    expect(btnOrLink(el, en.cookbooks.notNow)!.getAttribute('href')).toBe('/cookbooks');
     expect(acceptInvite).not.toHaveBeenCalled();
   });
 

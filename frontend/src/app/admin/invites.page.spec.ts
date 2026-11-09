@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { provideTestTransloco, settle } from '../testing/transloco';
+import { provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { InvitesPage } from './invites.page';
 
 describe('InvitesPage', () => {

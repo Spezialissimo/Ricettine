@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { btn, clearOverlays, overlay, pressEscape, settle } from '../../testing/spec-helpers';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { Recipe } from '../recipe.model';
 import { EditorStore } from './editor-store';
@@ -21,12 +22,9 @@ async function mount(initial: Recipe, resetLink = vi.fn(), status = signal<strin
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, resetLink };
 }
-const btn = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text) as HTMLElement | undefined;
-const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
 
 describe('SharePanelComponent', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('on a draft only says to publish to share', async () => {
     const { el } = await mount(serverRecipe());
@@ -54,6 +52,18 @@ describe('SharePanelComponent', () => {
     expect(resetLink).toHaveBeenCalledTimes(1);
     expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/NEW');
     expect(el.querySelector('.reset-done[role="status"]')?.textContent?.trim()).toBe(en.editor.linkReset);
+  });
+
+  it('Escape closes the reset confirmation without resetting', async () => {
+    const { f, el, resetLink } = await mount(serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }));
+    btn(el, en.editor.resetLink)!.click();
+    await settle(f);
+    expect(overlay().textContent).toContain(en.editor.resetLinkConfirm.title);
+    pressEscape(overlay().querySelector('app-confirm-dialog')!);
+    await settle(f);
+    expect(overlay().querySelector('app-confirm-dialog')).toBeNull();
+    expect(resetLink).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/OLD');
   });
 
   it('announces nothing before a reset, nor after a reset that ended in a conflict', async () => {

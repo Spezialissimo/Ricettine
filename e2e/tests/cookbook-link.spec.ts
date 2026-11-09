@@ -1,32 +1,12 @@
-import { join } from 'node:path';
-import { Page, expect, test } from '@playwright/test';
-import { createCookbook, createRecipe, newContext, newUserPage } from './helpers';
-
-const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'portrait-orientation6.jpg');
-
-async function addStepPhoto(page: Page, desktop: boolean) {
-  const chooser = page.waitForEvent('filechooser');
-  if (desktop) {
-    await page.getByRole('button', { name: 'Add photo to step 1' }).first().click();
-  } else {
-    await page.getByRole('textbox', { name: 'Step 1' }).click();
-    await page.locator('.bottom-bar').getByRole('button', { name: 'Add photo to step 1' }).click();
-  }
-  await (await chooser).setFiles(FIXTURE);
-  await expect(page.locator('img[src^="/media/"][alt="Photo of step 1"]')).toBeVisible();
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
-}
+import { Page, expect } from '@playwright/test';
+import { FIXTURE_PHOTO, addCoverPhoto, addStepPhoto, createCookbook, createRecipe, expectCardLayout, newContext, newUserPage, test } from '../helpers';
 
 const linkOf = async (page: Page) => (await page.locator('[data-url]').innerText()).trim();
 
 async function publishWithPhoto(page: Page, title: string, desktop: boolean, withPhoto: boolean) {
   await createRecipe(page, { title, ingredients: ['salt'], steps: [`Cook ${title}`] });
   if (withPhoto) {
-    const chooser = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Add cover photo' }).click();
-    await (await chooser).setFiles(FIXTURE);
-    await expect(page.locator('img[src^="/media/"][alt="Cover photo"]')).toBeVisible();
-    await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+    await addCoverPhoto(page);
     await addStepPhoto(page, desktop);
   }
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
@@ -74,10 +54,7 @@ test('cookbook link: anonymous reader, recipes through it, reset invalidates lin
   await expect(reader.getByRole('link', { name: 'Log in' })).toBeVisible();
   await expect(reader.getByRole('button', { name: 'Add to cookbook', exact: true })).toHaveCount(0);
   const cards = reader.locator('li.card');
-  const first = (await cards.nth(0).boundingBox())!;
-  const second = (await cards.nth(1).boundingBox())!;
-  if (desktop) expect(second.x).toBeGreaterThan(first.x);
-  else expect(second.x).toBe(first.x);
+  await expectCardLayout(cards, testInfo.project.name);
 
   // the cookbook name comes with the recipe: the recipe page never re-reads the cookbook
   const cookbookApiPath = `/api${oldPath}`;
@@ -126,7 +103,6 @@ test('cookbook link: anonymous reader, recipes through it, reset invalidates lin
   // the recipe's own link is unaffected
   await b.page.goto(bPath1);
   await expect(b.page.getByRole('heading', { name: 'Link soup', level: 1 })).toBeVisible();
-  await anon.close();
 });
 
 test('cover: the owner sets and removes a cover; members and link readers see it', async ({ browser }, testInfo) => {
@@ -137,7 +113,7 @@ test('cover: the owner sets and removes a cover; members and link readers see it
 
   const chooser = a.page.waitForEvent('filechooser');
   await a.page.getByRole('button', { name: 'Add cover photo' }).click();
-  await (await chooser).setFiles(FIXTURE);
+  await (await chooser).setFiles(FIXTURE_PHOTO);
   const cover = a.page.locator('img.cover');
   await expect(cover).toBeVisible();
   await expect.poll(() => cover.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);

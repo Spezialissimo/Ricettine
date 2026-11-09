@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
-import { openEditorSheet } from '../editor/editor-sheet';
+import { openSheet } from '../../shared/sheet';
 import { AuthStore } from '../../core/auth.store';
 import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
@@ -197,7 +197,7 @@ export class RecipeViewPage {
   }
 
   protected addToCookbook(): void {
-    openEditorSheet(this.dialog, this.injector, AddToCookbookDialog, {
+    void openSheet(this.dialog, this.injector, AddToCookbookDialog, {
       label: this.i18n.translate('cookbooks.addToCookbook'),
       data: { ref: { shareToken: this.token } },
     });

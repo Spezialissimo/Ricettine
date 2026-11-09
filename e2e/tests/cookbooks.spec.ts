@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { createCookbook, createRecipe, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { createCookbook, createRecipe, expectCardLayout, newUserPage, publishRecipe, test } from '../helpers';
 
 test('my cookbooks: items sit side by side on desktop and stack on the phone', async ({ browser }, testInfo) => {
   const { page } = await newUserPage(browser, testInfo, 'cblayout');
@@ -8,14 +8,7 @@ test('my cookbooks: items sit side by side on desktop and stack on the phone', a
   await page.goto('/cookbooks');
   const items = page.locator('a.cookbook');
   await expect(items).toHaveCount(2);
-  const a = (await items.nth(0).boundingBox())!;
-  const b = (await items.nth(1).boundingBox())!;
-  if (testInfo.project.name === 'desktop') {
-    expect(b.x).toBeGreaterThan(a.x);
-  } else {
-    expect(b.x).toBe(a.x);
-    expect(b.y).toBeGreaterThan(a.y);
-  }
+  await expectCardLayout(items, testInfo.project.name);
   await expect(items.first()).toContainText('Owner');
   await expect(items.first()).toContainText('Private');
 });

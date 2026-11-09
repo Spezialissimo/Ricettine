@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Recipe, RecipeInput } from '../recipe.model';
+import { deferred } from '../../testing/spec-helpers';
 import { Autosave } from './autosave';
 
 const input = (over: Partial<RecipeInput> = {}): RecipeInput => ({
@@ -9,13 +10,6 @@ const input = (over: Partial<RecipeInput> = {}): RecipeInput => ({
 
 const httpError = (status: number, body: unknown = null) =>
   new HttpErrorResponse({ status, error: body, url: '/api/recipes/x' });
-
-function deferred<T>() {
-  let resolve!: (v: T) => void;
-  let reject!: (e: unknown) => void;
-  const promise = new Promise<T>((res, rej) => ((resolve = res), (reject = rej)));
-  return { promise, resolve, reject };
-}
 
 /** A tiny fake "store": the working copy autosave reads from, and the version bump it applies. */
 function harness(save: (i: RecipeInput) => Promise<Recipe>) {

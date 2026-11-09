@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { clearOverlays, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { CookbookSummary } from './cookbook.model';
 import { MyCookbooksPage } from './my-cookbooks.page';
@@ -17,7 +18,7 @@ function setup(api: Partial<CookbookApi>) {
 }
 
 describe('MyCookbooksPage', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('renders names, counts, role and visibility badges and links to the cookbook', async () => {
     setup({

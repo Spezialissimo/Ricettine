@@ -1,12 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { btn, clearOverlays, overlay, person, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookEntry } from './cookbook.model';
 import { CookbookPage } from './cookbook.page';
 
-const person = (n: string) => ({ username: n, displayName: n.toUpperCase(), avatarUrl: null });
 const entry = (over: Partial<CookbookEntry>): CookbookEntry => ({
   recipeId: 'r1', title: 'Tiramisu', author: person('ann'), addedBy: person('ann'), addedAt: '2026-11-04T10:00:00Z',
   mine: true, coverThumbUrl: null, ...over,
@@ -20,7 +20,7 @@ const book = (over: Partial<Cookbook> = {}): Cookbook => ({
 async function mount(api: Partial<CookbookApi>) {
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]), provideTestTransloco(), { provide: CookbookApi, useValue: api },
+      provideRouter([]), provideTestTransloco(), { provide: CookbookApi, useValue: { invites: vi.fn().mockResolvedValue([]), ...api } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'c1' }) } } },
     ],
   });
@@ -29,12 +29,9 @@ async function mount(api: Partial<CookbookApi>) {
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, nav };
 }
-const btn = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text || b.getAttribute('aria-label') === text) as HTMLElement | undefined;
-const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
 
 describe('CookbookPage', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('renders name, description, badges and entries; every title opens the recipe through the cookbook link, own recipes also have Edit', async () => {
     const { el } = await mount({ get: vi.fn().mockResolvedValue(book()) });

@@ -2,9 +2,8 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { errorKeyOf } from '../core/api-error';
+import { openSheet } from '../shared/sheet';
 import { mediaUrl } from '../core/media';
 import { CookbookApi } from './cookbook.api';
 import { CookbookInput, CookbookSummary } from './cookbook.model';
@@ -70,17 +69,17 @@ export class MyCookbooksPage {
     try {
       this.books.set(await this.api.mine());
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
   protected async create(): Promise<void> {
     const created: { id: string | null } = { id: null };
-    const ref = openEditorSheet(this.dialog, this.injector, CookbookFormDialog, {
+    const result = await openSheet(this.dialog, this.injector, CookbookFormDialog, {
       label: this.i18n.translate('cookbooks.newTitle'),
       data: { submit: async (input: CookbookInput) => (created.id = (await this.api.create(input)).id) },
     });
-    if ((await firstValueFrom(ref.closed, { defaultValue: undefined })) === true && created.id) {
+    if (result === true && created.id) {
       await this.router.navigateByUrl(`/cookbooks/${created.id}`);
     }
   }

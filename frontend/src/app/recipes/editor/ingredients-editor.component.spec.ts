@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { Group } from '../recipe.model';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';

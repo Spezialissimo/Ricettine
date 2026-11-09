@@ -2,15 +2,15 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthStore } from '../core/auth.store';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { btn, clearOverlays, overlay, person, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { Cookbook } from './cookbook.model';
 import { MembersPanelComponent } from './members-panel.component';
 
-const person = (id: string, n: string) => ({ id, username: n, displayName: n.toUpperCase(), avatarUrl: null });
 const book = (over: Partial<Cookbook> = {}): Cookbook => ({
-  id: 'c1', name: 'Weeknight', description: null, visibility: 'PRIVATE', role: 'OWNER', owner: person('u1', 'ann'),
-  authors: [person('u2', 'bob')], shareUrl: 'https://x.test/c/T', cover: null, recipes: [], updatedAt: '', ...over,
+  id: 'c1', name: 'Weeknight', description: null, visibility: 'PRIVATE', role: 'OWNER', owner: person('ann', 'u1'),
+  authors: [person('bob', 'u2')], shareUrl: 'https://x.test/c/T', cover: null, recipes: [], updatedAt: '', ...over,
 });
 
 @Component({
@@ -28,12 +28,9 @@ async function mount(initial: Cookbook, meId: string, api: Partial<CookbookApi>)
   await settle(f);
   return { f, el: f.nativeElement as HTMLElement, nav };
 }
-const btn = (root: ParentNode, text: string) =>
-  Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text || b.getAttribute('aria-label') === text) as HTMLElement | undefined;
-const overlay = () => document.querySelector('.cdk-overlay-container') as HTMLElement;
 
 describe('MembersPanelComponent', () => {
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('owner sees members, Invite co-author, outstanding invites with Revoke and Remove per author, no Leave', async () => {
     const invites = vi.fn().mockResolvedValue([{ id: 'i1', createdAt: '2026-11-04T10:00:00Z', expiresAt: '2026-11-11T10:00:00Z' }]);

@@ -1,10 +1,9 @@
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
 import { ApiError, toApiError } from '../core/api-error';
-import { AuthStore, Me } from '../core/auth.store';
+import { AccountApi } from '../account/account.api';
+import { AuthStore } from '../core/auth.store';
 import { AccountFormComponent, AccountValues } from './account-form.component';
 
 @Component({
@@ -30,7 +29,7 @@ import { AccountFormComponent, AccountValues } from './account-form.component';
   `,
 })
 export class RegisterPage implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(AccountApi);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
@@ -40,7 +39,7 @@ export class RegisterPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      await firstValueFrom(this.http.get(`/api/invites/${encodeURIComponent(this.token)}`));
+      await this.api.checkInvite(this.token);
       this.state.set('valid');
     } catch (e) {
       // Only a definite 404 means the link is dead; other failures keep the form so the
@@ -54,13 +53,7 @@ export class RegisterPage implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const me = await firstValueFrom(
-        this.http.post<Me>(`/api/invites/${encodeURIComponent(this.token)}/register`, {
-          ...v,
-          email: v.email.trim(),
-        }),
-      );
-      this.auth.setMe(me);
+      this.auth.setMe(await this.api.register(this.token, v));
       await this.router.navigateByUrl('/');
     } catch (e) {
       const err = toApiError(e);

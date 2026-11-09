@@ -1,21 +1,5 @@
-import { join } from 'node:path';
-import { Page, expect, test } from '@playwright/test';
-import { createRecipe, newContext, newUserPage } from './helpers';
-
-const FIXTURE = join(import.meta.dirname, '..', 'fixtures', 'portrait-orientation6.jpg');
-
-async function addStepPhoto(page: Page, desktop: boolean) {
-  const chooser = page.waitForEvent('filechooser');
-  if (desktop) {
-    await page.getByRole('button', { name: 'Add photo to step 1' }).first().click();
-  } else {
-    await page.getByRole('textbox', { name: 'Step 1' }).click();
-    await page.locator('.bottom-bar').getByRole('button', { name: 'Add photo to step 1' }).click();
-  }
-  await (await chooser).setFiles(FIXTURE);
-  await expect(page.locator('img[src^="/media/"][alt="Photo of step 1"]')).toBeVisible();
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
-}
+import { Page, expect } from '@playwright/test';
+import { addStepPhoto, createRecipe, expectSaved, newContext, newUserPage, test } from '../helpers';
 
 const shareUrl = async (page: Page) => (await page.locator('[data-url]').innerText()).trim();
 
@@ -71,7 +55,7 @@ test('share link: anonymous reader, author edit link, reset invalidates old link
 
   // next autosave succeeds with the new version
   await page.getByLabel('Title').fill('Shared soup 2');
-  await expect(page.getByRole('status').getByText('Saved ✓')).toBeVisible();
+  await expectSaved(page);
 
   await reader.reload();
   await expect(reader.getByText('This recipe is not available')).toBeVisible();
@@ -79,5 +63,4 @@ test('share link: anonymous reader, author edit link, reset invalidates old link
 
   await reader.goto(new URL(newUrl).pathname);
   await expect(reader.getByRole('heading', { name: 'Shared soup 2' })).toBeVisible();
-  await anon.close();
 });

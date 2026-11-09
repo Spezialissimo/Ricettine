@@ -1,6 +1,7 @@
 import { DialogRef } from '@angular/cdk/dialog';
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { settle } from '../../testing/spec-helpers';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { PortionsSheetComponent } from './portions-sheet.component';

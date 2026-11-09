@@ -2,15 +2,15 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { firstValueFrom } from 'rxjs';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { mediaUrl } from '../core/media';
-import { openEditorSheet } from '../recipes/editor/editor-sheet';
+import { openSheet } from '../shared/sheet';
 import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
+import { InviteList } from '../shared/invite-list';
 import { CookbookApi } from './cookbook.api';
-import { Cookbook, CookbookInvite, CookbookInviteCreated, Person } from './cookbook.model';
+import { Cookbook, Person } from './cookbook.model';
 import { RemoveMemberDialog } from './remove-member.dialog';
 
 /** Owner and co-authors. Owner: invite, revoke, remove. Author: leave. */
@@ -65,17 +65,17 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         }
       </ul>
       @if (book().role === 'OWNER') {
-        <button type="button" [disabled]="busy()" (click)="invite()">{{ t('cookbooks.invite') }}</button>
-        @if (created(); as c) {
+        <button type="button" [disabled]="list.busy()" (click)="list.create()">{{ t('cookbooks.invite') }}</button>
+        @if (list.created(); as c) {
           <app-copy-link [url]="c.url" [expiresAt]="c.expiresAt" />
         }
-        @if (invites().length > 0) {
+        @if (list.invites().length > 0) {
           <h2>{{ t('cookbooks.outstandingInvites') }}</h2>
           <ul class="invites">
-            @for (i of invites(); track i.id) {
+            @for (i of list.invites(); track i.id) {
               <li class="invite" [attr.data-invite]="i.id">
                 <span class="muted">{{ t('common.expiresOn', { date: (i.expiresAt | appDate: 'dateTime') }) }}</span>
-                <button type="button" (click)="revoke(i.id)">{{ t('cookbooks.revokeInvite') }}</button>
+                <button type="button" (click)="list.revoke(i.id)">{{ t('cookbooks.revokeInvite') }}</button>
               </li>
             }
           </ul>
@@ -97,10 +97,15 @@ export class MembersPanelComponent {
   private readonly router = inject(Router);
   private readonly i18n = inject(TranslocoService);
   private readonly me = inject(AuthStore).me;
-  protected readonly invites = signal<CookbookInvite[]>([]);
-  protected readonly created = signal<CookbookInviteCreated | null>(null);
-  protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly list = new InviteList(
+    {
+      list: () => this.api.invites(this.book().id),
+      create: () => this.api.createInvite(this.book().id),
+      revoke: (id) => this.api.revokeInvite(this.book().id, id),
+    },
+    this.error,
+  );
   private loadedFor: string | null = null;
 
   constructor() {
@@ -108,46 +113,12 @@ export class MembersPanelComponent {
       const b = this.book();
       if (b.role !== 'OWNER' || this.loadedFor === b.id) return;
       this.loadedFor = b.id;
-      untracked(() => void this.loadInvites(b.id));
+      untracked(() => void this.list.load());
     });
   }
 
   protected src = (p: Person): string | null => mediaUrl(p.avatarUrl);
   protected initial = (p: Person): string => [...(p.displayName || p.username)][0]?.toUpperCase() ?? '?';
-
-  private async loadInvites(id: string): Promise<void> {
-    try {
-      this.invites.set(await this.api.invites(id));
-    } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
-    }
-  }
-
-  protected async invite(): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    this.error.set(null);
-    try {
-      const c = await this.api.createInvite(this.book().id);
-      this.created.set(c);
-      this.invites.update((l) => [...l, { id: c.id, createdAt: new Date().toISOString(), expiresAt: c.expiresAt }]);
-    } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  protected async revoke(inviteId: string): Promise<void> {
-    this.error.set(null);
-    try {
-      await this.api.revokeInvite(this.book().id, inviteId);
-      this.invites.update((l) => l.filter((i) => i.id !== inviteId));
-      if (this.created()?.id === inviteId) this.created.set(null);
-    } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
-    }
-  }
 
   protected async remove(a: Person): Promise<void> {
     await this.removeAuthor(a.id as string, { name: a.displayName, self: false }, false);
@@ -160,18 +131,17 @@ export class MembersPanelComponent {
 
   private async removeAuthor(userId: string, data: { name: string; self: boolean }, leaving: boolean): Promise<void> {
     this.error.set(null);
-    const ref = openEditorSheet(this.dialog, this.injector, RemoveMemberDialog, {
+    const res = await openSheet<{ removeRecipes: boolean } | false>(this.dialog, this.injector, RemoveMemberDialog, {
       label: this.i18n.translate(data.self ? 'cookbooks.leave' : 'cookbooks.removeMember'),
       data,
     });
-    const res = (await firstValueFrom(ref.closed, { defaultValue: undefined })) as { removeRecipes: boolean } | false | undefined;
     if (!res) return;
     try {
       await this.api.removeAuthor(this.book().id, userId, res.removeRecipes);
       if (leaving) await this.router.navigateByUrl('/cookbooks');
       else this.changed.emit();
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 }

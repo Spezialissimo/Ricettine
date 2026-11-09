@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { newContext, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { newContext, newUserPage, publishRecipe, test } from '../helpers';
 
 test('scales ingredient amounts with kitchen fractions and resets', async ({ browser }, testInfo) => {
   const { page, context } = await newUserPage(browser, testInfo, 'scale');
@@ -51,5 +51,4 @@ test('scales ingredient amounts with kitchen fractions and resets', async ({ bro
   await expect(status).toHaveText('Serves 3');
   await expect(row('milk')).toContainText(/1\s*cup/);
   await expect(row('sugar')).toContainText(/1,000\s*g/);
-  await reader.close();
 });

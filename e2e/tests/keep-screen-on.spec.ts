@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { newContext, newUserPage, publishRecipe } from './helpers';
+import { expect } from '@playwright/test';
+import { newContext, newUserPage, publishRecipe, test } from '../helpers';
 
 type Counters = { requests: number; releases: number };
 declare global {
@@ -46,5 +46,4 @@ test('keep screen on requests and releases a wake lock; absent API hides it', as
   await w.goto(path);
   await expect(w.getByRole('heading', { name: 'Late night soup', level: 1 })).toBeVisible();
   await expect(w.getByRole('checkbox', { name: 'Keep screen on' })).toHaveCount(0);
-  await without.close();
 });

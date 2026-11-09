@@ -199,7 +199,7 @@
 - **Problem:** EditorStore.stepInserted/stepRemoved/stepMoved re-index in-flight and failed photo uploads so a photo lands on the step it was chosen for. remapIndex is also used for the active step. No spec calls any of them: steps-editor.component.spec uses fakeEditorStore, whose stepInserted/stepRemoved/stepMoved are empty stubs, and remapIndex has no spec at all. A sign error would attach an upload (or its Retry) to the wrong step, which the e2e reorder specs do not exercise because they never reorder with an upload pending.
 - **Fix:** Add a remapIndex table test (move down, move up, i == from, outside range) and EditorStore specs that start an upload on step 1, then call stepInserted(0), stepRemoved, stepMoved and assert uploadFor(slot) follows; for a removed step assert the upload is dropped.
 - **Evidence:** grep for stepMoved|stepInserted|stepRemoved|remapIndex across *.spec.ts finds nothing; the only hits are the empty stubs in editor-store.testing.ts.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-6: Frontend gaps from earlier follow-ups still untested: interceptor logout 401, ParamReuseStrategy config change, cookbook empty/error states, reset-link dialog Escape, feed re-entrancy
 
@@ -209,7 +209,7 @@
 - **Fix:** Add one test per item (about 6 short tests). For (f), call more.click() twice synchronously and expect page toHaveBeenCalledTimes(2) including the initial load.
 - **Evidence:** grep for 'invites', 'Escape' in the cookbook specs finds nothing; feed.page.spec.ts:51 is the only loading test.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-3-followups.md: Tests to add / Frontend
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-7: Infra lint, Terraform tests, mount-data tests, the backup/restore drill and the HTTPS overlays never run in CI
 
@@ -237,7 +237,7 @@
 - **Problem:** Nine components/stores build URLs and declare their DTO types (`Invite`, `Created`, `User`, `Reset`) inline, with unit tests that must mock HttpClient, while four other features go through typed *Api services. Two conventions for the same job makes the codebase look unfinished and makes endpoint changes a hunt.
 - **Fix:** Add AuthApi/AccountApi (register, setup, reset, password, profile, avatar, delete) and AdminApi (invites, users) in the same shape as CookbookApi; move the DTO types into *.model.ts; keep the pages thin.
 - **Evidence:** grep inject(HttpClient) outside *.api.ts and core: 9 files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DATA-3: Conflict 'copy your text' block omits most of the user's edits, and Load latest discards them (plus the edits typed during its fetch)
 
@@ -274,7 +274,7 @@
 - **Problem:** Five dialogs are the same 30-line component (title, body, Cancel, a confirm button, a copied `.danger` style block and `uid()` title id) differing only in i18n keys; remove-member is the same plus a checkbox. Each caller repeats `openEditorSheet(...)` + `(await firstValueFrom(ref.closed, { defaultValue: undefined })) === true` (8 sites). Any change to dialog behaviour (focus, a11y, danger colour) needs six edits.
 - **Fix:** One ConfirmDialog component taking {titleKey, bodyKey, params, confirmKey, danger} through DIALOG_DATA, plus a helper `confirmSheet(dialog, injector, i18n, data): Promise<boolean>` next to openEditorSheet. Keep remove-member as the only specialised one (or give ConfirmDialog an optional checkbox).
 - **Evidence:** Diffed the five files: only i18n keys and uid prefix differ. grep: 12 openEditorSheet call sites, 8 `closed, { defaultValue` awaits.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-5: Duplicated e2e setup: step-photo/publish helpers, layout checks, login-as-admin-and-invite, FIXTURE path
 
@@ -283,7 +283,7 @@
 - **Problem:** (1) addStepPhoto and the cover/step photo block are copied between share-link and cookbook-link specs (17-line jscpd clone). (2) newRecipeLink is defined identically in editor.spec and recipe-editor.spec, with the same Done-on-untouched-draft block (9-line clone). (3) The 'cards sit side by side on desktop, stack on mobile' bounding-box check is written four times (feed, profile, cookbooks, cookbook-link). (4) auth-a11y.spec repeats the admin login + createInvitePath prelude that newUserPage already holds. (5) FIXTURE is rebuilt in six files, one with a different mechanism (fileURLToPath vs import.meta.dirname); `saved` locator is redefined in two specs next to the literal 'Saved ✓' repeated about 20 times. Any change to the editor's status text or the photo buttons needs edits in many places.
 - **Fix:** Move addStepPhoto, addCoverPhoto, newRecipeLink, expectSideBySide(cards)/expectStacked, expectSaved(page), FIXTURE_PHOTO and an inviteAsAdmin(browser, testInfo) helper into helpers.ts and import them. Keep behaviour identical.
 - **Evidence:** jscpd pack: feed/profile 11 lines, editor/recipe-editor 9, cookbook-link/share-link 17 and 5; grep -n 'FIXTURE =' finds 6 definitions.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### OPS-2: Backup alerting only covers a run that fails: no alert when backups stop, and lifecycle then deletes the last good dump
 
@@ -331,7 +331,7 @@
 - **Problem:** playwright.config sets trace: 'retain-on-failure' and screenshot: 'only-on-failure', but those options apply only to the built-in context/page fixtures. Almost every spec drives pages from newUserPage/newContext, which call browser.newContext() directly. When such a test fails in CI, the uploaded e2e-results artifact has no trace and no screenshot for the page that actually failed, so the config gives false assurance. The same specs mostly close the context only on the happy path (no try/finally), so a failing test leaks contexts and the single shared worker/browser keeps them.
 - **Fix:** Build contexts through the test fixtures instead of browser.newContext: add a fixture in helpers (test.extend) that creates contexts, starts tracing (context.tracing.start) and, on testInfo.status !== expected, saves trace and screenshots to testInfo.outputPath, and always closes the contexts in teardown. Specs then drop their manual context.close() calls.
 - **Evidence:** helpers.ts newContext() calls browser.newContext({baseURL, viewport,...}) and never starts tracing; 14 spec files use newUserPage; only session-expiry.spec.ts wraps the body in try/finally.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-10: Unsaved-text safety e2e gaps: session expiry to login to restore, logout failure, restored notice, conflict server check, step-photo retry
 
@@ -341,7 +341,7 @@
 - **Fix:** Add a session-expiry spec on the editor (clear SESSION cookie, type, log in via next, expect text restored and saved), assert the server text in the conflict test with an expect.poll on GET /api/recipes/{id}, and parametrise the retry spec over cover and step slot.
 - **Evidence:** unsaved-safety.spec.ts has 4 tests (offline, close tab, retry cover, conflict); no test touches the logout failure path or /login?next with an open editor.
 - **Follow-up:** docs/superpowers/plans/2026-11-04-plan-2-followups.md: Small cleanups / Unsaved-text backup Missing e2e; Unsaved-safety e2e
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ## Low (72)
 
@@ -422,7 +422,7 @@
 - **Problem:** core/api-error.ts maps field codes to errors.field.*; recipe-editor.page.ts defines another exported fieldErrorKey with its own code list mapping to editor.field.*. Two lookups, two key trees with overlapping meaning, and the editor one is exported but used only in that file.
 - **Fix:** Extend errors.field.* with out_of_range/too_many/invalid_unit, use the single function, delete editor.field.* keys and the local copy.
 - **Evidence:** Both functions read; the editor copy has no other importer.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### CONS-7: Inconsistent fake-timer cleanup and heavy 'as unknown as' casts in specs
 
@@ -675,7 +675,7 @@
 - **Fix:** A tiny AdminTabsComponent (or an AdminLayout route with child routes) for the nav; an InviteList helper (or reuse one component with an input for the endpoint) for the invite handling.
 - **Evidence:** jscpd clones listed in the input pack, confirmed by reading.
 - **Follow-up:** docs/superpowers/plans/2026-11-03-plan-1-followups.md: Small cleanups / Frontend (duplicated admin tab nav)
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-13: Frontend spec boilerplate repeated across specs (btn, overlay, person, mount providers, overlay cleanup)
 
@@ -684,7 +684,7 @@
 - **Problem:** Five specs each define the same btn(root, text) query and overlay() lookup and the same afterEach that empties .cdk-overlay-container; person() is defined three times; register/setup/delete-account page specs repeat the same form-fill blocks (12-line clone); autosave.spec duplicates a block already in editor-store.testing.ts. A change in how buttons or overlays render touches each copy, and the copies already differ slightly (btn matches aria-label in some, not in others).
 - **Fix:** Add src/app/testing/dom.ts with btn, overlay, clearOverlays and a fillForm helper, export person() fixtures from one place, and import them. Move settle() out of testing/transloco.ts into the same dom helper file.
 - **Evidence:** jscpd: members-panel/cookbook.page 8 lines, cookbook-share-panel/share-panel 8, register/setup 12; grep '^const btn' hits 5 spec files.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### DUP-14: AWS restore is a hand-copied version of restore.sh in the docs
 
@@ -913,7 +913,7 @@
 - **Problem:** 'the project viewport applies' tests Playwright's own device config, not the app. The logout-then-login navigation check uses every() over a list that may be empty, so it is true even if the listener never fires. step-reorder's 'Step 3 moved to position 2' uses toBeAttached on a live region that is always attached. Several shell/profile specs assert only toBeTruthy() on a selector match (existence of a link), which survives broken hrefs/labels beyond the selector itself.
 - **Fix:** Drop the viewport test or move it to a config sanity check; assert navigations.length >= 0 intent explicitly (e.g. expect no 'navigate' events beyond '/'); assert live-region text with toHaveText; assert hrefs/labels instead of truthiness.
 - **Evidence:** walkthrough.spec.ts:12 asserts viewportSize against the project's own settings; toBeTruthy count in frontend specs is about 25.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### TEST-19: cloud-init round-trip tftest compares three files to themselves; count assertion is stale
 
@@ -972,7 +972,7 @@
 - **Problem:** 35 catch blocks do the same two-call conversion from an unknown error to an i18n key.
 - **Fix:** Add `errorKeyOf(e: unknown): string` to api-error.ts and use it; keep toApiError for callers that need status/fields.
 - **Evidence:** grep count 35 in non-spec code.
-- **Decision:** [x] fix · [ ] skip · [ ] later
+- **Decision:** [x] fix (PR G) · [ ] skip · [ ] later
 
 ### CONC-5: Editor backup/upload edge cases still open: false conflicts, silent quota loss, late upload lands on the wrong step
 

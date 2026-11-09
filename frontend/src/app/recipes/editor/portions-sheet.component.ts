@@ -2,7 +2,7 @@ import { DialogRef } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
-import { uid } from './editor-sheet';
+import { uid } from '../../shared/sheet';
 
 export const MIN_PORTIONS = 1;
 export const MAX_PORTIONS = 100;
@@ -12,7 +12,7 @@ export const MAX_PORTIONS = 100;
   selector: 'app-portions-sheet',
   imports: [TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './sheet.scss',
+  styleUrl: '../../shared/sheet.scss',
   styles: `
     .stepper { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 10px 0 18px; }
     .stepper button { width: 54px; height: 54px; border-radius: 50%; font-size: 1.6rem; font-weight: 700; }

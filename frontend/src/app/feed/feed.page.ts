@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { errorKey, toApiError } from '../core/api-error';
+import { errorKeyOf } from '../core/api-error';
 import { mediaUrl } from '../core/media';
 import { AppDatePipe } from '../shared/app-date.pipe';
 import { FeedApi } from './feed.api';
@@ -75,7 +75,7 @@ export class FeedPage {
       this.items.set(page.items);
       this.nextCursor.set(page.nextCursor);
     } catch (e) {
-      this.error.set(errorKey(toApiError(e)));
+      this.error.set(errorKeyOf(e));
     }
   }
 
@@ -89,7 +89,7 @@ export class FeedPage {
       this.items.update((list) => [...(list ?? []), ...page.items]);
       this.nextCursor.set(page.nextCursor);
     } catch (e) {
-      this.moreError.set(errorKey(toApiError(e)));
+      this.moreError.set(errorKeyOf(e));
     } finally {
       this.loadingMore.set(false);
     }

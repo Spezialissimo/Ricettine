@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { settle } from '../testing/spec-helpers';
 import { AccountFormComponent } from './account-form.component';
 
 describe('AccountFormComponent', () => {

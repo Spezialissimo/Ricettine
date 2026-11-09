@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../../testing/transloco';
+import { en, provideTestTransloco } from '../../testing/transloco';
+import { clearOverlays, settle } from '../../testing/spec-helpers';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
 import { serverRecipe } from './editor-store.testing';
@@ -75,7 +76,7 @@ describe('RecipeEditorPage', () => {
     expect(priv.el.querySelector('.visibility-hint')?.textContent).toContain(en.editor.publicHint);
   });
 
-  afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((c) => (c.innerHTML = '')));
+  afterEach(clearOverlays);
 
   it('loads the recipe into labelled fields laid out per the mockups', async () => {
     const { el } = await mount({
@@ -182,7 +183,7 @@ describe('RecipeEditorPage', () => {
     await settle(f);
     await f.componentInstance.confirmDelete(); // ignored while Done is running
     await settle(f);
-    expect(document.querySelector('app-confirm-delete-dialog')).toBeNull();
+    expect(document.querySelector('app-confirm-dialog')).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
 
@@ -192,7 +193,7 @@ describe('RecipeEditorPage', () => {
     const { f, el, nav } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save, remove });
     void f.componentInstance.confirmDelete();
     await settle(f);
-    expect(document.querySelector('app-confirm-delete-dialog')).toBeTruthy();
+    expect(document.querySelector('app-confirm-dialog')).toBeTruthy();
     expect((byText(el, 'button', en.editor.done) as HTMLButtonElement).disabled).toBe(true);
     await f.componentInstance.done();
     expect(remove).not.toHaveBeenCalled();
@@ -216,7 +217,7 @@ describe('RecipeEditorPage', () => {
     expect(title.getAttribute('aria-invalid')).toBe('true');
     const errorId = title.getAttribute('aria-describedby')!;
     const error = el.querySelector(`#${errorId}`)!;
-    expect(error.textContent).toContain(en.editor.field.required);
+    expect(error.textContent).toContain(en.errors.field.required);
     expect(error.closest('label')).toBeNull();
     expect(el.querySelector('[role="alert"]')?.textContent).toContain(en.errors.recipe_incomplete);
     expect(title.value).toBe('');
@@ -254,7 +255,7 @@ describe('RecipeEditorPage', () => {
     await settle(f);
     byText(document, '[role="menuitem"]', en.editor.delete)!.click();
     await settle(f);
-    const dialog = document.querySelector('app-confirm-delete-dialog')!;
+    const dialog = document.querySelector('app-confirm-dialog')!;
     expect(dialog.textContent).toContain(en.editor.deleteConfirm.title);
     expect(remove).not.toHaveBeenCalled();
     byText(dialog, 'button', en.editor.deleteConfirm.confirm)!.click();
@@ -517,14 +518,14 @@ describe('RecipeEditorPage', () => {
       const { f } = await failUpload();
       const first = f.componentInstance.canLeave();
       await settle(f);
-      let dialog = document.querySelector('app-confirm-leave-dialog')!;
+      let dialog = document.querySelector('app-confirm-dialog')!;
       expect(dialog.textContent).toContain(en.editor.leaveConfirm.body);
       byText(dialog, 'button', en.editor.leaveConfirm.stay)!.click();
       expect(await first).toBe(false);
 
       const second = f.componentInstance.canLeave();
       await settle(f);
-      dialog = document.querySelector('app-confirm-leave-dialog')!;
+      dialog = document.querySelector('app-confirm-dialog')!;
       byText(dialog, 'button', en.editor.leaveConfirm.leave)!.click();
       expect(await second).toBe(true);
     });

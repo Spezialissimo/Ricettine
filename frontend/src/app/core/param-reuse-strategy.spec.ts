@@ -34,6 +34,15 @@ describe('ParamReuseStrategy', () => {
     expect(created).toBe(2);
   });
 
+  it('creates a fresh component when the navigation changes to a different route config', async () => {
+    const h = await RouterTestingHarness.create();
+    await h.navigateByUrl('/r/a');
+    await h.navigateByUrl('/recipes');
+    expect(created).toBe(2);
+    await h.navigateByUrl('/r/a');
+    expect(created).toBe(3);
+  });
+
   it('reuses the component when nothing changes', async () => {
     const h = await RouterTestingHarness.create();
     await h.navigateByUrl('/recipes');

@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { en, provideTestTransloco, settle } from '../testing/transloco';
+import { en, provideTestTransloco } from '../testing/transloco';
+import { fillForm, settle } from '../testing/spec-helpers';
 import { PasswordPage } from './password.page';
 
 describe('PasswordPage', () => {
@@ -14,14 +15,7 @@ describe('PasswordPage', () => {
     const f = TestBed.createComponent(PasswordPage);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    const set = (name: string, v: string) => {
-      const i = el.querySelector(`input[name=${name}]`) as HTMLInputElement;
-      i.value = v;
-      i.dispatchEvent(new Event('input'));
-    };
-    set('currentPassword', 'oldpassword1');
-    set('newPassword', 'newpassword1');
-    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    fillForm(el, { currentPassword: 'oldpassword1', newPassword: 'newpassword1' });
     await settle(f);
     const req = http.expectOne('/api/me/password');
     expect(req.request.method).toBe('PUT');
