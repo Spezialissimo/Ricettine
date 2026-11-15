@@ -6,7 +6,7 @@ domain_name = "recipes.example.com"
 alert_email = "you@example.com"
 
 # Optional, with their defaults:
-# region             = "eu-west-1"
+# region             = "eu-west-1" # a new-experience account must use its assigned region, e.g. "eu-north-1"
 # instance_type      = "t4g.small"
 # data_volume_gb     = 20
 # monthly_budget_usd = 25

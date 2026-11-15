@@ -7,7 +7,7 @@ Terraform state is local (`infra/terraform/terraform.tfstate`). It is gitignored
 
 ## What it costs
 
-Region eu-west-1, on-demand, approximate. Confirm with the [AWS Pricing Calculator](https://calculator.aws/) before you commit.
+Region eu-west-1, on-demand, approximate (eu-north-1 is about the same). Confirm with the [AWS Pricing Calculator](https://calculator.aws/) before you commit.
 
 | Item | $/month |
 |---|---|
@@ -49,7 +49,7 @@ A budget alarm (`budget.tf`) emails `alert_email`. See "Cost and budget" below f
 Open a shell (the exact command is the `ssm_session_command` output):
 
 ```
-aws ssm start-session --target <instance_id> --region eu-west-1
+aws ssm start-session --target <instance_id> --region <region>
 ```
 
 Useful commands there:
@@ -60,14 +60,27 @@ Useful commands there:
 
 ## Account setup
 
-Once, by the owner:
+AWS has two kinds of new account. Check which one you have before you start: a console whose account menu shows **Projects** and **Team**, and an IAM page that says "Feature unavailable", is the new experience.
+
+**Classic account** ("Sign up for AWS (advanced)"). Once, by the owner:
 
 1. Create the AWS account on the **paid plan** (see the credits note in the cost table).
 2. Turn on MFA for the root user, then never use root again.
 3. In IAM Identity Center, create a user with `AdministratorAccess` and use it through `aws configure sso` (then `aws sso login`).
 4. Do the onboarding tasks that earn the second $100 of credits.
-5. Buy the domain at any registrar (GoDaddy, Porkbun, Cloudflare...). Nothing else is needed from the registrar except the ability to set custom nameservers (apex) or a DNS host where you can add NS records (subdomain). If you buy the domain through Route 53 itself, AWS creates a hosted zone for it automatically. Terraform creates its own zone, so either delete the automatic one or `terraform import aws_route53_zone.main <zone id>` before the first apply, and point the registered domain's nameservers at the zone Terraform uses.
-6. A brand-new account may not be allowed to create CloudFront distributions until AWS support verifies it. If the full apply fails with "Your account must be verified before you can add new CloudFront resources", open a support case and retry afterwards.
+
+**New-experience account** ("Sign up for AWS (new)", owned by an AWS Builder ID, organised in projects):
+
+- There is no root user and no IAM Identity Center. Turn on MFA for the Builder ID at [settings.aws.com](https://settings.aws.com). IAM users only get access keys; don't create any for Terraform.
+- Regional resources are locked to the region AWS picked from your address (`eu-north-1` for Europe; check it at settings.aws.com, Project, Additional info). Set `region` in `terraform.tfvars` to it. The managed policies allow ACM and CloudFront in us-east-1, so the certificate still works.
+- The free plan is enough: every service the stack uses is included, and `t4g.small` is allowed. Upgrade to the paid plan before the credits run out or the free period ends, or AWS closes the account.
+- Credentials: `aws configure set region <region> --profile <name>`, then `aws login --profile <name>` (a browser opens; pick the project). Sessions last 12 hours and renew for 90 days. Terraform and the scripts read them through `AWS_PROFILE=<name>`.
+- "Activate advanced features" turns it into a classic account. It needs the paid plan and cannot be undone; the stack does not need it.
+
+For both kinds:
+
+1. Buy the domain at any registrar (GoDaddy, Porkbun, Cloudflare...). Nothing else is needed from the registrar except the ability to set custom nameservers (apex) or a DNS host where you can add NS records (subdomain). If you buy the domain through Route 53 itself, AWS creates a hosted zone for it automatically. Terraform creates its own zone, so either delete the automatic one or `terraform import aws_route53_zone.main <zone id>` before the first apply, and point the registered domain's nameservers at the zone Terraform uses.
+2. A brand-new account may not be allowed to create CloudFront distributions until AWS support verifies it. If the full apply fails with "Your account must be verified before you can add new CloudFront resources", open a support case and retry afterwards.
 
 On your machine you need Terraform (>= 1.9), the AWS CLI and the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) (`aws ssm start-session` does not work without it). `cp infra/terraform/example.tfvars infra/terraform/terraform.tfvars` and edit it (`*.tfvars` is gitignored).
 
@@ -85,14 +98,14 @@ terraform output name_servers
 1. Delegate the name to Route 53 with the four values from `name_servers`. Which way depends on `domain_name`:
    - **Apex domain** (`example.com`): at the registrar, switch the domain to **custom nameservers** and enter the four values.
    - **Subdomain** (`recipes.example.com`): leave the parent's nameservers alone. At the parent zone's DNS host, add four `NS` records named `recipes` (the subdomain label), one per value.
-2. Wait until the delegation is live (minutes to a few hours): `dig NS <domain> +short` must list the Route 53 servers.
+2. Wait until the delegation is live (minutes to a few hours): `dig NS <domain> +short` must list the Route 53 servers. Your own machine may keep the registrar's old address for up to an hour after that (a browser shows a TLS "unrecognized name" error); flush it with `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder` on macOS.
 3. Run the full apply. The certificate validation and the CloudFront distribution make it take 10-20 minutes.
    ```
    terraform apply -var-file=terraform.tfvars
    ```
 4. After the full apply AWS emails `alert_email` a subscription confirmation for the `ricettine-alerts` topic. Click the link once, or backup-failure alerts are never delivered (the budget emails need no confirmation).
 5. Wait for first boot (Docker, volume, images, Let's Encrypt certificate for `origin.<domain>`). It can take tens of minutes: Let's Encrypt validation backs off after a failure, and CloudFront answers 502 until the origin certificate exists. Then open `https://<domain>` and finish the first-run setup in the browser.
-6. Confirm the deployment with `scripts/aws-verify.sh <domain>` (read-only; needs your AWS credentials). Set `VERIFY_TOKEN_PHOTO_URL` to the URL of a private photo to also check it is not cached. The backup check warns on the first day: the timer runs at 03:00 UTC.
+6. Confirm the deployment with `scripts/aws-verify.sh <domain>` (read-only; needs your AWS credentials). It reads the buckets in `AWS_REGION` or your profile's region. Set `VERIFY_TOKEN_PHOTO_URL` to the URL of a private photo to also check it is not cached. The backup check warns on the first day: the timer runs at 03:00 UTC.
 7. Copy `terraform.tfstate` somewhere safe.
 
 Until step 3 finishes `origin.<domain>` does not exist, so the origin certificate cannot be issued earlier. That is expected: the host retries.

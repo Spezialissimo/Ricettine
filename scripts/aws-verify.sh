@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Read-only checks of a deployed Ricettine on AWS. Usage: scripts/aws-verify.sh <domain>
-# Needs curl and the AWS CLI with credentials (the owner's SSO profile). Optional:
+# Needs curl and the AWS CLI with credentials (AWS_PROFILE, e.g. from aws login or aws sso login). Optional:
 #   VERIFY_TOKEN_PHOTO_URL  full URL of a private photo, to check CloudFront does not cache it
-#   AWS_REGION              region of the buckets (default eu-west-1)
+#   AWS_REGION              region of the buckets (default: the profile's region, else eu-west-1)
 set -uo pipefail
 
 domain="${1:?usage: aws-verify.sh <domain>}"
-region="${AWS_REGION:-eu-west-1}"
+region="${AWS_REGION:-${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || true)}}"
+region="${region:-eu-west-1}"
 failures=0
 
 pass() { echo "ok   $1"; }
