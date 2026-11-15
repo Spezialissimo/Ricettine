@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { ApiError, errorKey, toApiError } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
+import { Site } from '../core/site';
 import { safeNext } from './safe-next';
 
 @Component({
@@ -53,6 +54,16 @@ import { safeNext } from './safe-next';
       border-radius: t.$radius;
       background: var(--accent);
       color: var(--on-accent);
+      font-weight: 600;
+    }
+    .demo {
+      text-align: center;
+    }
+    .demo a {
+      @include t.touch-target;
+      display: inline-flex;
+      align-items: center;
+      color: var(--accent);
       font-weight: 600;
     }
     button[disabled] {
@@ -106,11 +117,17 @@ import { safeNext } from './safe-next';
         }
         <button type="submit" [disabled]="busy()">{{ t('auth.login') }}</button>
       </form>
+      @if (site.demoUrl(); as url) {
+        <p class="demo">
+          <a [href]="url">{{ t('auth.tryDemo') }}</a>
+        </p>
+      }
     </ng-container>
   `,
 })
 export class LoginPage {
   private readonly auth = inject(AuthStore);
+  protected readonly site = inject(Site);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 

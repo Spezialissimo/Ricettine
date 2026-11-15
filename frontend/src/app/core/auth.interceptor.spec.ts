@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { authInterceptor } from './auth.interceptor';
 import { AuthStore, Me } from './auth.store';
+import { provideSite } from '../testing/site';
 
 @Component({ template: '' })
 class Blank {}
@@ -130,5 +131,77 @@ describe('authInterceptor', () => {
     store.setMe(me);
     await fail('PATCH', '/api/me', 401);
     expect(navigate).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('authInterceptor on the demo site', () => {
+  let http: HttpClient;
+  let ctl: HttpTestingController;
+  let store: AuthStore;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([{ path: '**', component: Blank }]),
+        provideSite({ demo: true }),
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    ctl = TestBed.inject(HttpTestingController);
+    store = TestBed.inject(AuthStore);
+    store.setMe(me);
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+  });
+  afterEach(() => ctl.verify());
+
+  const wait = () => new Promise((r) => setTimeout(r));
+
+  it('demo401ReauthenticatesAndRetries: re-signs in silently and retries the request once', async () => {
+    const result = new Promise((resolve) =>
+      http.get('/api/recipes').subscribe({ next: resolve, error: resolve }),
+    );
+    ctl.expectOne('/api/recipes').flush(null, { status: 401, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/demo/session').flush(null, { status: 204, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/me').flush(me);
+    await wait();
+    ctl.expectOne('/api/recipes').flush({ ok: true });
+    expect(await result).toEqual({ ok: true });
+    expect(TestBed.inject(Router).navigateByUrl).not.toHaveBeenCalled();
+    expect(store.me()).toEqual(me);
+  });
+
+  it('a second 401 after re-auth is passed on: no loop, no redirect to login', async () => {
+    const result = new Promise((resolve) =>
+      http.get('/api/recipes').subscribe({ next: resolve, error: resolve }),
+    );
+    ctl.expectOne('/api/recipes').flush(null, { status: 401, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/demo/session').flush(null, { status: 204, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/me').flush(me);
+    await wait();
+    ctl.expectOne('/api/recipes').flush(null, { status: 401, statusText: 'x' });
+    expect(((await result) as { status: number }).status).toBe(401);
+    expect(TestBed.inject(Router).navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('simultaneous 401s share one demo session', async () => {
+    const results = ['/api/a', '/api/b'].map(
+      (u) => new Promise((resolve) => http.get(u).subscribe({ next: resolve, error: resolve })),
+    );
+    ctl.expectOne('/api/a').flush(null, { status: 401, statusText: 'x' });
+    ctl.expectOne('/api/b').flush(null, { status: 401, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/demo/session').flush(null, { status: 204, statusText: 'x' });
+    await wait();
+    ctl.expectOne('/api/me').flush(me);
+    await wait();
+    ctl.expectOne('/api/a').flush(1);
+    ctl.expectOne('/api/b').flush(2);
+    expect(await Promise.all(results)).toEqual([1, 2]);
   });
 });

@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
+import { Site } from '../core/site';
 import { mediaUrl } from '../core/media';
 import { openSheet } from '../shared/sheet';
 import { AppDatePipe } from '../shared/app-date.pipe';
@@ -138,7 +139,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
               }
               <span>{{ a.displayName }}</span>
             </span>
-            @if (book().role === 'OWNER' && a.id) {
+            @if (book().role === 'OWNER' && a.id && !site.demo()) {
               <button
                 type="button"
                 class="danger"
@@ -153,7 +154,9 @@ import { RemoveMemberDialog } from './remove-member.dialog';
           </li>
         }
       </ul>
-      @if (book().role === 'OWNER') {
+      @if (site.demo()) {
+        <!-- the demo shows the members only: no invites, no removing, no leaving -->
+      } @else if (book().role === 'OWNER') {
         <button type="button" [disabled]="list.busy()" (click)="list.create()">
           {{ t('cookbooks.invite') }}
         </button>
@@ -194,6 +197,7 @@ export class MembersPanelComponent {
   private readonly router = inject(Router);
   private readonly i18n = inject(TranslocoService);
   private readonly me = inject(AuthStore).me;
+  protected readonly site = inject(Site);
   protected readonly error = signal<string | null>(null);
   protected readonly list = new InviteList(
     {

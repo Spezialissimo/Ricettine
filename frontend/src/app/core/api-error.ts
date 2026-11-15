@@ -86,6 +86,7 @@ export function toApiError(e: unknown): ApiError {
 }
 
 export function errorKey(e: ApiError): string {
+  if (e.code === 'demo_read_only') return 'errors.demoReadOnly'; // the demo site refuses every write
   return KNOWN_ERROR_CODES.includes(e.code) ? `errors.${e.code}` : 'errors.unknown';
 }
 

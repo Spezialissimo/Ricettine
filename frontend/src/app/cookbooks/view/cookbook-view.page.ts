@@ -15,6 +15,7 @@ import {
 import { errorKey, toApiError } from '../../core/api-error';
 import { LanguageService } from '../../core/language';
 import { AuthStore } from '../../core/auth.store';
+import { Site } from '../../core/site';
 import { PageTitle } from '../../core/page-title';
 import { mediaUrl } from '../../core/media';
 import { CookbookApi } from '../cookbook.api';
@@ -67,7 +68,7 @@ import { PublicCookbook, peopleList, tokenFromShareUrl } from '../cookbook.model
               <app-icon name="link" />
               {{ t('cookbooks.share') }}
             </button>
-            @if (b.cookbookId) {
+            @if (b.cookbookId && !site.demo()) {
               <a class="btn primary" [routerLink]="['/cookbooks', b.cookbookId, 'edit']">{{
                 t('cookbooks.edit')
               }}</a>
@@ -93,6 +94,7 @@ export class CookbookViewPage {
   private readonly api = inject(CookbookApi);
   private readonly title = inject(PageTitle);
   protected readonly auth = inject(AuthStore);
+  protected readonly site = inject(Site);
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
@@ -140,7 +142,7 @@ export class CookbookViewPage {
       resetConfirmKey: 'cookbooks.resetLinkConfirm',
       resetDoneKey: 'cookbooks.linkReset',
       reset:
-        b.viewerRole === 'OWNER' && id
+        b.viewerRole === 'OWNER' && id && !this.site.demo()
           ? async () => {
               const fresh = await this.api.resetLink(id);
               const tok = tokenFromShareUrl(fresh.shareUrl);

@@ -12,6 +12,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
+import { Site } from '../core/site';
 import { mediaUrl } from '../core/media';
 import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 
@@ -57,9 +58,11 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
                 <a routerLink="/settings/admin/invites">{{ t('nav.admin') }}</a>
               }
             </nav>
-            <button type="button" class="logout" [disabled]="busy()" (click)="logout()">
-              {{ t('auth.logout') }}
-            </button>
+            @if (!site.demo()) {
+              <button type="button" class="logout" [disabled]="busy()" (click)="logout()">
+                {{ t('auth.logout') }}
+              </button>
+            }
             @if (logoutError(); as key) {
               <div class="logout-error" role="alert">
                 <span>{{ t(key) }}</span>
@@ -196,6 +199,7 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 })
 export class AccountMenuComponent {
   protected readonly auth = inject(AuthStore);
+  protected readonly site = inject(Site);
   private readonly router = inject(Router);
   private readonly backup = inject(UnsavedBackup);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

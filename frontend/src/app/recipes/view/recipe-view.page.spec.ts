@@ -11,6 +11,7 @@ import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { RecipeApi } from '../recipe.api';
 import { PublicRecipe } from '../recipe.model';
 import { RecipeViewPage } from './recipe-view.page';
+import { provideSite } from '../../testing/site';
 
 const photo = (id: string) => ({
   mediaId: id,
@@ -659,5 +660,28 @@ describe('RecipeViewPage: your own recipe (/recipes/:id/view)', () => {
     });
     expect(nav).toHaveBeenCalledWith('/r/PUB', { replaceUrl: true });
     expect(banner(el)).toBeNull();
+  });
+});
+
+describe('RecipeViewPage in the demo', () => {
+  it('has no Add to cookbook for the signed-in guest, but keeps Share', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: RecipeApi, useValue: { byToken: vi.fn().mockResolvedValue(pub()) } },
+        { provide: AuthStore, useValue: { me: signal({ username: 'ospite' }) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 'tok' }) } },
+        },
+      ],
+    });
+    const f = TestBed.createComponent(RecipeViewPage);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(btn(el, en.cookbooks.addToCookbook)).toBeUndefined();
+    expect(btn(el, en.recipes.share)).toBeDefined();
   });
 });

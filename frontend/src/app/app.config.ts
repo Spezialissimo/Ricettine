@@ -9,6 +9,7 @@ import { RouteReuseStrategy, TitleStrategy, provideRouter } from '@angular/route
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
 import { AuthStore } from './core/auth.store';
+import { Site } from './core/site';
 import { UnsavedBackup } from './recipes/editor/unsaved-backup';
 import { ParamReuseStrategy } from './core/param-reuse-strategy';
 import { AppTitleStrategy } from './core/page-title';
@@ -26,6 +27,11 @@ export const appConfig: ApplicationConfig = {
     ),
     provideAppTransloco(),
     provideAppInitializer(() => inject(UnsavedBackup).sweep()),
-    provideAppInitializer(() => inject(AuthStore).load()),
+    // Site first: on the demo, load() signs in silently, so deep links land on their page and the
+    // guards (which run after the initializers) already see a user.
+    provideAppInitializer(async () => {
+      await inject(Site).load();
+      await inject(AuthStore).load();
+    }),
   ],
 };

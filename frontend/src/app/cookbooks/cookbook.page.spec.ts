@@ -6,6 +6,7 @@ import { btn, clearOverlays, overlay, person, settle } from '../testing/spec-hel
 import { CookbookApi } from './cookbook.api';
 import { Cookbook, CookbookEntry } from './cookbook.model';
 import { CookbookPage } from './cookbook.page';
+import { provideSite } from '../testing/site';
 
 const entry = (over: Partial<CookbookEntry>): CookbookEntry => ({
   recipeId: 'r1',
@@ -314,5 +315,36 @@ describe('CookbookPage: /cookbooks/:id/edit', () => {
         ),
     });
     expect(el.textContent).toContain(en.errors.cookbook_not_found);
+  });
+});
+
+describe('CookbookPage in the demo', () => {
+  it('the owner sees neither Delete, cover controls nor the Edit link', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        {
+          provide: CookbookApi,
+          useValue: {
+            get: vi.fn().mockResolvedValue(book({ shareUrl: null })),
+            invites: vi.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ id: 'c1' }), data: { mode: 'edit' } },
+          },
+        },
+      ],
+    });
+    const f = TestBed.createComponent(CookbookPage);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('h1')).not.toBeNull();
+    expect(btn(el, en.cookbooks.delete)).toBeUndefined();
+    expect(el.querySelector('.cover-actions')).toBeNull();
   });
 });

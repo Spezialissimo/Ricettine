@@ -5,6 +5,7 @@ import { errorKeyOf } from '../core/api-error';
 import { CookbookApi } from '../cookbooks/cookbook.api';
 import { CookbookCardsComponent } from '../cookbooks/cookbook-cards.component';
 import { CookbookSummary } from '../cookbooks/cookbook.model';
+import { Site } from '../core/site';
 import { NewCookbookFlow } from '../cookbooks/new-cookbook';
 import { RecipeApi } from '../recipes/recipe.api';
 import { RecipeCardsComponent } from '../recipes/recipe-cards.component';
@@ -77,9 +78,11 @@ type Section<T> = { items: T[] | null; error: string | null };
           @if (list.length === 0) {
             <div class="empty-state">
               <p>{{ t('cookbooks.empty') }}</p>
-              <button type="button" class="btn-primary new" (click)="newCookbook.start()">
-                {{ t('cookbooks.emptyAction') }}
-              </button>
+              @if (!site.demo()) {
+                <button type="button" class="btn-primary new" (click)="newCookbook.start()">
+                  {{ t('cookbooks.emptyAction') }}
+                </button>
+              }
             </div>
           } @else {
             <app-cookbook-cards [cookbooks]="list.slice(0, limit)" />
@@ -134,6 +137,7 @@ export class KitchenOverviewPage {
   private readonly recipeApi = inject(RecipeApi);
   private readonly cookbookApi = inject(CookbookApi);
   protected readonly newCookbook = inject(NewCookbookFlow);
+  protected readonly site = inject(Site);
   protected readonly limit = OVERVIEW_LIMIT;
   protected readonly recipes = signal<Section<RecipeSummary>>({ items: null, error: null });
   protected readonly cookbooks = signal<Section<CookbookSummary>>({ items: null, error: null });

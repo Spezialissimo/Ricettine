@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { AuthStore } from '../core/auth.store';
+import { Site } from '../core/site';
 
 /**
  * Settings: one navigation with two groups, Account (Profile, Appearance, Language, Password, Delete
@@ -16,12 +17,14 @@ import { AuthStore } from '../core/auth.store';
       <nav class="side" [attr.aria-label]="t('settings.tabs')">
         <div class="group" role="group" aria-labelledby="settings-account">
           <span class="group-label" id="settings-account">{{ t('settings.groupAccount') }}</span>
-          <a
-            routerLink="/settings/profile"
-            routerLinkActive="active"
-            ariaCurrentWhenActive="page"
-            >{{ t('settings.tabProfile') }}</a
-          >
+          @if (!site.demo()) {
+            <a
+              routerLink="/settings/profile"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              >{{ t('settings.tabProfile') }}</a
+            >
+          }
           <a
             routerLink="/settings/appearance"
             routerLinkActive="active"
@@ -34,15 +37,20 @@ import { AuthStore } from '../core/auth.store';
             ariaCurrentWhenActive="page"
             >{{ t('settings.tabLanguage') }}</a
           >
-          <a
-            routerLink="/settings/password"
-            routerLinkActive="active"
-            ariaCurrentWhenActive="page"
-            >{{ t('settings.tabPassword') }}</a
-          >
-          <a routerLink="/settings/delete" routerLinkActive="active" ariaCurrentWhenActive="page">{{
-            t('settings.tabDelete')
-          }}</a>
+          @if (!site.demo()) {
+            <a
+              routerLink="/settings/password"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              >{{ t('settings.tabPassword') }}</a
+            >
+            <a
+              routerLink="/settings/delete"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              >{{ t('settings.tabDelete') }}</a
+            >
+          }
         </div>
         @if (auth.me()?.admin) {
           <div class="group" role="group" aria-labelledby="settings-admin">
@@ -172,4 +180,5 @@ import { AuthStore } from '../core/auth.store';
 })
 export class SettingsLayoutComponent {
   protected readonly auth = inject(AuthStore);
+  protected readonly site = inject(Site);
 }

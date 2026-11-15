@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { AuthStore, Me } from './auth.store';
 import { PendingSaves } from './pending-saves';
+import { provideSite } from '../testing/site';
 
 const me: Me = {
   id: '1',
@@ -124,4 +125,78 @@ describe('AuthStore', () => {
       expect(store.me()).toEqual(me);
     },
   );
+});
+
+describe('AuthStore on the demo site', () => {
+  const unauth = { status: 401, statusText: 'x' };
+  function setup(demo: boolean) {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideSite({ demo })],
+    });
+    return { store: TestBed.inject(AuthStore), http: TestBed.inject(HttpTestingController) };
+  }
+
+  it('demoAutoSignsInOn401: a 401 from /api/me starts a demo session and retries /api/me', async () => {
+    const { store, http } = setup(true);
+    const p = store.load();
+    http.expectOne('/api/me').flush({ code: 'not_authenticated' }, unauth);
+    await Promise.resolve();
+    const session = http.expectOne('/api/demo/session');
+    expect(session.request.method).toBe('POST');
+    session.flush(null, { status: 204, statusText: 'No Content' });
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(me);
+    await p;
+    expect(store.me()).toEqual(me);
+    expect(store.ready()).toBe(true);
+    http.verify();
+  });
+
+  it('mainDoesNotCallDemoSession: on the main site a 401 just leaves me null', async () => {
+    const { store, http } = setup(false);
+    const p = store.load();
+    http.expectOne('/api/me').flush({ code: 'not_authenticated' }, unauth);
+    await p;
+    expect(store.me()).toBeNull();
+    http.expectNone('/api/demo/session');
+    http.verify();
+  });
+
+  it('demoRetriesMeOnce: a second 401 leaves me null and does not loop', async () => {
+    const { store, http } = setup(true);
+    const p = store.load();
+    http.expectOne('/api/me').flush(null, unauth);
+    await Promise.resolve();
+    http.expectOne('/api/demo/session').flush(null, { status: 204, statusText: 'x' });
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(null, unauth);
+    await p;
+    expect(store.me()).toBeNull();
+    expect(store.ready()).toBe(true);
+    http.verify();
+  });
+
+  it('a failing demo session call stops with me null', async () => {
+    const { store, http } = setup(true);
+    const p = store.load();
+    http.expectOne('/api/me').flush(null, unauth);
+    await Promise.resolve();
+    http
+      .expectOne('/api/demo/session')
+      .flush({ code: 'demo_unavailable' }, { status: 503, statusText: 'x' });
+    await p;
+    expect(store.me()).toBeNull();
+    http.verify();
+  });
+
+  it('concurrent reauthenticate calls share one demo session request', async () => {
+    const { store, http } = setup(true);
+    const a = store.reauthenticate();
+    const b = store.reauthenticate();
+    http.expectOne('/api/demo/session').flush(null, { status: 204, statusText: 'x' });
+    await Promise.resolve();
+    http.expectOne('/api/me').flush(me);
+    expect(await Promise.all([a, b])).toEqual([true, true]);
+    http.verify();
+  });
 });

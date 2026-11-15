@@ -7,6 +7,7 @@ import { RecipeSummary } from '../recipes/recipe.model';
 import { clearOverlays, settle } from '../testing/spec-helpers';
 import { en, provideTestTransloco } from '../testing/transloco';
 import { KitchenOverviewPage, OVERVIEW_LIMIT } from './overview.page';
+import { provideSite } from '../testing/site';
 
 const recipe = (i: number): RecipeSummary => ({
   id: 'r' + i,
@@ -95,5 +96,24 @@ describe('KitchenOverviewPage', () => {
     await settle(f);
     expect(mine).toHaveBeenCalledTimes(2);
     expect(r.querySelectorAll('a.recipe').length).toBe(1);
+  });
+});
+
+describe('KitchenOverviewPage in the demo', () => {
+  it('has no create-cookbook button in the empty cookbooks section', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: RecipeApi, useValue: { mine: async () => [recipe(1)] } },
+        { provide: CookbookApi, useValue: { mine: async () => [] } },
+      ],
+    });
+    const f = TestBed.createComponent(KitchenOverviewPage);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.textContent).toContain(en.cookbooks.empty);
+    expect(el.querySelector('button.new')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, Injector, computed, inject } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { Site } from '../../core/site';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { EditorStore } from './editor-store';
 import { openSheet } from '../../shared/sheet';
@@ -32,14 +33,17 @@ import { openSheet } from '../../shared/sheet';
   `,
   template: `
     @if (published(); as s) {
-      <button *transloco="let t" type="button" class="add" (click)="addToCookbook(s.id)">
-        {{ t('cookbooks.addToCookbook') }}
-      </button>
+      @if (!site.demo()) {
+        <button *transloco="let t" type="button" class="add" (click)="addToCookbook(s.id)">
+          {{ t('cookbooks.addToCookbook') }}
+        </button>
+      }
     }
   `,
 })
 export class SharePanelComponent {
   protected readonly store = inject(EditorStore);
+  protected readonly site = inject(Site);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);

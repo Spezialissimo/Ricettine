@@ -5,6 +5,7 @@ import { clearOverlays, settle } from '../testing/spec-helpers';
 import { CookbookApi } from './cookbook.api';
 import { CookbookSummary } from './cookbook.model';
 import { MyCookbooksPage } from './my-cookbooks.page';
+import { provideSite } from '../testing/site';
 
 const sum = (over: Partial<CookbookSummary>): CookbookSummary => ({
   id: 'x',
@@ -104,5 +105,23 @@ describe('MyCookbooksPage', () => {
     el.querySelector<HTMLButtonElement>('button.retry')!.click();
     await settle(f);
     expect(mine).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('MyCookbooksPage in the demo', () => {
+  it('has no New cookbook button', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: CookbookApi, useValue: { mine: async () => [sum({ id: 'a' })] } },
+      ],
+    });
+    const f = TestBed.createComponent(MyCookbooksPage);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('a.cookbook')).not.toBeNull();
+    expect(el.querySelector('button.new')).toBeNull();
   });
 });

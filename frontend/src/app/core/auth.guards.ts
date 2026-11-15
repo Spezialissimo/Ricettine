@@ -1,33 +1,10 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import { AuthStore } from './auth.store';
+import { SetupStatus } from './setup-status';
+import { Site } from './site';
 
-/** Caches GET /api/setup/status once it reports setup is no longer required. */
-@Injectable({ providedIn: 'root' })
-export class SetupStatus {
-  private readonly http = inject(HttpClient);
-  private done = false;
-
-  async required(): Promise<boolean> {
-    if (this.done) return false;
-    try {
-      const s = await firstValueFrom(
-        this.http.get<{ setupRequired: boolean }>('/api/setup/status'),
-      );
-      if (!s.setupRequired) this.done = true;
-      return s.setupRequired;
-    } catch {
-      return false; // do not lock users out if the check itself fails; not cached
-    }
-  }
-
-  /** Forget the cached answer (e.g. after the last user was deleted). */
-  refresh(): void {
-    this.done = false;
-  }
-}
+export { SetupStatus };
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const router = inject(Router);
@@ -40,6 +17,10 @@ export const adminGuard: CanActivateFn = (route, state) => {
   if (!me) return authGuard(route, state);
   return me.admin ? true : inject(Router).createUrlTree(['/']);
 };
+
+/** Account pages that write (profile, password, delete): the demo has none, so it goes to Appearance. */
+export const notDemoGuard: CanActivateFn = () =>
+  inject(Site).demo() ? inject(Router).createUrlTree(['/settings/appearance']) : true;
 
 export const guestGuard: CanActivateFn = () =>
   inject(AuthStore).me() ? inject(Router).createUrlTree(['/']) : true;

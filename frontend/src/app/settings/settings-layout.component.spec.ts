@@ -6,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { AuthStore } from '../core/auth.store';
 import { en, provideTestTransloco } from '../testing/transloco';
 import { SettingsLayoutComponent } from './settings-layout.component';
+import { provideSite } from '../testing/site';
 
 @Component({ template: '' })
 class Blank {}
@@ -69,5 +70,25 @@ describe('SettingsLayoutComponent', () => {
     expect(el.querySelector('a[aria-current="page"]')?.getAttribute('href')).toBe(
       '/settings/admin/users',
     );
+  });
+});
+
+describe('SettingsLayoutComponent in the demo', () => {
+  it('hides Profile, Password and Delete account but keeps Appearance and Language', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideTestTransloco(),
+        provideRouter([{ path: '**', component: Blank }]),
+        provideSite({ demo: true }),
+      ],
+    });
+    const f = TestBed.createComponent(SettingsLayoutComponent);
+    await f.whenStable();
+    expect(tabs(f.nativeElement as HTMLElement)).toEqual([
+      ['/settings/appearance', en.settings.tabAppearance],
+      ['/settings/language', en.settings.tabLanguage],
+    ]);
   });
 });

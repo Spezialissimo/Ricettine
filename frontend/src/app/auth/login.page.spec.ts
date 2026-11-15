@@ -6,6 +6,7 @@ import { en, provideTestTransloco } from '../testing/transloco';
 import { settle } from '../testing/spec-helpers';
 import { AuthStore } from '../core/auth.store';
 import { LoginPage } from './login.page';
+import { provideSite } from '../testing/site';
 
 const me = {
   id: '1',
@@ -105,5 +106,35 @@ describe('LoginPage', () => {
       expect(el.querySelector(`#${id}`)).not.toBeNull();
       expect(i.closest('label')!.contains(el.querySelector(`#${id}`))).toBe(false);
     }
+  });
+});
+
+describe('LoginPage demo link', () => {
+  async function render(demoUrl: string | null) {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demoUrl }),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+      ],
+    });
+    const f = TestBed.createComponent(LoginPage);
+    await settle(f);
+    return f.nativeElement as HTMLElement;
+  }
+
+  it('links "Try the demo" to the demo URL, and shows nothing without one', async () => {
+    const withDemo = await render('https://demo.ricettine.food');
+    const a = withDemo.querySelector('a[href]') as HTMLAnchorElement;
+    expect(a.getAttribute('href')).toBe('https://demo.ricettine.food');
+    expect(a.textContent?.trim()).toBe(en.auth.tryDemo);
+    TestBed.resetTestingModule();
+    expect((await render(null)).querySelector('a[href]')).toBeNull();
   });
 });
