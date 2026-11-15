@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LanguageService } from '../core/language';
 import { mediaUrl } from '../core/media';
 import { CookbookSummary } from './cookbook.model';
 
@@ -20,7 +21,7 @@ import { CookbookSummary } from './cookbook.model';
             }
             <span class="name">{{ b.name }}</span>
             <span class="count">{{
-              t(b.recipeCount === 1 ? 'cookbooks.recipeCountOne' : 'cookbooks.recipeCountOther', {
+              t(language.pluralKey('cookbooks.recipeCount', b.recipeCount), {
                 count: b.recipeCount,
               })
             }}</span>
@@ -39,6 +40,7 @@ import { CookbookSummary } from './cookbook.model';
   `,
 })
 export class CookbookCardsComponent {
+  protected readonly language = inject(LanguageService);
   readonly cookbooks = input.required<CookbookSummary[]>();
   protected readonly mediaUrl = mediaUrl;
 }

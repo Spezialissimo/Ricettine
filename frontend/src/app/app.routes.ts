@@ -143,6 +143,11 @@ export const routes: Routes = [
                 loadComponent: () =>
                   import('./settings/appearance.page').then((m) => m.AppearancePage),
               },
+              {
+                path: 'language',
+                title: 'titles.language',
+                loadComponent: () => import('./settings/language.page').then((m) => m.LanguagePage),
+              },
               { path: 'password', title: 'titles.password', component: PasswordPage },
               { path: 'delete', title: 'titles.deleteAccount', component: DeleteAccountPage },
               { path: 'admin', pathMatch: 'full', redirectTo: 'admin/invites' },

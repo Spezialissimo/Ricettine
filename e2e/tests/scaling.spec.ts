@@ -51,7 +51,7 @@ test('scales ingredient amounts with kitchen fractions; the servings pill shows 
     await more.click();
     await expect(status).toHaveText(`${n} servings`);
   }
-  await expect(row('milk')).toContainText(/3\s*cup/);
+  await expect(row('milk')).toContainText(/3\s*cups/); // plural once more than one
   await expect(row('sugar')).toContainText(/3,000\s*g/);
   await expect(row('salt')).toHaveText('salt');
 

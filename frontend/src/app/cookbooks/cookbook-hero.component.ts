@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LanguageService } from '../core/language';
 
 /**
  * A cookbook's banner, the same on the member page (/cookbooks/:id) and the shared-link page (/c/:token):
@@ -26,7 +27,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
           <h1 id="book-title">{{ name() }}</h1>
           <p class="facts">
             {{
-              t(recipeCount() === 1 ? 'cookbooks.recipeCountOne' : 'cookbooks.recipeCountOther', {
+              t(language.pluralKey('cookbooks.recipeCount', recipeCount()), {
                 count: recipeCount(),
               })
             }}
@@ -44,6 +45,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   `,
 })
 export class CookbookHeroComponent {
+  protected readonly language = inject(LanguageService);
   readonly name = input.required<string>();
   readonly recipeCount = input.required<number>();
   /** "Ann and Bob", already joined; empty for none. */

@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LanguageService } from '../../core/language';
 
 /** One pill "− N servings +" for scaling a recipe; softly filled while it differs from the written number. */
 @Component({
@@ -63,7 +64,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
         <span aria-hidden="true">−</span>
       </button>
       <span role="status">{{
-        value() === 1 ? t('recipes.servingsOne') : t('recipes.servingsOther', { n: value() })
+        t(language.pluralKey('recipes.servings', value()), { n: value() })
       }}</span>
       <button
         type="button"
@@ -78,6 +79,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   `,
 })
 export class PortionsStepperComponent {
+  protected readonly language = inject(LanguageService);
   readonly value = input.required<number>();
   /** The portions the recipe was written for: any other value shows the pill as scaled. */
   readonly written = input.required<number>();

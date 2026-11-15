@@ -4,8 +4,8 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { AuthStore } from '../core/auth.store';
 
 /**
- * Settings: one navigation with two groups, Account (Profile, Appearance, Password, Delete account) and, for admins,
- * Administration (Invites, Users). A sidebar on desktop; on the phone a row of chips above the page.
+ * Settings: one navigation with two groups, Account (Profile, Appearance, Language, Password, Delete
+ * account) and, for admins, Administration (Invites, Users). A sidebar on desktop; on the phone a row of chips above the page.
  */
 @Component({
   selector: 'app-settings-layout',
@@ -27,6 +27,12 @@ import { AuthStore } from '../core/auth.store';
             routerLinkActive="active"
             ariaCurrentWhenActive="page"
             >{{ t('settings.tabAppearance') }}</a
+          >
+          <a
+            routerLink="/settings/language"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            >{{ t('settings.tabLanguage') }}</a
           >
           <a
             routerLink="/settings/password"

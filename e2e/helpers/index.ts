@@ -28,13 +28,21 @@ export function person(testInfo: TestInfo, tag: string): Person {
 }
 
 /**
- * A fresh browser context configured exactly like the current project (viewport, touch, UA). Every spec
- * makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
+ * A fresh browser context configured exactly like the current project (viewport, touch, UA, locale), or with
+ * another browser language. Every spec makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
  * made through `browser.newContext`; `test` (./test.ts) closes them when the test ends.
  */
-export function newContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
-  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
-  return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
+export function newContext(browser: Browser, testInfo: TestInfo, opts: { locale?: string } = {}): Promise<BrowserContext> {
+  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, locale } = testInfo.project.use;
+  return browser.newContext({
+    baseURL,
+    viewport,
+    userAgent,
+    deviceScaleFactor,
+    isMobile,
+    hasTouch,
+    locale: opts.locale ?? locale,
+  });
 }
 
 /** "Landed on home": the feed at `/` and the user's display name in the shell. */
