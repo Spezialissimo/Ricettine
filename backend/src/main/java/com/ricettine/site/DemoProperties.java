@@ -3,7 +3,7 @@ package com.ricettine.site;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Public demo settings. A blank {@code url} means "derive from the main datasource"; blank database and non-positive
+ * Public demo settings. {@code url} is the public demo site URL (not a JDBC URL); blank database and non-positive
  * pool size fall back to the defaults.
  */
 @ConfigurationProperties("ricettine.demo")

@@ -51,7 +51,7 @@ management:
         include: health
 ricettine:
   demo:
-    # Public demo site: RICETTINE_DEMO_ENABLED / RICETTINE_DEMO_URL. Blank url = derived from the main datasource.
+    # Public demo site: RICETTINE_DEMO_ENABLED / RICETTINE_DEMO_URL. The url is the public demo site URL (e.g. https://demo.ricettine.food), used for the main site's demo link and the demo site's public URLs.
     enabled: ${RICETTINE_DEMO_ENABLED:false}
     url: ${RICETTINE_DEMO_URL:}
     database: ricettine_demo
