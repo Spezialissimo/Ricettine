@@ -67,6 +67,7 @@ ricettine:
     login-account: { limit: 10, window: PT15M }
     login-ip: { limit: 30, window: PT15M }
     anonymous-auth: { limit: 30, window: PT15M }
+    demo-session: { limit: 30, window: PT15M }
     uploads: { limit: 60, window: PT10M }
     profile: { limit: 120, window: PT1M }
   security:

@@ -28,6 +28,7 @@ public class RateLimits {
 	private final RateLimiter loginAccount;
 	private final RateLimiter loginIp;
 	private final RateLimiter anonymousAuth;
+	private final RateLimiter demoSession;
 	private final RateLimiter uploads;
 	private final RateLimiter profile;
 
@@ -35,6 +36,7 @@ public class RateLimits {
 		this.loginAccount = build(cfg.getLoginAccount(), clock);
 		this.loginIp = build(cfg.getLoginIp(), clock);
 		this.anonymousAuth = build(cfg.getAnonymousAuth(), clock);
+		this.demoSession = build(cfg.getDemoSession(), clock);
 		this.uploads = build(cfg.getUploads(), clock);
 		this.profile = build(cfg.getProfile(), clock);
 	}
@@ -126,6 +128,10 @@ public class RateLimits {
 
 	public void anonymousAuth(String ip) {
 		hitOrReject(anonymousAuth, bound(ipKey(ip)));
+	}
+
+	public void demoSession(String ip) {
+		hitOrReject(demoSession, bound(ipKey(ip)));
 	}
 
 	public void upload(UUID userId) {
