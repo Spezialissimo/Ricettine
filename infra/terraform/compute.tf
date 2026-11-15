@@ -13,6 +13,7 @@ locals {
     region          = var.region
     domain_name     = var.domain_name
     origin_domain   = local.origin_domain
+    demo_domain     = var.demo_enabled ? local.demo_domain : ""
     image_tag       = var.image_tag
     media_bucket    = local.media_bucket_name
     backups_bucket  = local.backups_bucket_name

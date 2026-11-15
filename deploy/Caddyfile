@@ -15,9 +15,17 @@
 # Caddy replaces any client-sent X-Forwarded-For with the peer address, which the app uses for rate limits.
 # It passes the RFC 7239 `Forwarded` header through, so it is dropped here; the app ignores it as well
 # (server.forward-headers-strategy=native, trusted proxies only).
+# X-Ricettine-Site picks the site (main or demo database). The app trusts it blindly, so Caddy must set it on every
+# request: `request_header X-Ricettine-Site value` replaces any client-sent value (it is not appended).
 {$RICETTINE_DOMAIN} {
 	encode zstd gzip
 	request_header -Forwarded
+	request_header X-Ricettine-Site main
 	header Strict-Transport-Security "max-age=31536000"
 	reverse_proxy app:8080
 }
+
+# Optional demo host: its site block is in Caddyfile.demo. Caddy rejects a site block whose address is an empty
+# variable, so that file is only imported when RICETTINE_DEMO_DOMAIN is set: compose then points
+# RICETTINE_DEMO_IMPORT at /etc/caddy/demo-on/, otherwise at /etc/caddy/demo/, a glob that matches nothing.
+import {$RICETTINE_DEMO_IMPORT}

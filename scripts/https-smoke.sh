@@ -13,6 +13,8 @@ DATA_DIR=""
 RESET_BODY='{"newPassword":"correct-horse-battery"}'
 
 export RICETTINE_DOMAIN=localhost
+# The demo site is on for the whole run; the demo host name only matters to the self-host overlay (round 1)
+export RICETTINE_DEMO_DOMAIN=demo.localhost RICETTINE_DEMO_ENABLED=true
 dc() { docker compose -p "$PROJECT" "$@"; }
 
 cleanup() {
@@ -117,16 +119,26 @@ spoof() { printf '%s\n' -H "X-Forwarded-For: 198.51.100.$1"; }
 first="$(first_429 31 https://localhost spoof)"
 [ "$first" = 30 ] || fail "spoofed X-Forwarded-For: first 429 at reset #$first, expected #30 (31st anonymous request)"
 
+# Demo host: Caddy sets X-Ricettine-Site per host, overwriting what the client sent
+demo_status="$(curl -ks --resolve demo.localhost:443:127.0.0.1 https://demo.localhost/api/setup/status)"
+[[ "$demo_status" == *'"demo":true'* ]] || fail "demo host status is not demo: $demo_status"
+main_spoof="$(curl -ks -H 'X-Ricettine-Site: demo' https://localhost/api/setup/status)"
+[[ "$main_spoof" == *'"demo":false'* ]] || fail "main host honoured a client-sent X-Ricettine-Site: $main_spoof"
+demo_spoof="$(curl -ks -H 'X-Ricettine-Site: main' --resolve demo.localhost:443:127.0.0.1 https://demo.localhost/api/setup/status)"
+[[ "$demo_spoof" == *'"demo":true'* ]] || fail "demo host honoured a client-sent X-Ricettine-Site: $demo_spoof"
+
 token="$(openssl rand -hex 24)"
 post_status "https://localhost/api/password-resets/$token" "$RESET_BODY" >/dev/null
 logs="$(dc logs --no-color caddy 2>&1)"
 [[ "$logs" != *"$token"* ]] || fail "caddy logs contain a request token"
 check_error_log
+
 echo "round 1 ok"
 
 # ---------------------------------------------------------------- round 2: AWS origin
 echo "== round 2: AWS origin behind CloudFront"
 dc down -v >/dev/null 2>&1 || true
+unset RICETTINE_DEMO_DOMAIN
 DATA_DIR="$(mktemp -d "$PWD/.https-smoke-data.XXXXXX")"
 mkdir "$DATA_DIR/db" "$DATA_DIR/caddy"
 export RICETTINE_DATA_DIR="$DATA_DIR"
@@ -160,6 +172,11 @@ first="$(first_429 31 https://localhost rotating)"
 v6() { printf '%s\n' -H "$SECRET_H" -H "CloudFront-Viewer-Address: 2001:db8::5:$((443 + $1))"; }
 first="$(first_429 31 https://localhost v6)"
 [ "$first" = 31 ] || fail "IPv6 viewer address: first 429 at #$first, expected #31 (port not stripped?)"
+
+# The AWS Caddyfile leaves X-Ricettine-Site alone: it is what CloudFront sent (the app trusts it, so only CloudFront may set it)
+site_of() { curl -ks -H "$SECRET_H" -H "$VIEWER_H" "$@" https://localhost/api/setup/status; }
+[[ "$(site_of)" == *'"demo":false'* ]] || fail "no site header should be the main site"
+[[ "$(site_of -H 'X-Ricettine-Site: demo')" == *'"demo":true'* ]] || fail "the AWS Caddyfile must pass X-Ricettine-Site through"
 
 # Caddy must not log tokens
 token="$(openssl rand -hex 24)"
