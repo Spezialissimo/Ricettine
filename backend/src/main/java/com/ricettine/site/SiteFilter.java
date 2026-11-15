@@ -23,6 +23,17 @@ public class SiteFilter extends OncePerRequestFilter {
 		this.demo = demo;
 	}
 
+	/** Re-derive the site on error dispatches (the request's own context is already cleared by then). */
+	@Override
+	protected boolean shouldNotFilterErrorDispatch() {
+		return false;
+	}
+
+	@Override
+	protected boolean shouldNotFilterAsyncDispatch() {
+		return false;
+	}
+
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {

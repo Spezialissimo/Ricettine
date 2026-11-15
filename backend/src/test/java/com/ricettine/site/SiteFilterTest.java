@@ -3,6 +3,7 @@ package com.ricettine.site;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,19 @@ class SiteFilterTest {
 	void demoHeaderSelectsDemoWhenEnabled() throws Exception {
 		assertThat(siteSeenFor(true, "demo")).isEqualTo(Site.DEMO);
 		assertThat(siteSeenFor(true, "DeMo")).isEqualTo(Site.DEMO);
+	}
+
+	@Test
+	void demoSiteAppliesToErrorAndAsyncDispatches() throws Exception {
+		for (DispatcherType type : new DispatcherType[] { DispatcherType.ERROR, DispatcherType.ASYNC }) {
+			MockHttpServletRequest request = new MockHttpServletRequest();
+			request.setDispatcherType(type);
+			request.addHeader(SiteFilter.HEADER, "demo");
+			AtomicReference<Site> seen = new AtomicReference<>();
+			new SiteFilter(props(true)).doFilter(request, new MockHttpServletResponse(),
+					(req, res) -> seen.set(SiteContext.current()));
+			assertThat(seen.get()).as(type.name()).isEqualTo(Site.DEMO);
+		}
 	}
 
 	@Test
