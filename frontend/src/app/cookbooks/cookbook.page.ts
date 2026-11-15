@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@a
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKey, errorKeyOf, fieldErrorKey, toApiError } from '../core/api-error';
+import { LanguageService } from '../core/language';
 import { confirmSheet } from '../shared/confirm-dialog.component';
 import { openSheet } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
@@ -211,6 +212,7 @@ export class CookbookPage {
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly i18n = inject(TranslocoService);
+  private readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute).snapshot;
   private readonly id = this.route.paramMap.get('id') ?? '';
   /** The edit page (/cookbooks/:id/edit), else the view. */
@@ -249,7 +251,7 @@ export class CookbookPage {
   }
 
   protected people(b: Cookbook): string {
-    return peopleList(b.owner, b.authors, this.i18n.getActiveLang());
+    return peopleList(b.owner, b.authors, this.language.lang());
   }
 
   protected cards(b: Cookbook): CookbookCard[] {

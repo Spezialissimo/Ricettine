@@ -9,10 +9,12 @@ import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { openSheet } from '../../shared/sheet';
 import { AuthStore } from '../../core/auth.store';
+import { LanguageService } from '../../core/language';
 import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
-import { displayAmount, scaleAmount } from '../amount';
+import { scaleAmount, shownAmount } from '../amount';
+import { unitKey } from '../units';
 import { durationKey } from '../editor/time-sheet.component';
 import { RecipeApi } from '../recipe.api';
 import { Ingredient, PublicRecipe, Recipe } from '../recipe.model';
@@ -255,7 +257,7 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
                         @if (i.amount !== null) {
                           <b
                             >{{ amount(i, r.portions)
-                            }}{{ i.unit ? ' ' + t('units.' + i.unit) : '' }}</b
+                            }}{{ i.unit ? ' ' + t(unit(i, r.portions)) : '' }}</b
                           >
                         }
                         <!-- the comma belongs to the name, so no space can come before it -->
@@ -311,6 +313,7 @@ export class RecipeViewPage {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
+  private readonly language = inject(LanguageService);
   protected readonly auth = inject(AuthStore);
   protected readonly wake = inject(ScreenWakeLock);
   private readonly snapshot = inject(ActivatedRoute).snapshot;
@@ -427,10 +430,21 @@ export class RecipeViewPage {
   }
 
   protected amount(i: Pick<Ingredient, 'amount' | 'unit'>, written: number): string {
+    return this.shown(i, written)?.text ?? '';
+  }
+
+  /** The unit's i18n key, singular or plural to match the amount shown next to it. */
+  protected unit(i: Pick<Ingredient, 'amount' | 'unit'>, written: number): string {
+    return i.unit
+      ? unitKey(i.unit, this.shown(i, written)?.value ?? null, this.language.lang())
+      : '';
+  }
+
+  private shown(i: Pick<Ingredient, 'amount' | 'unit'>, written: number) {
     const chosen = this.chosen() ?? written;
-    return displayAmount(scaleAmount(i.amount, written, chosen), i.unit, {
+    return shownAmount(scaleAmount(i.amount, written, chosen), i.unit, {
       scaled: chosen !== written,
-      locale: this.i18n.getActiveLang(),
+      locale: this.language.lang(),
     });
   }
 

@@ -13,6 +13,7 @@ import {
   toCard,
 } from '../cookbook-recipe-cards.component';
 import { errorKey, toApiError } from '../../core/api-error';
+import { LanguageService } from '../../core/language';
 import { AuthStore } from '../../core/auth.store';
 import { PageTitle } from '../../core/page-title';
 import { mediaUrl } from '../../core/media';
@@ -96,6 +97,7 @@ export class CookbookViewPage {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly i18n = inject(TranslocoService);
+  private readonly language = inject(LanguageService);
   protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
   protected readonly book = signal<PublicCookbook | null>(null);
   protected readonly notFound = signal(false);
@@ -120,7 +122,7 @@ export class CookbookViewPage {
   }
 
   protected people(b: PublicCookbook): string {
-    return peopleList(b.owner, b.authors, this.i18n.getActiveLang());
+    return peopleList(b.owner, b.authors, this.language.lang());
   }
 
   protected cards(b: PublicCookbook): CookbookCard[] {

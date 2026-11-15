@@ -36,7 +36,7 @@ const tabs = (el: HTMLElement) =>
   Array.from(el.querySelectorAll('nav a'), (a) => [a.getAttribute('href'), a.textContent?.trim()]);
 
 describe('SettingsLayoutComponent', () => {
-  it('groups Profile, Appearance, Password and Delete account under Account; nothing else for non-admins', async () => {
+  it('groups Profile, Appearance, Language, Password and Delete account under Account; nothing else for non-admins', async () => {
     const { el } = await layout(false);
     expect(el.querySelector('nav')?.getAttribute('aria-label')).toBe(en.settings.tabs);
     const groups = el.querySelectorAll('nav [role="group"]');
@@ -45,6 +45,7 @@ describe('SettingsLayoutComponent', () => {
     expect(tabs(el)).toEqual([
       ['/settings/profile', en.settings.tabProfile],
       ['/settings/appearance', en.settings.tabAppearance],
+      ['/settings/language', en.settings.tabLanguage],
       ['/settings/password', en.settings.tabPassword],
       ['/settings/delete', en.settings.tabDelete],
     ]);

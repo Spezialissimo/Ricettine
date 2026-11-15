@@ -30,6 +30,7 @@
     "users": "Users",
     "kitchen": "My kitchen",
     "appearance": "Appearance",
+    "language": "Language",
     "preview": "Preview",
     "recipe": "Recipe",
     "cookbookEdit": "Edit cookbook"
@@ -96,6 +97,7 @@
     "tabInvites": "Invites",
     "tabUsers": "Users",
     "tabAppearance": "Appearance",
+    "tabLanguage": "Language",
     "appearanceTitle": "Appearance",
     "themeLabel": "Theme",
     "themeNote": "Saved on this device only.",
@@ -106,6 +108,15 @@
       "lightHint": "Always light",
       "dark": "Dark",
       "darkHint": "Always dark"
+    },
+    "languageTitle": "Language",
+    "languageLabel": "Language",
+    "languageNote": "Saved on this device only.",
+    "language": {
+      "system": "System",
+      "systemHint": "Follow this browser: {{name}}",
+      "en": "English",
+      "it": "Italiano"
     }
   },
   "admin": {
@@ -332,19 +343,36 @@
     "byNames": "by {{names}}"
   },
   "units": {
-    "g": "g",
-    "kg": "kg",
-    "ml": "ml",
-    "l": "l",
-    "tsp": "tsp",
-    "tbsp": "tbsp",
-    "cup": "cup",
-    "piece": "piece",
-    "pinch": "pinch",
-    "clove": "clove",
-    "slice": "slice",
-    "can": "can",
-    "bunch": "bunch"
+    "one": {
+      "g": "g",
+      "kg": "kg",
+      "ml": "ml",
+      "l": "l",
+      "tsp": "tsp",
+      "tbsp": "tbsp",
+      "cup": "cup",
+      "piece": "piece",
+      "pinch": "pinch",
+      "clove": "clove",
+      "slice": "slice",
+      "can": "can",
+      "bunch": "bunch"
+    },
+    "other": {
+      "g": "g",
+      "kg": "kg",
+      "ml": "ml",
+      "l": "l",
+      "tsp": "tsp",
+      "tbsp": "tbsp",
+      "cup": "cups",
+      "piece": "pieces",
+      "pinch": "pinches",
+      "clove": "cloves",
+      "slice": "slices",
+      "can": "cans",
+      "bunch": "bunches"
+    }
   },
   "editor": {
     "loading": "Loading recipe...",

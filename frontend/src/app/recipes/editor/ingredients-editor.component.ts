@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { formatAmount, parseAmount } from '../amount';
+import { LanguageService } from '../../core/language';
 import { Group, Ingredient, RecipeInput, UNITS, Unit } from '../recipe.model';
 import { countingIngredients, countsIngredient, unnamedRows } from './completeness';
 import { uid } from '../../shared/sheet';
@@ -83,7 +84,9 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
                 >
                   <option value="" [selected]="ing.unit === null">{{ t('editor.noUnit') }}</option>
                   @for (u of units; track u) {
-                    <option [value]="u" [selected]="ing.unit === u">{{ t('units.' + u) }}</option>
+                    <option [value]="u" [selected]="ing.unit === u">
+                      {{ t('units.one.' + u) }}
+                    </option>
                   }
                 </select>
               </div>
@@ -176,6 +179,7 @@ const BLANK: Ingredient = { amount: null, unit: null, name: '', note: null };
 })
 export class IngredientsEditorComponent {
   protected readonly store = inject(EditorStore);
+  private readonly language = inject(LanguageService);
   private readonly injector = inject(Injector);
   private readonly base = uid('ing');
   protected readonly hintId = this.base + '-hint';
@@ -264,7 +268,7 @@ export class IngredientsEditorComponent {
       const p = parseAmount(typed);
       if (p === 'invalid' || p === ing.amount) return typed;
     }
-    return formatAmount(ing.amount);
+    return formatAmount(ing.amount, this.language.lang());
   }
   protected amountInvalid(g: number, i: number): boolean {
     const typed = this.texts()[`${g}.${i}`];
