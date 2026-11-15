@@ -2,6 +2,7 @@ package com.ricettine.media;
 
 import com.ricettine.common.AfterTransaction;
 import com.ricettine.common.Tokens;
+import com.ricettine.site.SiteContext;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public class MediaService {
 	}
 
 	static String key(String mediaId, ImageVariant v) {
-		return "img/" + mediaId + "/" + v.fileName();
+		return SiteContext.current().blobPrefix() + "img/" + mediaId + "/" + v.fileName();
 	}
 
 	/**

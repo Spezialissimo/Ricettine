@@ -1,5 +1,7 @@
 package com.ricettine.common;
 
+import com.ricettine.site.Site;
+import com.ricettine.site.SiteContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -17,20 +19,22 @@ public class AfterTransaction {
 
 	/** Runs after commit; runs immediately when no transaction is active. */
 	public void afterCommit(String what, Runnable action) {
+		Site site = SiteContext.current();
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			run(what, action);
+			run(what, SiteContext.current(), action);
 			return;
 		}
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override
 			public void afterCommit() {
-				run(what, action);
+				run(what, site, action);
 			}
 		});
 	}
 
 	/** Runs only if the transaction rolled back; does nothing when no transaction is active. */
 	public void afterRollback(String what, Runnable action) {
+		Site site = SiteContext.current();
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
 			return;
 		}
@@ -38,15 +42,16 @@ public class AfterTransaction {
 			@Override
 			public void afterCompletion(int status) {
 				if (status == STATUS_ROLLED_BACK) {
-					run(what, action);
+					run(what, site, action);
 				}
 			}
 		});
 	}
 
-	private static void run(String what, Runnable action) {
+	/** Runs on the site that scheduled the action, whichever thread the transaction completes on. */
+	private static void run(String what, Site site, Runnable action) {
 		try {
-			action.run();
+			SiteContext.runAs(site, action);
 		}
 		catch (RuntimeException e) {
 			log.warn("Post-transaction cleanup failed: {}", what, e);

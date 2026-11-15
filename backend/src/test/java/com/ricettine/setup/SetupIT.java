@@ -37,7 +37,9 @@ class SetupIT extends IntegrationTest {
 	@Test
 	void statusRequiredWhenNoUsers() throws Exception {
 		mvc.perform(get("/api/setup/status")).andExpect(status().isOk())
-			.andExpect(jsonPath("$.setupRequired").value(true));
+			.andExpect(jsonPath("$.setupRequired").value(true))
+			.andExpect(jsonPath("$.demo").value(false))
+			.andExpect(jsonPath("$.demoUrl").value(org.hamcrest.Matchers.nullValue()));
 	}
 
 	@Test

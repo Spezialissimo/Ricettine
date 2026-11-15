@@ -1,6 +1,9 @@
 package com.ricettine.recipe;
 
 import com.ricettine.media.MediaService;
+import com.ricettine.site.DemoProperties;
+import com.ricettine.site.Site;
+import com.ricettine.site.SiteContext;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -36,9 +39,11 @@ public class OrphanMediaCleanup {
 	private final MediaService media;
 	private final TransactionTemplate tx;
 	private final Duration minAge;
+	private final DemoProperties demo;
 
 	public OrphanMediaCleanup(JdbcTemplate jdbc, MediaService media, PlatformTransactionManager txManager,
-			@Value("${ricettine.media.orphan-min-age:PT24H}") Duration minAge) {
+			DemoProperties demo, @Value("${ricettine.media.orphan-min-age:PT24H}") Duration minAge) {
+		this.demo = demo;
 		this.jdbc = jdbc;
 		this.media = media;
 		this.tx = new TransactionTemplate(txManager);
@@ -47,9 +52,24 @@ public class OrphanMediaCleanup {
 
 	@Scheduled(fixedDelayString = "${ricettine.media.orphan-cleanup-interval:PT1H}")
 	public void run() {
+		for (Site site : sites()) {
+			try {
+				SiteContext.runAs(site, this::cleanOnce);
+			}
+			catch (RuntimeException e) {
+				log.warn("Orphan photo cleanup failed on site {}", site, e);
+			}
+		}
+	}
+
+	private List<Site> sites() {
+		return demo.enabled() ? List.of(Site.MAIN, Site.DEMO) : List.of(Site.MAIN);
+	}
+
+	private void cleanOnce() {
 		int deleted = deleteOrphansOlderThan(minAge);
 		if (deleted > 0) {
-			log.info("Deleted {} orphaned recipe photos", deleted);
+			log.info("Deleted {} orphaned recipe photos ({})", deleted, SiteContext.current());
 		}
 	}
 
