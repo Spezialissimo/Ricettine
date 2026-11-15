@@ -29,7 +29,14 @@ for f in scripts/*.sh; do
 done
 
 echo "caddy validate..."
+# without a demo host: the import glob matches nothing (compose sets it when RICETTINE_DEMO_DOMAIN is empty)
 docker run --rm -v "$PWD/deploy":/deploy:ro -e RICETTINE_DOMAIN=example.com \
+  -e 'RICETTINE_DEMO_IMPORT=/etc/caddy/demo/*.caddy' \
+  "$CADDY_IMAGE" caddy validate --config /deploy/Caddyfile --adapter caddyfile
+# with a demo host: the demo block is imported
+docker run --rm -v "$PWD/deploy":/deploy:ro -v "$PWD/deploy/Caddyfile.demo":/etc/caddy/demo-on/demo.caddy:ro \
+  -e RICETTINE_DOMAIN=example.com -e RICETTINE_DEMO_DOMAIN=demo.example.com \
+  -e 'RICETTINE_DEMO_IMPORT=/etc/caddy/demo-on/*.caddy' \
   "$CADDY_IMAGE" caddy validate --config /deploy/Caddyfile --adapter caddyfile
 docker run --rm -v "$PWD/deploy":/deploy:ro -e ORIGIN_DOMAIN=origin.example.com -e ORIGIN_SECRET=dummy \
   "$CADDY_IMAGE" caddy validate --config /deploy/aws/Caddyfile --adapter caddyfile

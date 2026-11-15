@@ -31,6 +31,10 @@ services:
       # Peers whose X-Forwarded-For is believed (regex). Default `(?!)` matches nothing: :8080 is published directly, so
       # the peer is Docker's gateway, not a proxy. The Caddy overlays trust the Docker networks instead.
       SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: ${RICETTINE_TRUSTED_PROXIES:-(?!)}
+      # Public demo site: a second database that is wiped at every start. Off unless a trusted proxy sets
+      # X-Ricettine-Site: demo (see deploy/Caddyfile). RICETTINE_DEMO_URL is the demo's public URL, shown on the main site.
+      RICETTINE_DEMO_ENABLED: ${RICETTINE_DEMO_ENABLED:-false}
+      RICETTINE_DEMO_URL: ${RICETTINE_DEMO_URL:-}
     volumes:
       - app-data:/data
     ports:

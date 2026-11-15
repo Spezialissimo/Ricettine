@@ -13,6 +13,11 @@
 # Origin behind CloudFront. Port 443 is open to the CloudFront prefix list, which other people's
 # distributions share, so every request must carry the secret header CloudFront adds.
 # No `log` directive on purpose: invite, reset and share tokens are in URL paths.
+#
+# X-Ricettine-Site (main or demo site) is deliberately NOT touched here: it passes through as CloudFront sent it.
+# Only CloudFront reaches this block (X-Origin-Verify, checked below). The demo distribution sets the header as an
+# origin custom header (which overrides a viewer value) and the main distribution never forwards it from viewers
+# (infra/terraform/edge.tf, asserted in tests/edge.tftest.hcl), so no client can choose the site.
 {$ORIGIN_DOMAIN} {
 	encode zstd gzip
 

@@ -54,3 +54,41 @@ resource "aws_route53_record" "origin" {
   ttl     = 300
   records = [aws_eip.origin.public_ip]
 }
+
+resource "aws_route53_record" "demo_cert_validation" {
+  # One name, so the key is static when enabled: the validation options are only known after apply.
+  for_each = var.demo_enabled ? toset([local.demo_domain]) : toset([])
+
+  zone_id         = aws_route53_zone.main.zone_id
+  name            = one([for o in aws_acm_certificate.demo[0].domain_validation_options : o.resource_record_name if o.domain_name == each.key])
+  type            = one([for o in aws_acm_certificate.demo[0].domain_validation_options : o.resource_record_type if o.domain_name == each.key])
+  records         = [one([for o in aws_acm_certificate.demo[0].domain_validation_options : o.resource_record_value if o.domain_name == each.key])]
+  ttl             = 60
+  allow_overwrite = true
+}
+
+resource "aws_route53_record" "demo_a" {
+  count   = var.demo_enabled ? 1 : 0
+  zone_id = aws_route53_zone.main.zone_id
+  name    = local.demo_domain
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.demo[0].domain_name
+    zone_id                = local.cloudfront_hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "demo_aaaa" {
+  count   = var.demo_enabled ? 1 : 0
+  zone_id = aws_route53_zone.main.zone_id
+  name    = local.demo_domain
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.demo[0].domain_name
+    zone_id                = local.cloudfront_hosted_zone_id
+    evaluate_target_health = false
+  }
+}

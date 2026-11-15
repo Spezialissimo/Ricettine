@@ -5,10 +5,12 @@ import com.ricettine.account.MeMapper;
 import com.ricettine.account.AccountDtos.NewAccountRequest;
 import com.ricettine.auth.AuthSessions;
 import com.ricettine.common.RateLimits;
+import com.ricettine.site.DemoProperties;
+import com.ricettine.site.Site;
+import com.ricettine.site.SiteContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,8 +25,11 @@ public class SetupController {
 	private final AuthSessions authSessions;
 	private final MeMapper me;
 	private final RateLimits limits;
+	private final DemoProperties demo;
 
-	public SetupController(SetupService setup, AuthSessions authSessions, MeMapper me, RateLimits limits) {
+	public SetupController(SetupService setup, AuthSessions authSessions, MeMapper me, RateLimits limits,
+			DemoProperties demo) {
+		this.demo = demo;
 		this.limits = limits;
 		this.me = me;
 		this.setup = setup;
@@ -32,8 +37,13 @@ public class SetupController {
 	}
 
 	@GetMapping("/api/setup/status")
-	public Map<String, Boolean> status() {
-		return Map.of("setupRequired", setup.setupRequired());
+	public SetupStatus status() {
+		boolean onDemo = SiteContext.current() == Site.DEMO;
+		String demoUrl = !onDemo && demo.enabled() ? demo.url() : null;
+		return new SetupStatus(setup.setupRequired(), onDemo, demoUrl);
+	}
+
+	public record SetupStatus(boolean setupRequired, boolean demo, String demoUrl) {
 	}
 
 	@PostMapping("/api/setup/admin")

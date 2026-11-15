@@ -1,0 +1,10 @@
+# The demo host (RICETTINE_DEMO_DOMAIN), imported by Caddyfile. Same app, other site header.
+# Also set RICETTINE_DEMO_ENABLED=true for the app: without it the header is ignored.
+# `request_header X-Ricettine-Site demo` replaces any client-sent value, so a client cannot pick the site.
+{$RICETTINE_DEMO_DOMAIN} {
+	encode zstd gzip
+	request_header -Forwarded
+	request_header X-Ricettine-Site demo
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy app:8080
+}

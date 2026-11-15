@@ -139,6 +139,23 @@ sudo systemctl restart ricettine
 
 The compose files, Caddyfile and unit files on the host are written once by cloud-init. A change to them (a new release of this repo's `deploy/` files) reaches the host only through a replacement: `terraform apply -replace=aws_instance.main`. The data volume and database survive, and the restore path below is the safety net.
 
+## Demo site
+
+An optional public demo at `demo.<domain>` runs on the same host, with its own database that the app wipes and recreates at every start. The main site's data is never touched.
+
+How it works: the demo has its own CloudFront distribution and certificate. It sends `X-Ricettine-Site: demo` to the origin as a custom header, which overrides any value from the viewer, and the app serves the demo database for that header. The main distribution never forwards that header from viewers (a whitelist in the origin request policy, asserted in `tests/edge.tftest.hcl`), and Caddy only accepts requests that carry the origin secret, so nobody can pick the demo from the outside.
+
+**Do not go live (`demo_enabled=true`) until the read-only demo (Plan 9 PR 2) is deployed.** Until then a fresh demo database reports `setupRequired`, and the first visitor to the demo host could create an admin account.
+
+Go-live (you run this):
+
+1. `aws login --profile ricettine`
+2. `terraform apply -var demo_enabled=true` (adds the certificate, the distribution and the DNS records; `demo_subdomain` changes the name, default `demo`). Certificate validation and the distribution take several minutes.
+3. Replace the instance: `terraform apply -replace=aws_instance.main` (the data volume and Elastic IP survive). A host created before this release cannot pick the demo up any other way: cloud-init wrote its `compose.yaml` (no `RICETTINE_DEMO_*` mapping) and `start.sh` (ignores `DEMO_DOMAIN`) once, and `user_data` is in `ignore_changes`, so adding `DEMO_DOMAIN` to `config.env` by hand and restarting does nothing. The new host's `start.sh` writes `RICETTINE_DEMO_ENABLED=true` and `RICETTINE_DEMO_URL=https://demo.<domain>` into `.env`. Set `image_tag` in the tfvars to this release first, so the new host runs an image that has the demo.
+4. Deploy this release's image before running `aws-verify.sh`: it now requires `"demo":false` on the main domain, which older images do not report. Then `DEMO_DOMAIN=demo.<domain> scripts/aws-verify.sh <domain>`. It checks that the demo is healthy, that the demo host answers `"demo":true` and that the main domain answers `"demo":false`.
+
+Rollback: set `demo_enabled=false`, run `terraform apply`, and replace the instance (`terraform apply -replace=aws_instance.main`). The demo resources are destroyed and the app stops serving the demo database. Main data is untouched either way.
+
 ## Restore from a backup
 
 Dumps are in `s3://ricettine-backups-<account>/db/ricettine-<UTC>.dump`. Media is already in S3 and is not part of the dump. The media bucket is versioned, so a photo deleted by mistake can be restored for `backup_retention_days` by removing its delete marker or copying back the previous version (`aws s3api list-object-versions --bucket ricettine-media-<account> --prefix <key>`). A database restore does not touch photos. The instance role cannot read backups, so fetch the dump with your own credentials and give the host a short-lived link.
