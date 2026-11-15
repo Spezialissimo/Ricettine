@@ -124,6 +124,10 @@ class MediaIT extends IntegrationTest {
 			public void delete(String key) {
 				m.remove(key);
 			}
+
+			public void deleteByPrefix(String prefix) {
+				m.keySet().removeIf(k -> k.startsWith(prefix));
+			}
 		};
 		MediaService svc = new MediaService(failing, new ImageProcessor(), new ProcessingLimiter(2, Duration.ofSeconds(30)), null, null);
 		ProcessedUpload upload = svc.process(TestImages.plainJpeg(500, 500), Set.of(ImageVariant.values()));

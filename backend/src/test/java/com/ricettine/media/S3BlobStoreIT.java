@@ -54,4 +54,29 @@ class S3BlobStoreIT {
 	void missingKeyIsEmpty() {
 		assertThat(store.get("img/none/x.jpg")).isEmpty();
 	}
+
+	@Test
+	void deleteByPrefixRemovesAllPagesAndOnlyThatPrefix() {
+		for (int i = 0; i < 1005; i++) {
+			store.put("wipe/img/" + i + "/thumb.jpg", new byte[] {1}, "image/jpeg");
+		}
+		store.put("wipe2/img/x.jpg", new byte[] {2}, "image/jpeg");
+		store.put("keep/img/y.jpg", new byte[] {3}, "image/jpeg");
+		store.deleteByPrefix("wipe/");
+		assertThat(store.get("wipe/img/0/thumb.jpg")).isEmpty();
+		assertThat(store.get("wipe/img/1004/thumb.jpg")).isEmpty();
+		assertThat(store.get("wipe2/img/x.jpg")).isPresent();
+		assertThat(store.get("keep/img/y.jpg")).isPresent();
+		store.deleteByPrefix("wipe/"); // nothing left: no error
+	}
+
+	@Test
+	void deleteByPrefixRefusesBlankPrefix() {
+		store.put("keep2/img/y.jpg", new byte[] {3}, "image/jpeg");
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> store.deleteByPrefix(" "))
+			.isInstanceOf(IllegalArgumentException.class);
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> store.deleteByPrefix("keep2"))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThat(store.get("keep2/img/y.jpg")).isPresent();
+	}
 }
