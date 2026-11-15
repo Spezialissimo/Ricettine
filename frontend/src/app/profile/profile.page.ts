@@ -148,9 +148,10 @@ export class UserProfilePage {
     return mediaUrl(url);
   }
 
+  /** Your own drafts (no share link yet) open the recipe page, never the editor: Edit is there (owner, Plan 7). */
   protected recipeLink(r: ProfileRecipe): string[] {
     return r.status === 'DRAFT' || !r.shareToken
-      ? ['/recipes', r.id, 'edit']
+      ? ['/recipes', r.id, 'view']
       : ['/r', r.shareToken];
   }
 

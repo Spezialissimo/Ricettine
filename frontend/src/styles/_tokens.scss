@@ -1,10 +1,87 @@
-// Design tokens (palette from the mockups)
-$ink: #2b2622;
-$accent: #c8553d;
-$bg: #f4f1ec;
+// Design tokens. Palette "pistachio" (Plan 7): one green for actions and the top bar; every text is
+// dark, grey or white (no green text); red only for errors and destructive actions.
+$ink: #1e211c;
+$muted: #5d6158;
+$bg: #f6f8f5; // a faint green tint (owner: no yellow cast)
 $surface: #ffffff;
-$muted: #6f665e;
-$border: #e2dcd3;
+$border: #e1e6df;
+$subtle: #eef2ec; // quiet fills: chips, inactive segments
+$placeholder-a: #e8ede6; // striped "no photo" placeholder
+$placeholder-b: #f2f5f0;
+
+$accent: #477035; // buttons, the top bar, focus rings, the current-tab line
+$on-accent: #ffffff;
+$link: $ink; // text links and headings: never green
+
+$topbar-bg: $accent;
+$topbar-ink: #ffffff; // logo, current section, account name
+$topbar-muted: #e2ecdc; // other sections
+$pill-bg: #ffffff; // "+ New recipe" on the green bar
+$pill-ink: #2f4d22;
+
+$danger: #b3261e; // error text and outlines
+$danger-fill: #b3261e; // filled destructive buttons (white text)
+$danger-bg: #fbe9e7;
+$danger-border: #e3b4ae;
+$success: #2f6a2a; // "Saved", "Added"
+
+$badge-draft-bg: #e9ede7;
+$badge-public-bg: #e5efdf;
+
+// The light theme, exported as CSS variables (styles.scss). Components use var(--name), never these directly.
+$light: (
+  ink: $ink,
+  muted: $muted,
+  bg: $bg,
+  surface: $surface,
+  border: $border,
+  subtle: $subtle,
+  placeholder-a: $placeholder-a,
+  placeholder-b: $placeholder-b,
+  accent: $accent,
+  on-accent: $on-accent,
+  link: $link,
+  topbar-bg: $topbar-bg,
+  topbar-ink: $topbar-ink,
+  topbar-muted: $topbar-muted,
+  pill-bg: $pill-bg,
+  pill-ink: $pill-ink,
+  danger: $danger,
+  danger-fill: $danger-fill,
+  danger-bg: $danger-bg,
+  danger-border: $danger-border,
+  success: $success,
+  badge-draft-bg: $badge-draft-bg,
+  badge-public-bg: $badge-public-bg,
+);
+
+// The dark theme ("Dark 2", Plan 7): dark page and cards, light text, the same pistachio buttons, a deeper
+// green top bar with a light green-grey pill, and a light red for error text (red fills stay dark red).
+$dark: (
+  ink: #e9ece6,
+  muted: #a6ada1,
+  bg: #131612,
+  surface: #1c201b,
+  border: #30362e,
+  subtle: #262a24,
+  placeholder-a: #23271f,
+  placeholder-b: #2b3027,
+  accent: #477035,
+  on-accent: #ffffff,
+  link: #e9ece6,
+  topbar-bg: #24361c,
+  topbar-ink: #ffffff,
+  topbar-muted: #c9d6c2,
+  pill-bg: #dbe8d3,
+  pill-ink: #1f3317,
+  danger: #f2b8b5,
+  danger-fill: #b3261e,
+  danger-bg: #3b1f1d,
+  danger-border: #7a3a35,
+  success: #8fcf86,
+  badge-draft-bg: #2c302a,
+  badge-public-bg: #25361e,
+);
 
 $space-1: 4px;
 $space-2: 8px;
@@ -12,10 +89,12 @@ $space-3: 12px;
 $space-4: 16px;
 $space-6: 24px;
 $space-8: 32px;
+$space-12: 48px;
 
 $radius: 12px;
 $touch-target: 44px;
-$topbar-height: 52px;
+$topbar-height: 56px;
+$topbar-height-desktop: 64px;
 $bottomnav-height: 56px;
 $bp-desktop: 768px;
 $content-max-width: 1100px;

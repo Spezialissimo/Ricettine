@@ -1,13 +1,24 @@
 @use './styles/tokens' as t;
 @use '@angular/cdk/overlay-prebuilt.css';
 
+// Every colour is a CSS variable, so the theme can change at runtime. Light by default; dark when the
+// device prefers it (unless the person chose Light), or when they chose Dark (core/theme.ts sets data-theme).
+@mixin theme($values, $scheme) {
+  color-scheme: $scheme;
+  @each $name, $value in $values {
+    --#{$name}: #{$value};
+  }
+}
 :root {
-  --ink: #{t.$ink};
-  --accent: #{t.$accent};
-  --bg: #{t.$bg};
-  --surface: #{t.$surface};
-  --muted: #{t.$muted};
-  --border: #{t.$border};
+  @include theme(t.$light, light);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include theme(t.$dark, dark);
+  }
+}
+:root[data-theme='dark'] {
+  @include theme(t.$dark, dark);
 }
 
 *,
@@ -56,4 +67,111 @@ a.btn {
 .editor-sheet--bottom .cdk-dialog-container {
   border-radius: 22px 22px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+// Read by screen readers, not shown.
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// The one primary action button (create, retry): filled accent, used by My kitchen and its tabs.
+.btn-primary {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 t.$space-4;
+  border: 0;
+  border-radius: t.$radius;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+// An empty list: the message, then its action below it.
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: t.$space-3;
+  p {
+    margin: 0;
+    color: var(--muted);
+  }
+}
+
+// A square icon button (44 px): the icon is <app-icon>, the name is aria-label, the tooltip title.
+.icon-btn {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: t.$space-2;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    border-color: var(--muted);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  &.danger {
+    color: var(--danger);
+  }
+  // with a short text label beside the icon
+  &.labelled {
+    padding: 0 t.$space-3;
+    font: inherit;
+    font-weight: 600;
+  }
+}
+
+// A dropdown menu (CDK menu): the recipe page's ⋯ menu.
+.menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: t.$space-1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.menu-item {
+  @include t.touch-target;
+  display: flex;
+  align-items: center;
+  padding: 0 t.$space-3;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  &:hover,
+  &:focus {
+    background: var(--subtle);
+    outline: none;
+  }
 }

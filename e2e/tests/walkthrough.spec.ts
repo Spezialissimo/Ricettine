@@ -1,5 +1,5 @@
 import { BrowserContext, Frame, Page, expect } from '@playwright/test';
-import { ADMIN, Person, createInvitePath, expectHome, logIn, logOut, newContext, person, register, test } from '../helpers';
+import { ADMIN, Person, accountMenuLink, createInvitePath, expectHome, logIn, logOut, newContext, openAccountMenu, person, register, test } from '../helpers';
 
 test.describe.serial('walkthrough: admin, invite, register, logout, login', () => {
   let adminCtx: BrowserContext;
@@ -21,16 +21,16 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     await userCtx.close();
   });
 
-  test('admin logs in and the feed shows their name, with an Admin link', async () => {
+  test('admin logs in and the feed shows their name, with Admin in the account menu', async () => {
     await admin.goto('/');
     await expect(admin).toHaveURL(/\/login\?next=%2F$/);
     await logIn(admin, ADMIN);
-    await expect(admin.getByRole('link', { name: 'Admin' })).toBeVisible();
+    await expect((await openAccountMenu(admin)).getByRole('link', { name: 'Admin' })).toBeVisible();
   });
 
   test('admin creates an invite and reads the link', async () => {
-    await admin.getByRole('link', { name: 'Admin' }).click();
-    await expect(admin).toHaveURL(/\/admin\/invites$/);
+    await accountMenuLink(admin, 'Admin');
+    await expect(admin).toHaveURL(/\/settings\/admin\/invites$/);
     invitePath = await createInvitePath(admin);
   });
 
@@ -54,16 +54,21 @@ test.describe.serial('walkthrough: admin, invite, register, logout, login', () =
     expect(navigations.filter((u) => new URL(u).pathname !== '/')).toEqual([]);
   });
 
-  test('invited person registers and lands on the feed without an Admin link', async () => {
+  test('invited person registers and lands on the feed without Admin anywhere', async () => {
     await register(user, invitePath, who);
-    await expect(user.getByRole('link', { name: 'Settings' })).toBeVisible();
+    const menu = await openAccountMenu(user);
+    await expect(menu.getByRole('link', { name: 'Settings' })).toBeVisible();
     await expect(user.getByRole('link', { name: 'Admin' })).toHaveCount(0);
+    await menu.getByRole('link', { name: 'Settings' }).click();
+    await expect(user.getByRole('navigation', { name: 'Settings' })).toBeVisible();
+    await expect(user.getByRole('group', { name: 'Administration' })).toHaveCount(0);
+    await expect(user.getByRole('link', { name: 'Invites' })).toHaveCount(0);
   });
 
   test('the new user logs out, logs in, and cannot open /admin/users', async () => {
     await logOut(user);
     await logIn(user, who);
-    await user.goto('/admin/users');
+    await user.goto('/settings/admin/users');
     await expectHome(user, who.displayName); // adminGuard redirects non-admins home (back to the feed at /)
     await expect(user.getByRole('heading', { name: 'Users' })).toHaveCount(0);
   });

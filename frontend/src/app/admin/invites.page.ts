@@ -4,19 +4,19 @@ import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { InviteList } from '../shared/invite-list';
 import { AdminApi } from './admin.api';
-import { AdminTabsComponent } from './admin-tabs.component';
 
 @Component({
   selector: 'app-invites-page',
-  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe, AdminTabsComponent],
+  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../settings/settings-page.scss',
   template: `
     <ng-container *transloco="let t">
-      <app-admin-tabs />
+      <h1>{{ t('admin.invites') }}</h1>
+      <p class="intro">{{ t('admin.invitesIntro') }}</p>
       <button
         type="button"
-        class="primary"
+        class="btn"
         data-action="create"
         [disabled]="list.busy()"
         (click)="list.create()"

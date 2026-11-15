@@ -158,6 +158,8 @@ export type PhotoUpload = {
   preview: string | null;
   error: string | null;
   file?: File | null;
+  /** For a photo given by web address: kept on a retryable failure, like `file`. */
+  url?: string | null;
 };
 
 /**
@@ -213,7 +215,9 @@ export class EditorStore {
   readonly uploading = computed(() => this._uploads().some((u) => u.status === 'uploading'));
   /** True while a photo is uploading or failed and can be retried: Publish waits, leaving asks first. */
   readonly uploadsUnfinished = computed(() =>
-    this._uploads().some((u) => u.status === 'uploading' || (u.status === 'failed' && !!u.file)),
+    this._uploads().some(
+      (u) => u.status === 'uploading' || (u.status === 'failed' && !!(u.file || u.url)),
+    ),
   );
   /** True when this visit started from text saved locally on an earlier visit (applied and saved, or being saved). */
   readonly restored: Signal<boolean> = this._restored.asReadonly();
@@ -394,21 +398,28 @@ export class EditorStore {
     return [s.cover, ...s.steps.map((st) => st.photo)].find((p) => p?.mediaId === mediaId) ?? null;
   }
 
-  /** Uploads `file` into `slot`: shows a local preview at once, then saves the reference through `update`. */
-  async uploadPhoto(slot: PhotoSlot, file: File): Promise<void> {
+  /**
+   * Uploads into `slot` a file (shown at once as a local preview) or a web address (the server downloads it;
+   * no preview until its thumb arrives), then saves the reference through `update`.
+   */
+  async uploadPhoto(slot: PhotoSlot, source: File | string): Promise<void> {
     if (!this._id) return;
     this._photoGone.set(false);
     const id = this.nextUploadId++;
-    const preview = URL.createObjectURL(file);
+    const file = typeof source === 'string' ? null : source;
+    const url = typeof source === 'string' ? source : null;
+    const preview = file ? URL.createObjectURL(file) : null;
     this.setUpload({ id, slot, status: 'uploading', preview, error: null });
     try {
-      const photo = await this.api.uploadPhoto(this._id, file);
+      const photo = file
+        ? await this.api.uploadPhoto(this._id, file)
+        : await this.api.uploadPhotoFromUrl(this._id, url!);
       const mine = this._uploads().find((u) => u.id === id);
       if (!mine) return; // replaced, removed or its step deleted meanwhile; setUpload/dropUpload revoked the preview
       this._photos.update((m) => ({ ...m, [photo.mediaId]: photo }));
       this.setReference(mine.slot, photo.mediaId);
       this._uploads.update((us) =>
-        us.map((u) => (u.id === id ? { ...u, status: 'done', file: null } : u)),
+        us.map((u) => (u.id === id ? { ...u, status: 'done', file: null, url: null } : u)),
       );
     } catch (e) {
       const mine = this._uploads().find((u) => u.id === id);
@@ -418,12 +429,12 @@ export class EditorStore {
         // never dropped silently: the preview stays with "Upload failed — Retry"
         this._uploads.update((us) =>
           us.map((u) =>
-            u.id === id ? { ...u, status: 'failed', file, error: 'editor.uploadFailed' } : u,
+            u.id === id ? { ...u, status: 'failed', file, url, error: 'editor.uploadFailed' } : u,
           ),
         );
         return;
       }
-      this.revoke(preview);
+      if (preview) this.revoke(preview);
       this._uploads.update((us) =>
         us.map((u) =>
           u.id === id ? { ...u, status: 'failed', preview: null, error: errorKey(err) } : u,
@@ -435,7 +446,8 @@ export class EditorStore {
   /** Sends the file of a failed upload again (same slot, same file). */
   retryUpload(slot: PhotoSlot): Promise<void> {
     const u = this.uploadFor(slot);
-    return u?.status === 'failed' && u.file ? this.uploadPhoto(u.slot, u.file) : Promise.resolve();
+    const again = u?.status === 'failed' ? (u.file ?? u.url) : null;
+    return u && again ? this.uploadPhoto(u.slot, again) : Promise.resolve();
   }
 
   /** A file the client refused (too large, not an image): the slot shows the message. */
@@ -617,41 +629,6 @@ export class EditorStore {
     this._recipe.update((cur) => ({ ...cur, version: r.version }));
     // text typed meanwhile is now based on this version (also if the page was left during the request)
     if (this.autosave.dirty() || this.hasUnsavedInput()) this.writeBackup();
-  }
-
-  /**
-   * Replaces the share link at the version this editor knows (the server refuses a stale one with 409, so
-   * a reset never lets a stale working copy save on top of another device's edits). Pending typing is
-   * saved first; a conflict (from that save or the reset) moves the store into `conflict` and adopts
-   * nothing. On success the server copy replaces the working copy, or, if something was typed while the
-   * request was in flight (autosave is held meanwhile), only its metadata, and those edits then save at
-   * the new version. Other failures are thrown.
-   */
-  async resetLink(): Promise<'reset' | 'conflict' | 'blocked'> {
-    if (!this._id) return 'blocked';
-    await this.autosave.flush();
-    if (this.status() === 'conflict') return 'conflict';
-    this.autosave.suspend();
-    let r: Recipe;
-    try {
-      await this.autosave.settled();
-      r = await this.api.resetLink(this._id, this._recipe().version);
-    } catch (e) {
-      this.autosave.resume();
-      const err = toApiError(e);
-      if (err.status === 409 || err.code === 'recipe_conflict') {
-        this.autosave.markConflict(err);
-        return 'conflict';
-      }
-      throw e;
-    }
-    if (this.autosave.dirty() || this.hasUnsavedInput()) {
-      this.adoptMetadata(r);
-    } else {
-      this.replace(r);
-    }
-    this.autosave.resume();
-    return 'reset';
   }
 
   isUntouchedDraft(): boolean {

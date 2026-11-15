@@ -2,7 +2,7 @@ import { CdkDropList } from '@angular/cdk/drag-drop';
 import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { en, provideTestTransloco } from '../../testing/transloco';
-import { settle } from '../../testing/spec-helpers';
+import { btn, clearOverlays, overlay, settle } from '../../testing/spec-helpers';
 import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { StepsEditorComponent } from './steps-editor.component';
@@ -28,6 +28,7 @@ const type = (el: HTMLTextAreaElement, value: string) => {
 };
 
 describe('StepsEditorComponent', () => {
+  afterEach(clearOverlays);
   afterEach(() => document.querySelectorAll('app-steps-editor').forEach((e) => e.remove()));
 
   it('renders numbered steps with textareas and edits their text', async () => {
@@ -84,34 +85,50 @@ describe('StepsEditorComponent', () => {
     expect(store.recipe().steps.length).toBe(1);
   });
 
-  it('tapping a step reveals its delete action, which removes it', async () => {
+  const delButtons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button.delete-step')) as HTMLButtonElement[];
+
+  it('each step has a delete icon beside its move handle, named for the step', async () => {
+    const { el } = await mount(['a', 'b']);
+    const del = delButtons(el);
+    expect(del.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Delete step 1',
+      'Delete step 2',
+    ]);
+    expect(del[0].getAttribute('title')).toBe('Delete step 1');
+    expect(del[0].querySelector('app-icon')).not.toBeNull();
+    expect(del[0].parentElement?.querySelector('button.drag-handle')).not.toBeNull();
+  });
+
+  it('delete asks first: Cancel keeps the step, Delete removes it', async () => {
     const { f, el, store } = await mount(['a', 'b']);
-    expect(el.querySelector('button.delete-step')).toBeNull();
-    areas(el)[0].focus();
+    delButtons(el)[0].click();
     await settle(f);
-    (el.querySelector('button.delete-step') as HTMLButtonElement).click();
+    expect(overlay().textContent).toContain('Delete step 1?');
+    btn(overlay(), en.common.cancel)!.click();
+    await settle(f);
+    expect(store.recipe().steps.map((s) => s.text)).toEqual(['a', 'b']);
+    delButtons(el)[0].click();
+    await settle(f);
+    btn(overlay(), en.editor.deleteStepConfirm.confirm)!.click();
     await settle(f);
     expect(store.recipe().steps.map((s) => s.text)).toEqual(['b']);
   });
 
   it('on a published recipe, the last counting step cannot be deleted (hint shown); blank steps do not count', async () => {
-    const { f, el } = await mount(['Boil', '  '], 'PUBLISHED');
-    areas(el)[0].focus();
-    await settle(f);
-    const del = el.querySelector('button.delete-step') as HTMLButtonElement;
-    expect(del.disabled).toBe(true);
+    const { el } = await mount(['Boil', '  '], 'PUBLISHED');
+    const del = delButtons(el);
+    expect(del[0].disabled).toBe(true);
     expect(el.textContent).toContain(en.editor.needsOne);
-    areas(el)[1].focus();
-    await settle(f);
-    expect((el.querySelector('button.delete-step') as HTMLButtonElement).disabled).toBe(false);
+    expect(del[1].disabled).toBe(false);
   });
 
   it('after deleting, focus goes to the previous step, else the next, else the add button', async () => {
     const { f, el } = await mount(['a', 'b', 'c']);
     const del = async (i: number) => {
-      areas(el)[i].focus();
+      delButtons(el)[i].click();
       await settle(f);
-      (el.querySelector('button.delete-step') as HTMLButtonElement).click();
+      btn(overlay(), en.editor.deleteStepConfirm.confirm)!.click();
       await settle(f);
     };
     await del(1);

@@ -14,11 +14,11 @@
   height: 64px;
   border-radius: 50%;
   object-fit: cover;
-  background: t.$border;
+  background: var(--border);
   flex: none;
 }
 .handle {
-  color: t.$muted;
+  color: var(--muted);
   margin: 0;
 }
 h2 {
@@ -26,6 +26,6 @@ h2 {
   margin: t.$space-4 0 t.$space-3;
 }
 .meta {
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }

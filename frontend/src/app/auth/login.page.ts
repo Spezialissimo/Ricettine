@@ -22,13 +22,13 @@ import { safeNext } from './safe-next';
     }
     .error {
       display: block;
-      color: #b3261e;
+      color: var(--danger);
       font-weight: 400;
       font-size: 0.85rem;
       margin-top: t.$space-1;
     }
     input[aria-invalid='true'] {
-      border-color: #b3261e;
+      border-color: var(--danger);
     }
     input {
       @include t.touch-target;
@@ -37,13 +37,13 @@ import { safeNext } from './safe-next';
       margin-top: t.$space-1;
       padding: 0 t.$space-3;
       font: inherit;
-      border: 1px solid t.$border;
+      border: 1px solid var(--border);
       border-radius: t.$radius;
-      background: t.$surface;
-      color: t.$ink;
+      background: var(--surface);
+      color: var(--ink);
     }
     .alert {
-      color: #b3261e;
+      color: var(--danger);
       margin: 0 0 t.$space-4;
     }
     button {
@@ -51,8 +51,8 @@ import { safeNext } from './safe-next';
       width: 100%;
       border: 0;
       border-radius: t.$radius;
-      background: t.$accent;
-      color: #fff;
+      background: var(--accent);
+      color: var(--on-accent);
       font-weight: 600;
     }
     button[disabled] {

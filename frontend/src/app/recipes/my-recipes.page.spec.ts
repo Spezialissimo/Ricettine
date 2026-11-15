@@ -32,7 +32,7 @@ function setup(api: Partial<RecipeApi>) {
 }
 
 describe('MyRecipesPage', () => {
-  it('renders titles, badges, thumbs and editor links', async () => {
+  it('renders titles, badges, thumbs and links that open each recipe (never the editor)', async () => {
     setup({
       mine: async () => [
         sum({ id: 'a', title: 'Lasagne', status: 'DRAFT' }),
@@ -49,12 +49,12 @@ describe('MyRecipesPage', () => {
     const f = TestBed.createComponent(MyRecipesPage);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    expect(el.querySelector('h1')?.textContent).toContain('My recipes');
+    expect(el.querySelector('h2')?.textContent).toContain(en.kitchen.recipes);
     const links = Array.from(el.querySelectorAll('a.recipe')) as HTMLAnchorElement[];
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
-      '/recipes/a/edit',
-      '/recipes/b/edit',
-      '/recipes/c/edit',
+      '/recipes/a/view',
+      '/recipes/b/view',
+      '/recipes/c/view',
     ]);
     expect(links[0].textContent).toContain('Lasagne');
     expect(links[0].textContent).toContain('Draft');

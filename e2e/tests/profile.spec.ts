@@ -1,5 +1,5 @@
 import { Page, TestInfo, expect } from '@playwright/test';
-import { apiPublishRecipe, createCookbook, createRecipe, expectCardLayout, expectSaved, newUserPage, test } from '../helpers';
+import { accountMenuLink, apiPublishRecipe, createCookbook, createRecipe, editCookbook, expectCardLayout, expectSaved, newUserPage, test } from '../helpers';
 
 const stamp = (testInfo: TestInfo) => `${testInfo.project.name}-${Date.now().toString(36)}`;
 
@@ -9,14 +9,12 @@ async function profileLoaded(page: Page) {
   await expect(page.locator('p.loading')).toHaveCount(0);
 }
 
-/** Sets a cookbook's visibility through its Edit dialog (the page must be the cookbook's own page). */
+/** Sets a cookbook's visibility on its edit page (the page must be the cookbook's view, /c/:token); Save returns to the view. */
 async function setCookbookVisibility(page: Page, visibility: 'Private' | 'Public') {
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByRole('radio', { name: visibility }).check();
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.locator('.badge', { hasText: visibility })).toBeVisible();
+  await editCookbook(page);
+  await page.getByRole('radio', { name: visibility }).check();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page).toHaveURL(/\/c\/[A-Za-z0-9_-]+$/);
 }
 
 test('a profile lists only public items to others, everything to its owner, and follows visibility', async ({ browser }, testInfo) => {
@@ -29,7 +27,7 @@ test('a profile lists only public items to others, everything to its owner, and 
   await a.getByRole('radio', { name: 'Public' }).check();
   await expectSaved(a);
   await a.getByRole('button', { name: 'Publish', exact: true }).click();
-  await expect(a.locator('[data-url]')).toBeVisible();
+  await expect(a.locator('.editor-header .state')).toContainText('Published');
   await apiPublishRecipe(a, { title: `Prof-priv-${s}`, visibility: 'PRIVATE' });
   await createRecipe(a, { title: `Prof-draft-${s}` });
   await createCookbook(a, `Prof-book-pub-${s}`);
@@ -57,7 +55,7 @@ test('a profile lists only public items to others, everything to its owner, and 
 
   // A opens their own profile from the shell and sees all five, marked
   await a.goto('/');
-  await a.getByRole('banner').getByRole('link', { name: 'Your profile' }).click();
+  await accountMenuLink(a, 'View profile');
   await expect(a).toHaveURL(new RegExp(`/u/${whoA.username}$`));
   await profileLoaded(a);
   const card = (text: string) => a.locator('a.recipe', { hasText: `${text}-${s}` });
@@ -66,13 +64,15 @@ test('a profile lists only public items to others, everything to its owner, and 
   await expect(card('Prof-draft').locator('.badge')).toHaveText('Draft');
   await expect(card('Prof-book-pub').locator('.badge')).toHaveText('Public');
   await expect(card('Prof-book-priv').locator('.badge')).toHaveText('Private');
+  // the own draft opens its recipe page (the editor only through Edit there)
   await card('Prof-draft').click();
-  await expect(a).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
+  await expect(a).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/view$/);
+  await expect(a.getByText('Draft: only you can see this recipe.')).toBeVisible();
 
   // A makes the public cookbook private: B's next load no longer lists it
   await a.goto(`/u/${whoA.username}`);
   await card('Prof-book-pub').click();
-  await expect(a).toHaveURL(/\/cookbooks\/[0-9a-f-]{36}$/);
+  await expect(a).toHaveURL(/\/c\/[A-Za-z0-9_-]+$/); // the cookbook's one view
   await setCookbookVisibility(a, 'Private');
   await b.goto(`/u/${whoA.username}`);
   await profileLoaded(b);

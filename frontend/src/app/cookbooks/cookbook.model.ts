@@ -60,6 +60,22 @@ export const MAX_DESCRIPTION = 1000;
 /** Length in Unicode code points, as the server counts. */
 export const codePoints = (s: string): number => [...s].length;
 
+/** Field error codes for a cookbook's (trimmed) name and description, checked as the server does. */
+export function detailsErrors(name: string, description: string): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (name === '') errors['name'] = 'required';
+  else if (codePoints(name) > MAX_NAME) errors['name'] = 'too_long';
+  if (codePoints(description) > MAX_DESCRIPTION) errors['description'] = 'too_long';
+  return errors;
+}
+
+/** "Ann and Bob": the owner, then the co-authors, joined the way `lang` joins a list. */
+export function peopleList(owner: Person | null, authors: Person[], lang: string): string {
+  const names = [owner, ...authors].filter((p) => p !== null).map((p) => p.displayName);
+  if (names.length === 0) return '';
+  return new Intl.ListFormat(lang, { type: 'conjunction' }).format(names);
+}
+
 type PublicCookbookEntry = {
   recipeId: string;
   title: string;

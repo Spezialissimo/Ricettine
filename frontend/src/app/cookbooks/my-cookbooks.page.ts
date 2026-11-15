@@ -1,61 +1,40 @@
-import { Dialog } from '@angular/cdk/dialog';
-import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
-import { openSheet } from '../shared/sheet';
-import { mediaUrl } from '../core/media';
 import { CookbookApi } from './cookbook.api';
-import { CookbookInput, CookbookSummary } from './cookbook.model';
-import { CookbookFormDialog } from './cookbook-form.dialog';
+import { CookbookSummary } from './cookbook.model';
+import { CookbookCardsComponent } from './cookbook-cards.component';
+import { NewCookbookFlow } from './new-cookbook';
 
-/** The user's cookbooks (owned and co-authored): a card grid on desktop, a list on the phone. */
+/** The Cookbooks tab of My kitchen: the user's cookbooks, owned and co-authored, newest edit first. */
 @Component({
   selector: 'app-my-cookbooks-page',
-  imports: [RouterLink, TranslocoDirective],
+  imports: [TranslocoDirective, CookbookCardsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbooks.scss',
   template: `
     <ng-container *transloco="let t">
-      <div class="head">
-        <h1>{{ t('cookbooks.title') }}</h1>
-        <button type="button" class="new" (click)="create()">{{ t('cookbooks.new') }}</button>
-      </div>
+      <h2 class="visually-hidden">{{ t('kitchen.cookbooks') }}</h2>
       @if (error(); as e) {
         <p class="alert" role="alert">{{ t(e) }}</p>
-        <button type="button" class="retry" (click)="load()">{{ t('common.retry') }}</button>
+        <button type="button" class="btn-primary retry" (click)="load()">
+          {{ t('common.retry') }}
+        </button>
       } @else if (books(); as list) {
         @if (list.length === 0) {
-          <p class="empty">{{ t('cookbooks.empty') }}</p>
+          <div class="empty-state">
+            <p>{{ t('cookbooks.empty') }}</p>
+            <button type="button" class="btn-primary new" (click)="create()">
+              {{ t('cookbooks.emptyAction') }}
+            </button>
+          </div>
         } @else {
-          <ul class="grid">
-            @for (b of list; track b.id) {
-              <li>
-                <a class="cookbook" [routerLink]="['/cookbooks', b.id]">
-                  @if (mediaUrl(b.coverThumbUrl); as src) {
-                    <img class="cover-thumb" [src]="src" alt="" loading="lazy" />
-                  }
-                  <span class="name">{{ b.name }}</span>
-                  <span class="count">{{
-                    t(
-                      b.recipeCount === 1
-                        ? 'cookbooks.recipeCountOne'
-                        : 'cookbooks.recipeCountOther',
-                      { count: b.recipeCount }
-                    )
-                  }}</span>
-                  <span class="badges">
-                    <span class="badge" [attr.data-badge]="b.role">{{
-                      t(b.role === 'OWNER' ? 'cookbooks.roleOwner' : 'cookbooks.roleAuthor')
-                    }}</span>
-                    <span class="badge" [attr.data-badge]="b.visibility">{{
-                      t('cookbooks.visibility.' + b.visibility)
-                    }}</span>
-                  </span>
-                </a>
-              </li>
-            }
-          </ul>
+          <div class="head">
+            <button type="button" class="btn-primary new" (click)="create()">
+              {{ t('cookbooks.new') }}
+            </button>
+          </div>
+          <app-cookbook-cards [cookbooks]="list" />
         }
       } @else {
         <p class="loading" role="status">{{ t('cookbooks.loading') }}</p>
@@ -65,13 +44,9 @@ import { CookbookFormDialog } from './cookbook-form.dialog';
 })
 export class MyCookbooksPage {
   private readonly api = inject(CookbookApi);
-  private readonly dialog = inject(Dialog);
-  private readonly injector = inject(Injector);
-  private readonly router = inject(Router);
-  private readonly i18n = inject(TranslocoService);
+  private readonly newCookbook = inject(NewCookbookFlow);
   protected readonly books = signal<CookbookSummary[] | null>(null);
   protected readonly error = signal<string | null>(null);
-  protected readonly mediaUrl = mediaUrl;
 
   constructor() {
     void this.load();
@@ -86,16 +61,7 @@ export class MyCookbooksPage {
     }
   }
 
-  protected async create(): Promise<void> {
-    const created: { id: string | null } = { id: null };
-    const result = await openSheet(this.dialog, this.injector, CookbookFormDialog, {
-      label: this.i18n.translate('cookbooks.newTitle'),
-      data: {
-        submit: async (input: CookbookInput) => (created.id = (await this.api.create(input)).id),
-      },
-    });
-    if (result === true && created.id) {
-      await this.router.navigateByUrl(`/cookbooks/${created.id}`);
-    }
+  protected create(): Promise<void> {
+    return this.newCookbook.start();
   }
 }

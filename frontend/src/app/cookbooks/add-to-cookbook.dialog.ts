@@ -40,10 +40,10 @@ type Row = {
       overflow-wrap: anywhere;
     }
     .ok {
-      color: #2e7d32;
+      color: var(--success);
     }
     .alert {
-      color: #b3261e;
+      color: var(--danger);
       margin: 0;
       flex-basis: 100%;
       font-size: 0.85rem;

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
 import { SetupStatus } from '../core/auth.guards';
@@ -10,7 +10,7 @@ import { SettingsApi } from './settings.api';
 
 @Component({
   selector: 'app-delete-account-page',
-  imports: [ReactiveFormsModule, TranslocoDirective, RouterLink],
+  imports: [ReactiveFormsModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './settings-page.scss',
   template: `
@@ -46,7 +46,6 @@ import { SettingsApi } from './settings.api';
           {{ t('settings.deleteSubmit') }}
         </button>
       </form>
-      <a class="btn-back" routerLink="/settings/profile">{{ t('common.back') }}</a>
     </ng-container>
   `,
 })

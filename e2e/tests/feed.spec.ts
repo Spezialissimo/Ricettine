@@ -17,7 +17,7 @@ async function editorRecipe(page: Page, title: string, visibility: 'Private' | '
   await expectSaved(page);
   if (publish) {
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
-    await expect(page.locator('[data-url]')).toBeVisible();
+    await expect(page.locator('.editor-header .state')).toContainText('Published');
   }
   return page.url();
 }
@@ -29,7 +29,7 @@ test('login lands on the feed, which lists only published public recipes and fol
 
   await expect(b).toHaveURL(/\/$/);
   await expect(b.getByRole('heading', { name: 'Latest recipes' })).toBeVisible();
-  await expect(b).toHaveTitle('Home · Ricettine');
+  await expect(b).toHaveTitle('Discover · Ricettine');
 
   const pubUrl = await editorRecipe(a, `Feed-pub-${s}`, 'Public', true);
   await editorRecipe(a, `Feed-priv-${s}`, 'Private', true);

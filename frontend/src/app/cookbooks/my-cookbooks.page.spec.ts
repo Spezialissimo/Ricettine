@@ -36,7 +36,7 @@ describe('MyCookbooksPage', () => {
     const f = TestBed.createComponent(MyCookbooksPage);
     await settle(f);
     const el = f.nativeElement as HTMLElement;
-    expect(el.querySelector('h1')?.textContent).toContain(en.cookbooks.title);
+    expect(el.querySelector('h2')?.textContent).toContain(en.kitchen.cookbooks);
     const links = Array.from(el.querySelectorAll('a.cookbook')) as HTMLAnchorElement[];
     expect(links.map((l) => l.getAttribute('href'))).toEqual(['/cookbooks/a', '/cookbooks/b']);
     expect(links[0].textContent).toContain('Desserts');
@@ -67,7 +67,7 @@ describe('MyCookbooksPage', () => {
     expect(el.textContent).toContain(en.cookbooks.empty);
     expect(
       Array.from(el.querySelectorAll('button')).some((b) =>
-        b.textContent?.includes(en.cookbooks.new),
+        b.textContent?.includes(en.cookbooks.emptyAction),
       ),
     ).toBe(true);
   });

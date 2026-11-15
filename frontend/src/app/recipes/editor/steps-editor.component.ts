@@ -23,11 +23,15 @@ import { EditorStore } from './editor-store';
 import { remapIndex } from './remap-index';
 import { PhotoDropDirective } from './photo-drop.directive';
 import { PhotoSlotComponent } from './photo-slot.component';
+import { IconComponent } from '../../shared/icon.component';
+import { confirmSheet } from '../../shared/confirm-dialog.component';
+import { Dialog } from '@angular/cdk/dialog';
 import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
 
 /**
- * Numbered steps, each an auto-sizing textarea. "+ Add step" (desktop), the phone bottom bar
- * (`addStep()`) and Ctrl/Cmd+Enter inside a step add a step and focus it. Focusing a step reveals its actions.
+ * Numbered steps, each a bordered card: a header (move handle, number, then a delete icon that asks
+ * first), then the auto-sizing textarea and the photo at full width. "+ Add step" below the list and Ctrl/Cmd+Enter inside a step
+ * add a step and focus it.
  */
 @Component({
   selector: 'app-steps-editor',
@@ -38,6 +42,7 @@ import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
     CdkDragHandle,
     PhotoDropDirective,
     PhotoSlotComponent,
+    IconComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './steps-editor.component.scss',
@@ -54,22 +59,38 @@ import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
             [class.active]="active() === i"
             (focusin)="active.set(i)"
             (click)="active.set(i)"
+            [attr.data-drop-label]="t('editor.dropHere')"
             appPhotoDrop
             (dropped)="active.set(i); store.uploadPhoto(i, $event)"
+            (droppedUrl)="active.set(i); store.uploadPhoto(i, $event)"
             (rejected)="store.rejectPhoto(i, $event)"
           >
-            <button
-              type="button"
-              class="drag-handle"
-              cdkDragHandle
-              [disabled]="steps.length < 2"
-              [id]="handleId(i)"
-              [attr.aria-label]="t('editor.reorderStep', { n: i + 1 })"
-              (keydown)="onHandleKeydown(i, $event)"
-            >
-              ⠿
-            </button>
-            <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
+            <!-- the card's header: move handle, number, then the delete icon -->
+            <div class="step-head">
+              <button
+                type="button"
+                class="drag-handle"
+                cdkDragHandle
+                [disabled]="steps.length < 2"
+                [id]="handleId(i)"
+                [attr.aria-label]="t('editor.reorderStep', { n: i + 1 })"
+                (keydown)="onHandleKeydown(i, $event)"
+              >
+                <app-icon name="grip" />
+              </button>
+              <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
+              <button
+                type="button"
+                class="delete-step"
+                [disabled]="!canDelete(s)"
+                [attr.aria-label]="t('editor.deleteStepAria', { n: i + 1 })"
+                [attr.title]="t('editor.deleteStepAria', { n: i + 1 })"
+                [attr.aria-describedby]="published() && total() <= 1 ? hintId : null"
+                (click)="confirmRemove(i)"
+              >
+                <app-icon name="trash" />
+              </button>
+            </div>
             <div class="step-body">
               <textarea
                 [id]="id(i)"
@@ -81,19 +102,6 @@ import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
                 (keydown)="onKeydown(i, $event)"
               ></textarea>
               <app-photo-slot [slot]="i" [capture]="true" />
-              @if (active() === i) {
-                <div class="step-actions">
-                  <button
-                    type="button"
-                    class="btn delete-step"
-                    [disabled]="!canDelete(s)"
-                    [attr.aria-describedby]="published() && total() <= 1 ? hintId : null"
-                    (click)="remove(i)"
-                  >
-                    {{ t('editor.deleteStep') }}
-                  </button>
-                </div>
-              }
             </div>
           </li>
         }
@@ -109,6 +117,7 @@ import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
         [disabled]="steps.length >= maxSteps"
         (click)="addStep()"
       >
+        <app-icon name="plus" />
         {{ t('editor.addStep') }}
       </button>
     </ng-container>
@@ -117,6 +126,7 @@ import { MAX_STEPS, MAX_STEP_TEXT } from '../recipe-limits';
 export class StepsEditorComponent {
   protected readonly store = inject(EditorStore);
   private readonly injector = inject(Injector);
+  private readonly dialog = inject(Dialog);
   protected readonly base = uid('step');
   protected readonly hintId = this.base + '-hint';
   protected readonly maxSteps = MAX_STEPS;
@@ -223,6 +233,18 @@ export class StepsEditorComponent {
       },
       { injector: this.injector },
     );
+  }
+
+  /** Delete asks first (owner, Plan 7): a step's text and photo are gone with it. */
+  protected async confirmRemove(i: number): Promise<void> {
+    const ok = await confirmSheet(this.dialog, this.injector, this.transloco, {
+      titleKey: 'editor.deleteStepConfirm.title',
+      bodyKey: 'editor.deleteStepConfirm.body',
+      params: { n: i + 1 },
+      confirmKey: 'editor.deleteStepConfirm.confirm',
+      danger: true,
+    });
+    if (ok) this.remove(i);
   }
 
   protected remove(i: number): void {

@@ -63,6 +63,22 @@ describe('api-error', () => {
     }
     expect(en.errors.unknown).toBeTruthy();
   });
+
+  it('every error message in en.json is reachable: a known code, or a key the editor uses directly', () => {
+    const direct = ['photo_from_link', 'photo_unreadable'];
+    const messages = Object.entries(en.errors)
+      .filter(([, v]) => typeof v === 'string')
+      .map(([k]) => k);
+    for (const key of messages) {
+      expect(KNOWN_ERROR_CODES.includes(key) || direct.includes(key), key).toBe(true);
+    }
+  });
+
+  it('maps the codes of a photo given by web address', () => {
+    for (const code of ['image_url_invalid', 'image_url_not_allowed', 'image_url_unreachable']) {
+      expect(errorKey({ status: 400, code })).toBe(`errors.${code}`);
+    }
+  });
 });
 
 describe('fieldErrorKey', () => {

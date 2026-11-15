@@ -10,8 +10,8 @@ import { AppDatePipe } from './app-date.pipe';
   styles: `
     @use '../../styles/tokens' as t;
     .box {
-      background: t.$surface;
-      border: 1px solid t.$border;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: t.$radius;
       padding: t.$space-4;
     }
@@ -24,7 +24,7 @@ import { AppDatePipe } from './app-date.pipe';
     }
     .expiry {
       margin: 0 0 t.$space-3;
-      color: t.$muted;
+      color: var(--muted);
       font-size: 0.85rem;
     }
     .row {
@@ -38,12 +38,12 @@ import { AppDatePipe } from './app-date.pipe';
       padding: 0 t.$space-4;
       border: 0;
       border-radius: t.$radius;
-      background: t.$accent;
-      color: #fff;
+      background: var(--accent);
+      color: var(--on-accent);
       font-weight: 600;
     }
     .ok {
-      color: t.$muted;
+      color: var(--muted);
     }
   `,
   template: `
