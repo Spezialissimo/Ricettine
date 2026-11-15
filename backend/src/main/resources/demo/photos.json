@@ -1,0 +1,108 @@
+{
+  "carbonara": {
+    "file": "carbonara.jpg",
+    "sourceUrl": "https://unsplash.com/photos/a-white-plate-topped-with-spaghetti-and-bacon-fDLBn8X_IlU",
+    "downloadUrl": "https://images.unsplash.com/photo-1633337474564-1d9478ca4e2e",
+    "photographer": "Rob Wicks",
+    "license": "Unsplash License"
+  },
+  "bolognese": {
+    "file": "bolognese.jpg",
+    "sourceUrl": "https://unsplash.com/photos/spaghetti-on-white-ceramic-plate-sA3wymYqyaI",
+    "downloadUrl": "https://images.unsplash.com/photo-1622973536968-3ead9e780960",
+    "photographer": "Homescreenify",
+    "license": "Unsplash License"
+  },
+  "arrabbiata": {
+    "file": "arrabbiata.jpg",
+    "sourceUrl": "https://unsplash.com/photos/penne-pasta-with-tomato-sauce-dinner-ogzTpp9c7I4",
+    "downloadUrl": "https://images.unsplash.com/photo-1788599760377-fb4008792b0a",
+    "photographer": "Zoshua Colah",
+    "license": "Unsplash License"
+  },
+  "lasagne": {
+    "file": "lasagne.jpg",
+    "sourceUrl": "https://unsplash.com/photos/baked-pastry-on-white-pan-WpnGOZ3C5uU",
+    "downloadUrl": "https://images.unsplash.com/photo-1551892269-860b1e482f98",
+    "photographer": "Angèle Kamp",
+    "license": "Unsplash License"
+  },
+  "osso-buco": {
+    "file": "osso-buco.jpg",
+    "sourceUrl": "https://www.pexels.com/photo/meat-and-vegetable-meal-on-plate-15186040/",
+    "downloadUrl": "https://images.pexels.com/photos/15186040/pexels-photo-15186040.jpeg",
+    "photographer": "Eduardo Krajan",
+    "license": "Pexels License"
+  },
+  "ribollita": {
+    "file": "ribollita.jpg",
+    "sourceUrl": "https://unsplash.com/photos/soup-in-white-ceramic-bowl-5eROVOJW2bA",
+    "downloadUrl": "https://images.unsplash.com/photo-1611068120813-eca5a8cbf793",
+    "photographer": "Nathan Dumlao",
+    "license": "Unsplash License",
+    "width": 1200
+  },
+  "rigatoni": {
+    "file": "rigatoni.jpg",
+    "sourceUrl": "https://unsplash.com/photos/rigatoni-pasta-with-meat-sauce-and-cheese-on-a-plate-l7jEWbVOJhg",
+    "downloadUrl": "https://images.unsplash.com/photo-1771508558365-07e711f60270",
+    "photographer": "gabbiistudios",
+    "license": "Unsplash License"
+  },
+  "risotto": {
+    "file": "risotto.jpg",
+    "sourceUrl": "https://unsplash.com/photos/person-eating-fish-meat-xXJciiQAJ-Y",
+    "downloadUrl": "https://images.unsplash.com/photo-1515036918611-4b7f32b8406c",
+    "photographer": "Travis Yewell",
+    "license": "Unsplash License"
+  },
+  "linguine-gamberi": {
+    "file": "linguine-gamberi.jpg",
+    "sourceUrl": "https://unsplash.com/photos/cooked-noodles-with-shrimps-r01ZopTiEV8",
+    "downloadUrl": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8",
+    "photographer": "Olayinka Babalola",
+    "license": "Unsplash License"
+  },
+  "ragu-anatra": {
+    "file": "ragu-anatra.jpg",
+    "sourceUrl": "https://unsplash.com/photos/a-plate-of-pasta-being-lifted-with-a-fork-qfpVo7fMyII",
+    "downloadUrl": "https://images.unsplash.com/photo-1734356959885-54fe2e99c1cd",
+    "photographer": "Hailey Tong",
+    "license": "Unsplash License"
+  },
+  "ricotta-cake": {
+    "file": "ricotta-cake.jpg",
+    "sourceUrl": "https://unsplash.com/photos/sliced-of-cake-on-white-ceramic-plate-SPw9MtQtgxM",
+    "downloadUrl": "https://images.unsplash.com/photo-1609355109553-3bb67c76b1f7",
+    "photographer": "Karolina Kołodziejczak",
+    "license": "Unsplash License"
+  },
+  "pasta-salad": {
+    "file": "pasta-salad.jpg",
+    "sourceUrl": "https://unsplash.com/photos/tortellini-salad-with-tomatoes-ham-and-basil-y3oQNH6E9HU",
+    "downloadUrl": "https://images.unsplash.com/photo-1757625620914-1f686e8d15b5",
+    "photographer": "sheri silver",
+    "license": "Unsplash License"
+  },
+  "cover-primi": {
+    "file": "cover-primi.jpg",
+    "sourceUrl": "https://unsplash.com/photos/pasta-with-sauce-on-white-ceramic-plate-gOf9Be55k4s",
+    "downloadUrl": "https://images.unsplash.com/photo-1592774912353-72756004ecbb",
+    "photographer": "Marika Sartori",
+    "license": "Unsplash License"
+  },
+  "cover-dolci": {
+    "file": "cover-dolci.jpg",
+    "sourceUrl": "https://unsplash.com/photos/sliced-cake-on-white-ceramic-plate-NVrldNMPJlI",
+    "downloadUrl": "https://images.unsplash.com/photo-1604850723811-35d9702ee794",
+    "photographer": "Aleksandra Tanasiienko",
+    "license": "Unsplash License"
+  },
+  "cover-nord": {
+    "file": "cover-nord.jpg",
+    "sourceUrl": "https://www.pexels.com/photo/gourmet-risotto-with-braised-beef-dish-setting-28703259/",
+    "downloadUrl": "https://images.pexels.com/photos/28703259/pexels-photo-28703259.jpeg",
+    "photographer": "Jonathan Borba",
+    "license": "Pexels License"
+  }
+}
