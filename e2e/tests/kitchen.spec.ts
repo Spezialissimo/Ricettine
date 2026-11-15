@@ -108,7 +108,7 @@ test('Settings: one grouped navigation; Invites and Users sit under Administrati
   await expect(page).toHaveURL(/\/settings\/profile$/);
   const nav = page.getByRole('navigation', { name: 'Settings' });
   await expect(nav.getByRole('group')).toHaveCount(1);
-  await expect(nav.getByRole('group', { name: 'Account' }).getByRole('link')).toHaveText(['Profile', 'Appearance', 'Password', 'Delete account']);
+  await expect(nav.getByRole('group', { name: 'Account' }).getByRole('link')).toHaveText(['Profile', 'Appearance', 'Language', 'Password', 'Delete account']);
   await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
   await nav.getByRole('link', { name: 'Password' }).click();
   await expect(page).toHaveURL(/\/settings\/password$/);
