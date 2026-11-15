@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Mounts the EBS data volume at /srv/ricettine. Formats it only when blkid positively reports
-# "no filesystem" (exit status 2), a low-level probe (blkid -p) agrees and the first MiB reads as zeros;
+# "no filesystem" (exit status 2), a low-level probe (blkid -p) agrees and the first MiB can be read;
 # anything else aborts. Safe to run on every boot.
 # DEVICE, VOLUME_ID, BYID_DIR, MOUNTPOINT, FSTAB, WAIT_TRIES and WAIT_SECONDS exist for the test and cloud-init.
 set -euo pipefail
@@ -47,8 +47,10 @@ if [ "$status" -eq 2 ] || { [ "$status" -eq 0 ] && [ -z "$fstype" ]; }; then
     echo "mount-data: blkid -p on $found exited $probe (not 2), refusing to format" >&2
     exit 1
   fi
-  if ! cmp -s -n 1048576 "$found" /dev/zero; then
-    echo "mount-data: first MiB of $found is not blank, refusing to format" >&2
+  # Exit 2 can also mean "could not read": make sure the device reads. Its content is not checked:
+  # a new EBS volume does not always read as zeros (seen in a new-experience account in eu-north-1).
+  if ! dd if="$found" of=/dev/null bs=1048576 count=1 status=none 2>/dev/null; then
+    echo "mount-data: cannot read $found, refusing to format" >&2
     exit 1
   fi
   echo "mount-data: no filesystem on $found, formatting"

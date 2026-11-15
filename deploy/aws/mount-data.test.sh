@@ -90,11 +90,19 @@ new_env "__ERROR__"
 check "blkid error: script exits non-zero" not run
 check "blkid error: mkfs is never called" no_mkfs
 
-# 4b. blkid says "nothing found" but the first MiB holds data (it may just be unreadable): never format
+# 4b. both probes find nothing but the volume is not zeros: a new EBS volume can read as random bytes
+# (seen in a new-experience account in eu-north-1), so this is formatted
 new_env ""
 printf 'not zeros' | dd of="$T/device" conv=notrunc 2>/dev/null
-check "non-zero first MiB: script exits non-zero" not run
-check "non-zero first MiB: mkfs is never called" no_mkfs
+check "non-zero but empty volume: runs" run
+check "non-zero but empty volume: mkfs called once" mkfs_once
+
+# 4d. both probes find nothing but the device cannot be read: never format
+new_env ""
+rm "$T/device"
+mkdir "$T/device"
+check "unreadable device: script exits non-zero" not run
+check "unreadable device: mkfs is never called" no_mkfs
 
 # 4c. the low-level probe cannot confirm "empty" (exit other than 2): never format
 new_env ""
