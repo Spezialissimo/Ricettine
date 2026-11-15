@@ -6,8 +6,7 @@ const NOINDEX = 'noindex, nofollow';
 test('recipe and cookbook pages tell crawlers not to index (header and meta)', async ({ browser }, testInfo) => {
   const { page } = await newUserPage(browser, testInfo, 'noidx');
   const { shareToken } = await apiPublishRecipe(page, { title: 'Noindex soup', visibility: 'PUBLIC' });
-  await createCookbook(page, 'Noindex book');
-  const cookbookToken = (await page.locator('[data-url]').innerText()).trim().split('/').pop()!;
+  const cookbookToken = (await createCookbook(page, 'Noindex book')).split('/').pop()!; // lands on /c/:token
 
   for (const path of [`/r/${shareToken}`, `/c/${cookbookToken}`]) {
     const response = await page.goto(path);

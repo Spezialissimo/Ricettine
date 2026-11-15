@@ -33,9 +33,9 @@ export type ConfirmData = {
       padding: 0 16px;
     }
     .danger {
-      background: #b3261e;
-      border-color: #b3261e;
-      color: #fff;
+      background: var(--danger-fill);
+      border-color: var(--danger-fill);
+      color: var(--on-accent);
       font-weight: 700;
     }
     .primary {
@@ -47,7 +47,7 @@ export type ConfirmData = {
   `,
   template: `
     <ng-container *transloco="let t">
-      <h2 [id]="titleId">{{ t(data.titleKey) }}</h2>
+      <h2 [id]="titleId">{{ t(data.titleKey, data.params ?? {}) }}</h2>
       <p class="hint">{{ t(data.bodyKey, data.params ?? {}) }}</p>
       <div class="actions">
         <button type="button" [class.primary]="data.cancelPrimary" (click)="ref.close(false)">
@@ -75,7 +75,7 @@ export async function confirmSheet(
 ): Promise<boolean> {
   return (
     (await openSheet<boolean>(dialog, injector, ConfirmDialogComponent, {
-      label: i18n.translate(data.titleKey),
+      label: i18n.translate(data.titleKey, data.params ?? {}),
       data,
     })) === true
   );

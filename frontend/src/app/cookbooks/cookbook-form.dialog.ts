@@ -3,13 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKey, fieldErrorKey, toApiError } from '../core/api-error';
 import { uid } from '../shared/sheet';
-import {
-  CookbookInput,
-  CookbookVisibility,
-  MAX_DESCRIPTION,
-  MAX_NAME,
-  codePoints,
-} from './cookbook.model';
+import { CookbookInput, CookbookVisibility, detailsErrors } from './cookbook.model';
 
 export type CookbookFormData = {
   /** Present when editing. */
@@ -33,7 +27,7 @@ export type CookbookFormData = {
       min-height: 88px;
       padding: 8px 12px;
       font: inherit;
-      border: 1px solid #e2dcd3;
+      border: 1px solid var(--border);
       border-radius: 10px;
       box-sizing: border-box;
     }
@@ -47,7 +41,7 @@ export type CookbookFormData = {
     }
     legend {
       font-size: 0.85rem;
-      color: #6f665e;
+      color: var(--muted);
       margin-bottom: 4px;
       padding: 0;
     }
@@ -66,7 +60,7 @@ export type CookbookFormData = {
     }
     .field-error,
     .alert {
-      color: #b3261e;
+      color: var(--danger);
       margin: 4px 0 0;
       font-size: 0.85rem;
     }
@@ -79,9 +73,9 @@ export type CookbookFormData = {
       padding: 0 16px;
     }
     .actions .primary {
-      background: #c8553d;
-      border-color: #c8553d;
-      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
       font-weight: 700;
     }
   `,
@@ -163,10 +157,7 @@ export class CookbookFormDialog {
     if (this.busy()) return;
     const name = this.name().trim();
     const description = this.description().trim();
-    const errors: Record<string, string> = {};
-    if (name === '') errors['name'] = 'required';
-    else if (codePoints(name) > MAX_NAME) errors['name'] = 'too_long';
-    if (codePoints(description) > MAX_DESCRIPTION) errors['description'] = 'too_long';
+    const errors = detailsErrors(name, description);
     this.errors.set(errors);
     this.error.set(null);
     if (Object.keys(errors).length > 0) return;

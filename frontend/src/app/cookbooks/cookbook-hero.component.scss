@@ -1,0 +1,76 @@
+@use '../../styles/tokens' as t;
+
+:host {
+  display: block;
+}
+// The cookbook view: a banner like a book cover - the cover photo with the name, facts and buttons over its
+// bottom edge on a dark fade; without a cover, the same row in a plain card.
+.book-hero {
+  position: relative;
+  margin-bottom: t.$space-4;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  background: var(--surface);
+  h1 {
+    margin: 0;
+  }
+}
+.hero-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: t.$space-3;
+  padding: t.$space-4;
+}
+.hero-text {
+  min-width: 0;
+}
+.facts {
+  margin: t.$space-1 0 0;
+  color: var(--muted);
+}
+.book-hero .actions {
+  align-items: center;
+}
+.banner {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.book-hero.has-cover {
+  border: 0;
+  .hero-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-top: t.$space-12;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 55%, rgba(0, 0, 0, 0));
+  }
+  h1,
+  .facts {
+    color: #fff;
+  }
+}
+.book-desc {
+  max-width: 65ch;
+  margin: 0 0 t.$space-6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+@media (min-width: t.$bp-desktop) {
+  .banner {
+    aspect-ratio: 21 / 8;
+  }
+  .hero-row {
+    padding: t.$space-6;
+  }
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: t.$space-2;
+}

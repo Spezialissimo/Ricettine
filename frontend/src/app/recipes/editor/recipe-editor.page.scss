@@ -5,10 +5,10 @@
   padding-bottom: 80px;
 }
 .alert {
-  color: #b3261e;
+  color: var(--danger);
 }
 .loading {
-  color: t.$muted;
+  color: var(--muted);
 }
 .btn {
   @include t.touch-target;
@@ -16,27 +16,21 @@
   align-items: center;
   justify-content: center;
   padding: 0 t.$space-4;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
   font-weight: 600;
   cursor: pointer;
 }
 .btn.primary {
-  background: t.$accent;
-  border-color: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
-}
-.back {
-  gap: t.$space-1;
-}
-.back::before {
-  content: '←' / '';
 }
 
 .editor-header {
@@ -48,26 +42,26 @@
 }
 .state {
   font-size: 0.85rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 .save-status {
   font-size: 0.85rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 .save-status[data-status='saved'] {
-  color: #3b7a3b;
+  color: var(--success);
 }
 .save-status[data-status='error'],
 .save-status[data-status='conflict'],
 .save-status[data-status='invalid'] {
-  color: #b3261e;
+  color: var(--danger);
 }
 .spacer {
   flex: 1;
 }
 .menu {
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: t.$space-1;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
@@ -83,7 +77,7 @@
   cursor: pointer;
 }
 .danger {
-  color: #b3261e;
+  color: var(--danger);
 }
 
 .conflict {
@@ -91,9 +85,9 @@
   gap: t.$space-2;
   margin-bottom: t.$space-4;
   padding: t.$space-3;
-  border: 1px solid #e3b4ae;
+  border: 1px solid var(--danger-border);
   border-radius: t.$radius;
-  background: #fdf0ee;
+  background: var(--danger-bg);
   p {
     margin: 0;
   }
@@ -121,14 +115,58 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: t.$muted;
-  border: 2px dashed t.$border;
+  color: var(--muted);
+  border: 2px dashed var(--border);
   border-radius: t.$radius;
-  background: repeating-linear-gradient(45deg, #efe9e1, #efe9e1 10px, #f6f2ec 10px, #f6f2ec 20px);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--placeholder-a),
+    var(--placeholder-a) 10px,
+    var(--placeholder-b) 10px,
+    var(--placeholder-b) 20px
+  );
 }
-.cover.drop-over {
-  outline: 2px dashed t.$accent;
+.cover {
+  position: relative;
+  flex-direction: column;
+  gap: t.$space-2;
+}
+.cover.drop-over,
+:host(.dragging-files) .cover {
+  outline: 2px dashed var(--accent);
   outline-offset: 4px;
+}
+// While a photo is dragged over the page, each target says what it is.
+:host(.dragging-files) .cover::after {
+  content: attr(data-drop-label);
+  position: absolute;
+  top: t.$space-2;
+  left: t.$space-2;
+  padding: 2px t.$space-2;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+// "or drag a photo here": only where dragging files is possible (a mouse or trackpad).
+.drop-hint {
+  display: none;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .drop-hint {
+    display: block;
+  }
+}
+.drop-missed {
+  margin: 0;
+  padding: t.$space-2 t.$space-3;
+  border-radius: 10px;
+  background: var(--subtle);
+  font-size: 0.9rem;
 }
 .cover.has-photo {
   height: auto;
@@ -139,7 +177,7 @@
 }
 .hint {
   margin: 0 0 t.$space-2;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 .title-field {
@@ -153,25 +191,30 @@ app-detail-chips {
 .share {
   order: 4;
 }
+// A draft has no share section: the empty host must not leave a gap.
+.share:empty {
+  display: none;
+}
 .visibility-hint {
   margin: 0;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 .ingredients {
   order: 5;
 }
-.steps {
+// Phone order: notes above the steps, so the step list (and its bottom bar) comes last.
+.notes {
   order: 6;
 }
-.notes {
+.steps {
   order: 7;
 }
 
 label,
 legend {
   font-size: 0.8rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 #recipe-title {
   width: 100%;
@@ -180,24 +223,24 @@ legend {
   font-size: 1.4rem;
   font-weight: 700;
   border: 0;
-  border-bottom: 1px solid t.$border;
+  border-bottom: 1px solid var(--border);
   background: transparent;
   padding: t.$space-1 0;
 }
 #recipe-title[aria-invalid='true'] {
-  border-bottom-color: #b3261e;
+  border-bottom-color: var(--danger);
 }
 .section-error {
   margin: 0 0 t.$space-2;
 }
 .missing {
-  outline: 2px solid #b3261e;
+  outline: 2px solid var(--danger);
   outline-offset: 4px;
   border-radius: 8px;
 }
 .field-error {
   margin: t.$space-1 0 0;
-  color: #b3261e;
+  color: var(--danger);
   font-size: 0.85rem;
 }
 h2 {
@@ -205,16 +248,16 @@ h2 {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: t.$muted;
+  color: var(--muted);
   font-weight: 600;
 }
 .notes textarea {
   width: 100%;
   font: inherit;
   padding: t.$space-2;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: t.$bg;
+  background: var(--bg);
 }
 
 .visibility {
@@ -235,9 +278,9 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: t.$space-1;
-  border: 1px solid t.$border;
-  background: t.$surface;
-  color: t.$ink;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -248,11 +291,11 @@ h2 {
   border-radius: 0 10px 10px 0;
 }
 .seg:has(input:checked) {
-  background: t.$ink;
-  color: #fff;
+  background: var(--ink);
+  color: var(--surface);
 }
 .seg:has(input:focus-visible) {
-  outline: 2px solid t.$accent;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .seg input {
@@ -268,18 +311,24 @@ h2 {
   content: '🌍' / '';
 }
 
+// Phone: Publish and Preview live in the bottom bar, not in the header.
+.editor-header .publish,
+.editor-header .preview {
+  display: none;
+}
 .bottom-bar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: t.$bottomnav-height;
+  bottom: 0;
   z-index: 1;
   display: flex;
   gap: t.$space-2;
-  padding: t.$space-2 t.$space-3;
-  background: t.$surface;
-  border-top: 1px solid t.$border;
-  .btn {
+  padding: t.$space-2 t.$space-3 calc(#{t.$space-2} + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  .btn,
+  .icon-btn {
     flex: 1;
   }
 }
@@ -300,8 +349,8 @@ h2 {
     flex-direction: column;
     gap: t.$space-3;
     padding: t.$space-4;
-    background: t.$surface;
-    border: 1px solid t.$border;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 14px;
   }
   .visibility {
@@ -310,5 +359,9 @@ h2 {
   }
   .bottom-bar {
     display: none;
+  }
+  .editor-header .publish,
+  .editor-header .preview {
+    display: inline-flex;
   }
 }

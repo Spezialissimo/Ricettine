@@ -4,52 +4,25 @@
   display: block;
   min-height: 100dvh;
 }
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: t.$surface;
-  border-bottom: 1px solid t.$border;
-}
-.bar {
-  display: flex;
-  align-items: center;
-  gap: t.$space-2;
-  min-height: t.$topbar-height;
-  padding: 0 t.$space-4;
-  max-width: t.$content-max-width;
-  margin: 0 auto;
-}
-.logo {
-  @include t.touch-target;
-  display: inline-flex;
-  align-items: center;
-  font-weight: 700;
-  color: t.$accent;
-  text-decoration: none;
-}
-.spacer {
-  flex: 1;
-}
 .btn {
   @include t.touch-target;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 t.$space-4;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
   font: inherit;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
 }
 .btn.primary {
-  background: t.$accent;
-  border-color: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 main {
@@ -58,10 +31,10 @@ main {
   padding: t.$space-4;
 }
 .loading {
-  color: t.$muted;
+  color: var(--muted);
 }
 .alert {
-  color: #b3261e;
+  color: var(--danger);
 }
 .state {
   display: grid;
@@ -76,34 +49,28 @@ main {
 .cover {
   display: block;
   width: 100%;
-  max-height: 420px;
+  max-height: 360px;
   object-fit: cover;
   border-radius: t.$radius;
-  background: t.$bg;
+  background: var(--bg);
 }
 .author {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: t.$space-3 0 t.$space-1;
-  color: t.$muted;
-}
-.author {
   flex-wrap: wrap;
-}
-.keep {
-  margin-left: auto;
+  gap: 10px;
+  color: var(--muted);
 }
 .avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  background: t.$border;
+  background: var(--border);
   flex: none;
 }
 h1 {
-  margin: 0 0 t.$space-2;
+  margin: 0;
   font-size: 1.8rem;
   overflow-wrap: anywhere;
 }
@@ -111,65 +78,45 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 0 0 t.$space-4;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 .chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px; // the emoji and its text
   min-height: 32px;
   padding: 0 12px;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f8f5f1;
+  background: var(--subtle);
   font-size: 0.9rem;
   overflow-wrap: anywhere;
   color: inherit;
 }
-a.chip {
-  text-decoration: underline;
-}
 
-.rp {
-  display: grid;
-  gap: t.$space-4;
-  grid-template-columns: 1fr;
-}
 h2 {
   margin: 0 0 t.$space-2;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: t.$muted;
+  color: var(--muted);
   font-weight: 600;
 }
 .ingredients {
-  background: t.$surface;
-  border: 1px solid t.$border;
-  border-radius: t.$radius;
-  padding: t.$space-4;
-  align-self: start;
+  align-self: stretch; // phone: the full width
 }
 .ingredients:focus-visible {
-  outline: 2px solid t.$accent;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.ing-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: t.$space-2;
-  margin-bottom: t.$space-2;
-}
-.ing-head h2 {
-  margin: 0;
-}
 .grp {
-  margin: t.$space-3 0 t.$space-1;
-  font-size: 1rem;
-  font-weight: 600;
+  margin: t.$space-4 0 t.$space-1;
+  padding-bottom: t.$space-1;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 .ingr-list {
   list-style: none;
@@ -180,7 +127,7 @@ h2 {
   padding: 4px 0;
 }
 .note {
-  color: t.$muted;
+  color: var(--muted);
 }
 .steps {
   list-style: none;
@@ -189,17 +136,22 @@ h2 {
   display: grid;
   gap: t.$space-4;
 }
+// each step a bordered card, as in the editor
 .steps li {
   display: flex;
   gap: t.$space-3;
+  padding: t.$space-3;
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  background: var(--surface);
 }
 .num {
   flex: none;
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -229,24 +181,11 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-@media (min-width: t.$bp-desktop) {
-  .rp {
-    grid-template-columns: 320px 1fr;
-    gap: t.$space-6;
-  }
-  .ingredients {
-    position: sticky;
-    top: calc(#{t.$topbar-height} + #{t.$space-4});
-    max-height: calc(100dvh - #{t.$topbar-height} - #{t.$space-8});
-    overflow: auto;
-  }
-}
-
 .back {
   @include t.touch-target;
   display: inline-flex;
   align-items: center;
-  color: t.$accent;
+  color: var(--link);
   font-weight: 600;
   margin-bottom: t.$space-2;
 }
@@ -255,4 +194,246 @@ h2 {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+}
+
+// The author's preview from the editor: says so and leads back, and stays in view below the top bar.
+.preview-banner {
+  position: sticky;
+  top: t.$topbar-height;
+  @media (min-width: t.$bp-desktop) {
+    top: t.$topbar-height-desktop;
+  }
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: t.$space-2 t.$space-4;
+  padding: t.$space-2 t.$space-4;
+  background: var(--subtle);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  p {
+    margin: 0;
+  }
+  .alert {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
+// Source: a plain line, the link shows the site only
+.source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  a {
+    color: var(--link);
+    font-weight: 600;
+  }
+}
+
+// in the preview the sticky banner sits under the top bar: the sticky ingredients column starts below both
+$preview-banner-height: 61px;
+@media (min-width: t.$bp-desktop) {
+  :host(.previewing) .ingredients {
+    top: calc(#{t.$topbar-height-desktop} + #{$preview-banner-height} + #{t.$space-4});
+    max-height: calc(
+      100dvh - #{t.$topbar-height-desktop} - #{$preview-banner-height} - #{t.$space-8}
+    );
+  }
+}
+
+// The header (owner sketches). Phone: the photo with the title AND the details (chips, source, author) over its
+// bottom edge on a dark fade, a ⋯ menu in its corner; Keep screen on below. Without a photo: the same block in
+// normal colours, the ⋯ beside it. Desktop: a card - title and details left, the action buttons and the photo
+// right, the photo filling all the width the details leave (cropped to 3:2, so the card grows taller).
+.recipe-head {
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-3;
+  margin-bottom: t.$space-4;
+}
+.hero {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: t.$space-2;
+  .more {
+    flex: none;
+    margin-left: auto;
+  }
+}
+.overlay,
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-3;
+  min-width: 0;
+}
+// Phone only: the photo (4:3) framed like the cookbook banner, with the title and the details over its bottom edge on a dark
+// fade. Scoped to phones so none of the on-photo colours reach the desktop card.
+@media (max-width: calc(#{t.$bp-desktop} - 1px)) {
+  // framed like the cookbook banner: inside the page margins, rounded, a thin border
+  .hero.has-cover {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: t.$radius;
+    .cover {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      max-height: none;
+      border-radius: 0;
+    }
+    .overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      gap: t.$space-2;
+      padding: t.$space-12 t.$space-4 t.$space-3;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 60%, rgba(0, 0, 0, 0));
+      color: #fff;
+    }
+    .overlay .meta {
+      gap: t.$space-2;
+    }
+    .overlay .chip {
+      min-height: 28px;
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .overlay .source,
+    .overlay .source a,
+    .overlay .author,
+    .overlay .author a.by {
+      color: #fff;
+    }
+    .more {
+      position: absolute;
+      top: t.$space-2;
+      right: t.$space-2;
+    }
+  }
+}
+.recipe-head .actions {
+  display: none;
+}
+.keep {
+  align-self: flex-start;
+  display: none; // phone: in the ⋯ menu instead
+}
+.menu-item.check {
+  gap: t.$space-3;
+}
+// the ✓ at the right end of the row; nothing there when off, so the label lines up with the other items
+.menu-item.check .tick {
+  margin-left: auto;
+  min-width: 1.2em;
+  text-align: right;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+// Ingredients: a section title like Steps, then a card with "Serves N − +" and the list.
+.ingredients h2 {
+  margin-bottom: t.$space-2;
+}
+.serves {
+  display: flex;
+  justify-content: center;
+  margin-bottom: t.$space-3;
+}
+.ing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  padding: t.$space-4;
+}
+
+// Below: the ingredients, then the steps (phone); side by side, ingredients sticky (desktop).
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-6;
+}
+
+@media (min-width: t.$bp-desktop) {
+  .recipe-head {
+    display: grid;
+    grid-template-columns: fit-content(40%) minmax(0, 1fr);
+    grid-template-areas:
+      'title actions'
+      'meta cover'
+      'keep cover';
+    grid-template-rows: auto auto 1fr;
+    gap: t.$space-3 t.$space-6;
+    align-items: start;
+    padding: t.$space-6;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: t.$radius;
+  }
+  // the phone wrappers dissolve into the card's grid
+  .hero,
+  .hero.has-cover,
+  .overlay,
+  .hero.has-cover .overlay {
+    display: contents;
+  }
+  .recipe-head h1 {
+    grid-area: title;
+  }
+  .recipe-head .meta {
+    grid-area: meta;
+    gap: t.$space-3;
+  }
+  .keep {
+    grid-area: keep;
+    display: block;
+  }
+  .hero .more {
+    display: none;
+  }
+  .hero.has-cover .cover {
+    grid-area: cover;
+    width: 100%;
+    max-height: none;
+    aspect-ratio: 3 / 2;
+    border: 1px solid var(--border);
+    border-radius: t.$radius;
+  }
+  .recipe-head .actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: t.$space-2;
+  }
+  // no photo: the details take the whole width
+  .recipe-head:not(:has(.cover)) {
+    grid-template-areas:
+      'title actions'
+      'meta meta'
+      'keep keep';
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: t.$space-6;
+    align-items: start;
+  }
+  .ingredients {
+    align-self: start;
+    position: sticky;
+    top: calc(#{t.$topbar-height-desktop} + #{t.$space-4});
+    max-height: calc(100dvh - #{t.$topbar-height-desktop} - #{t.$space-8});
+    overflow: auto;
+  }
 }

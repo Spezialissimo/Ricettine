@@ -1,37 +1,44 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { Dialog } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { TopBarComponent } from '../../shell/top-bar.component';
+import { IconComponent } from '../../shared/icon.component';
+import { openSheet } from '../../shared/sheet';
+import { ShareRecipeDialog, ShareRecipeData } from '../../recipes/view/share-recipe.dialog';
+import { CookbookHeroComponent } from '../cookbook-hero.component';
+import {
+  CookbookCard,
+  CookbookRecipeCardsComponent,
+  toCard,
+} from '../cookbook-recipe-cards.component';
 import { errorKey, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { PageTitle } from '../../core/page-title';
 import { mediaUrl } from '../../core/media';
 import { CookbookApi } from '../cookbook.api';
-import { PublicCookbook } from '../cookbook.model';
+import { PublicCookbook, peopleList, tokenFromShareUrl } from '../cookbook.model';
 
 /**
- * The cookbook page at /c/:token: readable without an account, with its own minimal header.
- * Desktop: card grid; phone: list. Members get a link to the cookbook in their account.
+ * The one view of a cookbook, at its share link /c/:token (owner, Plan 7: one address per content; the member
+ * address /cookbooks/:id forwards here). Readable without an account. The banner, the description and the
+ * recipe cards; Share for everyone (Reset link for the owner), Edit for members (/cookbooks/:id/edit).
  */
 @Component({
   selector: 'app-cookbook-view-page',
-  imports: [TranslocoDirective, RouterLink],
+  imports: [
+    TopBarComponent,
+    TranslocoDirective,
+    RouterLink,
+    IconComponent,
+    CookbookHeroComponent,
+    CookbookRecipeCardsComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './cookbook-view.page.scss',
   template: `
     <ng-container *transloco="let t">
-      <header class="topbar">
-        <div class="bar">
-          <a class="logo" routerLink="/">{{ t('common.appName') }}</a>
-          <span class="spacer"></span>
-          @if (auth.me()) {
-            <a class="btn" routerLink="/recipes">{{ t('nav.recipes') }}</a>
-          } @else {
-            <a class="btn primary" routerLink="/login" [queryParams]="{ next: '/c/' + token }">{{
-              t('auth.login')
-            }}</a>
-          }
-        </div>
-      </header>
+      <app-top-bar [loginNext]="'/c/' + token" />
       <main>
         @if (notFound()) {
           <div class="state">
@@ -47,42 +54,32 @@ import { PublicCookbook } from '../cookbook.model';
             </button>
           </div>
         } @else if (book(); as b) {
-          @if (cover(b); as src) {
-            <img class="cover" [src]="src" alt="" loading="eager" fetchpriority="high" />
-          }
-          <h1>{{ b.name }}</h1>
+          <!-- the one view of a cookbook (owner, Plan 7: one address per content): readers, members and the
+               owner all see it here; members also get Edit, the owner Reset link in Share -->
+          <app-cookbook-hero
+            [name]="b.name"
+            [recipeCount]="b.recipes.length"
+            [people]="people(b)"
+            [coverUrl]="cover(b)"
+          >
+            <button type="button" class="icon-btn labelled" (click)="share(b)">
+              <app-icon name="link" />
+              {{ t('cookbooks.share') }}
+            </button>
+            @if (b.cookbookId) {
+              <a class="btn primary" [routerLink]="['/cookbooks', b.cookbookId, 'edit']">{{
+                t('cookbooks.edit')
+              }}</a>
+            }
+          </app-cookbook-hero>
           @if (b.description) {
-            <p class="desc">{{ b.description }}</p>
+            <p class="book-desc">{{ b.description }}</p>
           }
-          <p class="people">{{ t('cookbooks.by', { names: people(b) }) }}</p>
-          @if (b.cookbookId) {
-            <a class="btn mine" [routerLink]="['/cookbooks', b.cookbookId]">{{
-              t('cookbooks.openMine')
-            }}</a>
-          }
-          <h2>{{ t('cookbooks.recipesHeading') }}</h2>
+          <h2 class="section-title">{{ t('cookbooks.recipesHeading') }}</h2>
           @if (b.recipes.length === 0) {
             <p class="empty">{{ t('cookbooks.noRecipes') }}</p>
           } @else {
-            <ul class="cards" role="list">
-              @for (r of b.recipes; track r.recipeId) {
-                <li class="card">
-                  <a [routerLink]="['/c', token, 'r', r.recipeId]">
-                    @if (thumb(r.coverThumbUrl); as src) {
-                      <img class="thumb" [src]="src" alt="" loading="lazy" />
-                    }
-                    <span class="body">
-                      <span class="title">{{ r.title }}</span>
-                      <span class="meta">{{
-                        t('recipes.by', {
-                          name: r.author?.displayName ?? t('cookbooks.deletedUser'),
-                        })
-                      }}</span>
-                    </span>
-                  </a>
-                </li>
-              }
-            </ul>
+            <app-cookbook-recipe-cards [cards]="cards(b)" />
           }
         } @else {
           <p class="loading" role="status">{{ t('common.loading') }}</p>
@@ -95,6 +92,10 @@ export class CookbookViewPage {
   private readonly api = inject(CookbookApi);
   private readonly title = inject(PageTitle);
   protected readonly auth = inject(AuthStore);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
+  private readonly i18n = inject(TranslocoService);
   protected readonly token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
   protected readonly book = signal<PublicCookbook | null>(null);
   protected readonly notFound = signal(false);
@@ -119,15 +120,39 @@ export class CookbookViewPage {
   }
 
   protected people(b: PublicCookbook): string {
-    return [b.owner, ...b.authors]
-      .filter((p) => p !== null)
-      .map((p) => p.displayName)
-      .join(', ');
+    return peopleList(b.owner, b.authors, this.i18n.getActiveLang());
+  }
+
+  protected cards(b: PublicCookbook): CookbookCard[] {
+    return b.recipes.map((r) => toCard(r, ['/c', this.token, 'r', r.recipeId]));
+  }
+
+  /** Share sheet for everyone; the owner also gets Reset link, which then moves this page to the new link. */
+  protected share(b: PublicCookbook): void {
+    const id = b.cookbookId;
+    const data: ShareRecipeData = {
+      url: `${location.origin}/c/${this.token}`,
+      titleKey: 'cookbooks.shareSheetTitle',
+      hintKey: 'cookbooks.shareHint',
+      resetKey: 'cookbooks.resetLink',
+      resetConfirmKey: 'cookbooks.resetLinkConfirm',
+      resetDoneKey: 'cookbooks.linkReset',
+      reset:
+        b.viewerRole === 'OWNER' && id
+          ? async () => {
+              const fresh = await this.api.resetLink(id);
+              const tok = tokenFromShareUrl(fresh.shareUrl);
+              if (tok) void this.router.navigateByUrl(`/c/${tok}`, { replaceUrl: true });
+              return fresh.shareUrl!;
+            }
+          : undefined,
+    };
+    void openSheet(this.dialog, this.injector, ShareRecipeDialog, {
+      label: this.i18n.translate('cookbooks.shareSheetTitle'),
+      data,
+    });
   }
   protected cover(b: PublicCookbook): string | null {
     return mediaUrl(b.cover?.displayUrl);
-  }
-  protected thumb(url: string | null): string | null {
-    return mediaUrl(url);
   }
 }

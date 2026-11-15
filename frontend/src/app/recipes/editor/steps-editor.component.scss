@@ -10,10 +10,45 @@
   display: grid;
   gap: t.$space-3;
 }
+// Each step is its own card, so steps read as separate (owner, Plan 7): header row, then text and photo.
 .step {
   display: flex;
+  flex-direction: column;
   gap: t.$space-2;
-  align-items: flex-start;
+  padding: t.$space-1 t.$space-2 t.$space-3;
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  background: var(--surface);
+}
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: t.$space-1;
+}
+// the delete icon follows the number (owner, Plan 7), all three on the left
+.step-head .delete-step {
+  margin-left: t.$space-2;
+}
+.delete-step {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+  // a step that cannot go (the last one of a published recipe) shows it, dimmed, next to the hint
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
 }
 .drag-handle {
   @include t.touch-target;
@@ -25,15 +60,16 @@
   justify-content: center;
   border: 0;
   background: transparent;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 1.3rem;
   padding: 0;
 }
 .cdk-drag-preview {
   box-sizing: border-box;
   display: flex;
+  flex-direction: column;
   gap: t.$space-2;
-  background: t.$bg;
+  background: var(--bg);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
@@ -59,45 +95,62 @@
   flex: none;
   width: 28px;
   height: 28px;
-  margin-top: 8px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 700;
   font-size: 0.85rem;
 }
 .step-body {
-  flex: 1;
   min-width: 0;
   display: grid;
   gap: t.$space-2;
+  padding: 0 t.$space-1;
 }
 textarea {
   width: 100%;
   min-height: t.$touch-target;
   font: inherit;
   padding: t.$space-2;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
   resize: vertical;
   field-sizing: content;
 }
-.step.drop-over {
-  outline: 2px dashed t.$accent;
+.step.drop-over,
+:host-context(.dragging-files) .step {
+  outline: 2px dashed var(--accent);
   outline-offset: 4px;
   border-radius: 8px;
 }
+// While a photo is dragged over the editor page, each step says it takes one.
+:host-context(.dragging-files) .step {
+  position: relative;
+}
+:host-context(.dragging-files) .step::after {
+  content: attr(data-drop-label);
+  position: absolute;
+  top: -10px;
+  left: 76px; // clear of the delete icon in the card's top-right corner
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+}
 .step.active textarea {
-  border-color: t.$accent;
+  border-color: var(--accent);
 }
 .hint {
   margin: 0 0 t.$space-2;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 .btn {
@@ -106,10 +159,10 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 0 t.$space-4;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
   font-weight: 600;
   cursor: pointer;
 }
@@ -117,17 +170,9 @@ textarea {
   opacity: 0.5;
   cursor: default;
 }
-.delete-step {
-  color: #b3261e;
-}
 .add-step {
+  gap: t.$space-2;
   border-style: dashed;
-}
-
-@media (max-width: calc(#{t.$bp-desktop} - 1px)) {
-  .add-step {
-    display: none;
-  } // the phone bottom bar has "+ Next step"
 }
 
 @media (prefers-reduced-motion: reduce) {

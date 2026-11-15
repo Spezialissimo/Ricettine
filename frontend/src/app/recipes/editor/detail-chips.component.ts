@@ -5,10 +5,14 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { EditorStore } from './editor-store';
 import { openSheet } from '../../shared/sheet';
 import { PortionsSheetComponent } from './portions-sheet.component';
-import { SourceSheetComponent } from './source-sheet.component';
+import { MAX_SOURCE } from '../recipe-limits';
+import { uid } from '../../shared/sheet';
 import { TimeKind, TimeSheetComponent, TimeSheetData, durationKey } from './time-sheet.component';
 
-/** Serves / Prep / Cook / Source chips. Unfilled ones are dashed "+ …" placeholders; each opens its sheet. */
+/**
+ * Serves / Prep time / Cook time chips (unfilled ones are dashed "+ …" placeholders; each opens its own sheet),
+ * then Source as a plain text field.
+ */
 @Component({
   selector: 'app-detail-chips',
   imports: [TranslocoDirective],
@@ -22,9 +26,9 @@ import { TimeKind, TimeSheetComponent, TimeSheetData, durationKey } from './time
     .chip {
       min-height: 44px;
       padding: 0 12px;
-      border: 1px solid #e2dcd3;
+      border: 1px solid var(--border);
       border-radius: 999px;
-      background: #f8f5f1;
+      background: var(--subtle);
       color: inherit;
       font: inherit;
       font-size: 0.9rem;
@@ -35,14 +39,33 @@ import { TimeKind, TimeSheetComponent, TimeSheetData, durationKey } from './time
     }
     .chip.empty {
       border-style: dashed;
-      background: #fff;
-      color: #6f665e;
+      background: var(--surface);
+      color: var(--muted);
     }
     .chip.empty::before {
       content: none;
     }
-    b {
-      color: #c8553d;
+    .source {
+      flex-basis: 100%;
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .source label {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .source input {
+      min-height: 44px;
+      width: 100%;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+      text-overflow: ellipsis;
     }
   `,
   template: `
@@ -70,22 +93,18 @@ import { TimeKind, TimeSheetComponent, TimeSheetData, durationKey } from './time
           </button>
         }
       }
-      @if (r.source) {
-        <button
-          type="button"
-          class="chip source"
-          data-icon="🔗"
-          aria-haspopup="dialog"
-          [attr.aria-label]="t('editor.sourceSheet.label') + ': ' + r.source"
-          (click)="source()"
-        >
-          {{ r.source }}
-        </button>
-      } @else {
-        <button type="button" class="chip empty" aria-haspopup="dialog" (click)="source()">
-          {{ t('editor.chips.addSource') }}
-        </button>
-      }
+      <!-- Source is a plain field, not a chip: a long link wraps badly in a pill (owner, Plan 7) -->
+      <div class="source">
+        <label [for]="sourceId">{{ t('editor.sourceSheet.label') }}</label>
+        <input
+          type="text"
+          [id]="sourceId"
+          [maxLength]="maxSource"
+          [placeholder]="t('editor.sourcePlaceholder')"
+          [value]="r.source ?? ''"
+          (input)="setSource($any($event.target).value)"
+        />
+      </div>
     </ng-container>
   `,
 })
@@ -96,15 +115,21 @@ export class DetailChipsComponent {
   private readonly i18n = inject(TranslocoService);
   protected readonly kinds: readonly TimeKind[] = ['prep', 'cook'];
   protected readonly duration = durationKey;
+  protected readonly maxSource = MAX_SOURCE;
+  protected readonly sourceId = uid('source');
 
   portions(): void {
     this.open(PortionsSheetComponent, 'editor.portions.title');
   }
-  time(tab: TimeKind): void {
-    this.open<TimeSheetComponent, TimeSheetData>(TimeSheetComponent, 'editor.time.title', { tab });
+  time(kind: TimeKind): void {
+    this.open<TimeSheetComponent, TimeSheetData>(TimeSheetComponent, `editor.time.${kind}Title`, {
+      kind,
+    });
   }
-  source(): void {
-    this.open(SourceSheetComponent, 'editor.sourceSheet.title');
+
+  protected setSource(value: string): void {
+    const source = value.trim() ? value : null;
+    this.store.update((r) => ({ ...r, source }));
   }
 
   private open<C, D = unknown>(component: ComponentType<C>, labelKey: string, data?: D): void {

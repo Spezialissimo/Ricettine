@@ -72,7 +72,7 @@ describe('UserProfilePage', () => {
     expect(setTitle).toHaveBeenCalledWith('Ann');
   });
 
-  it('self view: badges, drafts link to the editor, cookbooks link by id', async () => {
+  it('self view: badges, drafts open their recipe page (never the editor), cookbooks link by id', async () => {
     const { el } = await mount(async () =>
       profile({
         self: true,
@@ -84,7 +84,7 @@ describe('UserProfilePage', () => {
         cookbooks: [book('x', { visibility: 'PRIVATE' })],
       }),
     );
-    expect(hrefs(el)).toEqual(['/recipes/d/edit', '/r/tok-p', '/r/tok-u', '/cookbooks/x']);
+    expect(hrefs(el)).toEqual(['/recipes/d/view', '/r/tok-p', '/r/tok-u', '/cookbooks/x']);
     expect(Array.from(el.querySelectorAll('.badge')).map((b) => b.textContent?.trim())).toEqual([
       'Draft',
       'Private',

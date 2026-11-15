@@ -6,7 +6,8 @@ declare global {
   interface Window { __wl: Counters }
 }
 
-test('keep screen on requests and releases a wake lock; absent API hides it', async ({ browser }, testInfo) => {
+test('keep screen on requests and releases a wake lock (desktop checkbox, phone ⋯ menu); absent API hides it', async ({ browser }, testInfo) => {
+  const desktop = testInfo.project.name === 'desktop';
   const { page, context } = await newUserPage(browser, testInfo, 'wake');
   const { shareUrl } = await publishRecipe(page, { title: 'Late night soup', ingredients: ['salt'], steps: ['Stir'] });
   await context.close();
@@ -30,10 +31,23 @@ test('keep screen on requests and releases a wake lock; absent API hides it', as
   });
   const r = await withApi.newPage();
   await r.goto(path);
-  const box = r.getByRole('checkbox', { name: 'Keep screen on' });
-  await box.check();
-  await expect.poll(() => r.evaluate(() => window.__wl.requests)).toBe(1);
-  await box.uncheck();
+  if (desktop) {
+    const box = r.getByRole('checkbox', { name: 'Keep screen on' });
+    await box.check();
+    await expect.poll(() => r.evaluate(() => window.__wl.requests)).toBe(1);
+    await box.uncheck();
+  } else {
+    // the phone: a checkable item in the photo's ⋯ menu, with the ✓ at the right end when on
+    const item = () => r.getByRole('menuitemcheckbox', { name: /Keep screen on/ });
+    await r.getByRole('button', { name: 'More actions' }).click();
+    await expect(item()).toHaveAttribute('aria-checked', 'false');
+    await item().click();
+    await expect.poll(() => r.evaluate(() => window.__wl.requests)).toBe(1);
+    await r.getByRole('button', { name: 'More actions' }).click();
+    await expect(item()).toHaveAttribute('aria-checked', 'true');
+    await expect(item()).toContainText('✓');
+    await item().click();
+  }
   await expect.poll(() => r.evaluate(() => window.__wl.releases)).toBe(1);
   await withApi.close();
 
@@ -46,4 +60,9 @@ test('keep screen on requests and releases a wake lock; absent API hides it', as
   await w.goto(path);
   await expect(w.getByRole('heading', { name: 'Late night soup', level: 1 })).toBeVisible();
   await expect(w.getByRole('checkbox', { name: 'Keep screen on' })).toHaveCount(0);
+  if (!desktop) {
+    await w.getByRole('button', { name: 'More actions' }).click();
+    await expect(w.getByRole('menuitem', { name: 'Share' })).toBeVisible();
+    await expect(w.getByRole('menuitemcheckbox', { name: /Keep screen on/ })).toHaveCount(0);
+  }
 });

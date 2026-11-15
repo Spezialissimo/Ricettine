@@ -24,9 +24,9 @@ export type RemoveMemberData = { name: string; self: boolean };
       padding: 0 16px;
     }
     .danger {
-      background: #b3261e;
-      border-color: #b3261e;
-      color: #fff;
+      background: var(--danger-fill);
+      border-color: var(--danger-fill);
+      color: var(--on-accent);
       font-weight: 700;
     }
     .hint {

@@ -39,7 +39,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: t.$muted;
+      color: var(--muted);
       font-weight: 600;
     }
     ul {
@@ -56,8 +56,8 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       gap: t.$space-3;
       justify-content: space-between;
       padding: t.$space-2 t.$space-3;
-      background: t.$surface;
-      border: 1px solid t.$border;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: t.$radius;
     }
     .who {
@@ -71,7 +71,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: t.$border;
+      background: var(--border);
       object-fit: cover;
       flex: none;
       display: inline-flex;
@@ -81,23 +81,23 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       font-size: 0.85rem;
     }
     .role {
-      color: t.$muted;
+      color: var(--muted);
       font-size: 0.8rem;
     }
     .muted {
-      color: t.$muted;
+      color: var(--muted);
       font-size: 0.85rem;
     }
     .alert {
-      color: #b3261e;
+      color: var(--danger);
     }
     button {
       @include t.touch-target;
       padding: 0 t.$space-4;
-      border: 1px solid t.$border;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      background: t.$bg;
-      color: t.$ink;
+      background: var(--bg);
+      color: var(--ink);
       font: inherit;
       font-weight: 600;
       cursor: pointer;
@@ -107,8 +107,8 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       cursor: default;
     }
     .danger {
-      color: #b3261e;
-      border-color: #b3261e;
+      color: var(--danger);
+      border-color: var(--danger);
     }
   `,
   template: `
@@ -245,7 +245,7 @@ export class MembersPanelComponent {
     if (!res) return;
     try {
       await this.api.removeAuthor(this.book().id, userId, res.removeRecipes);
-      if (leaving) await this.router.navigateByUrl('/cookbooks');
+      if (leaving) await this.router.navigateByUrl('/kitchen/cookbooks');
       else this.changed.emit();
     } catch (e) {
       this.error.set(errorKeyOf(e));

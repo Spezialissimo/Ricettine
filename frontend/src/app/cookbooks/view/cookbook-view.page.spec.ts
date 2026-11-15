@@ -1,10 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthStore } from '../../core/auth.store';
 import { en, provideTestTransloco } from '../../testing/transloco';
-import { btn, person, settle } from '../../testing/spec-helpers';
+import { btn, clearOverlays, overlay, person, settle } from '../../testing/spec-helpers';
 import { CookbookApi } from '../cookbook.api';
 import { PublicCookbook } from '../cookbook.model';
 import { CookbookViewPage } from './cookbook-view.page';
@@ -28,12 +28,16 @@ const pub = (over: Partial<PublicCookbook> = {}): PublicCookbook => ({
   ...over,
 });
 
-async function mount(byToken: CookbookApi['byToken'], me: unknown = null) {
+async function mount(
+  byToken: CookbookApi['byToken'],
+  me: unknown = null,
+  api: Partial<CookbookApi> = {},
+) {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       provideTestTransloco(),
-      { provide: CookbookApi, useValue: { byToken } },
+      { provide: CookbookApi, useValue: { byToken, ...api } },
       { provide: AuthStore, useValue: { me: signal(me) } },
       {
         provide: ActivatedRoute,
@@ -41,35 +45,76 @@ async function mount(byToken: CookbookApi['byToken'], me: unknown = null) {
       },
     ],
   });
+  const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   const f = TestBed.createComponent(CookbookViewPage);
   await settle(f);
-  return { f, el: f.nativeElement as HTMLElement };
+  return { f, el: f.nativeElement as HTMLElement, nav };
 }
+const editLink = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll('a')).find((x) => x.textContent?.trim() === en.cookbooks.edit);
 
 describe('CookbookViewPage', () => {
-  it('renders name, description, people and recipe cards linking through the cookbook token', async () => {
+  afterEach(clearOverlays);
+
+  it('is the one view: banner with name and facts, description, and recipe cards through the cookbook token', async () => {
     const { el } = await mount(vi.fn().mockResolvedValue(pub()));
-    expect(el.querySelector('h1')?.textContent).toContain('Desserts');
-    expect(el.textContent).toContain('Sweet');
-    expect(el.textContent).toContain('ANN');
-    expect(el.textContent).toContain('BOB');
-    const cards = Array.from(el.querySelectorAll('li.card a')) as HTMLAnchorElement[];
+    const hero = el.querySelector('app-cookbook-hero')!;
+    expect(hero.querySelector('h1')?.textContent).toContain('Desserts');
+    const facts = hero.querySelector('.facts')!.textContent!.replace(/\s+/g, ' ');
+    expect(facts).toContain('2 recipes');
+    expect(facts).toContain('by ANN and BOB');
+    expect(el.querySelector('.book-desc')?.textContent).toContain('Sweet');
+    const cards = Array.from(el.querySelectorAll('a.recipe-card')) as HTMLAnchorElement[];
     expect(cards.map((a) => a.getAttribute('href'))).toEqual(['/c/t/r/r1', '/c/t/r/r2']);
     expect(cards[0].textContent).toContain('Tiramisu');
     expect(cards[0].querySelector('img')?.getAttribute('src')).toBe('/media/m1/THUMB.jpg?c=t');
     expect(cards[1].querySelector('img')).toBeNull();
-    expect(el.textContent).not.toContain(en.cookbooks.openMine);
   });
 
-  it('offers "Open in my cookbooks" to members', async () => {
+  it('a reader gets Share but no Edit', async () => {
+    const { el } = await mount(vi.fn().mockResolvedValue(pub()));
+    expect(btn(el, en.cookbooks.share)).toBeTruthy();
+    expect(editLink(el)).toBeUndefined();
+  });
+
+  it('a member gets Edit, to the cookbook edit page', async () => {
     const { el } = await mount(
       vi.fn().mockResolvedValue(pub({ viewerRole: 'AUTHOR', cookbookId: 'c9' })),
       { id: 'u' },
     );
-    const a = Array.from(el.querySelectorAll('a')).find(
-      (x) => x.textContent?.trim() === en.cookbooks.openMine,
+    expect(editLink(el)?.getAttribute('href')).toBe('/cookbooks/c9/edit');
+  });
+
+  it('Share opens the sheet with this cookbook link; only the owner may reset it', async () => {
+    const { f, el } = await mount(
+      vi.fn().mockResolvedValue(pub({ viewerRole: 'AUTHOR', cookbookId: 'c9' })),
+      { id: 'u' },
     );
-    expect(a?.getAttribute('href')).toBe('/cookbooks/c9');
+    btn(el, en.cookbooks.share)!.click();
+    await settle(f);
+    expect(overlay().textContent).toContain(en.cookbooks.shareSheetTitle);
+    expect(overlay().querySelector('[data-url]')?.textContent?.trim()).toBe(
+      `${location.origin}/c/t`,
+    );
+    expect(btn(overlay(), en.cookbooks.resetLink)).toBeUndefined();
+  });
+
+  it('the owner resets the link from the sheet and the page moves to the new link', async () => {
+    const resetLink = vi.fn().mockResolvedValue({ shareUrl: 'https://x.test/c/NEW' });
+    const { f, el, nav } = await mount(
+      vi.fn().mockResolvedValue(pub({ viewerRole: 'OWNER', cookbookId: 'c9' })),
+      { id: 'u' },
+      { resetLink },
+    );
+    btn(el, en.cookbooks.share)!.click();
+    await settle(f);
+    btn(overlay(), en.cookbooks.resetLink)!.click();
+    await settle(f);
+    btn(overlay(), en.cookbooks.resetLinkConfirm.confirm)!.click();
+    await settle(f);
+    expect(resetLink).toHaveBeenCalledWith('c9');
+    expect(nav).toHaveBeenCalledWith('/c/NEW', { replaceUrl: true });
+    expect(overlay().textContent).toContain('https://x.test/c/NEW');
   });
 
   it('shows a generic load error with Retry, which loads the cookbook', async () => {
@@ -90,7 +135,7 @@ describe('CookbookViewPage', () => {
   it('shows the empty state for a cookbook without recipes', async () => {
     const { el } = await mount(vi.fn().mockResolvedValue(pub({ recipes: [] })));
     expect(el.querySelector('p.empty')?.textContent).toContain(en.cookbooks.noRecipes);
-    expect(el.querySelector('li.card')).toBeNull();
+    expect(el.querySelector('app-cookbook-recipe-cards')).toBeNull();
   });
 
   it('says so when the cookbook is not found', async () => {
@@ -102,6 +147,6 @@ describe('CookbookViewPage', () => {
         ),
     );
     expect(el.textContent).toContain(en.cookbooks.notFound);
-    expect(el.querySelector('li.card')).toBeNull();
+    expect(el.querySelector('app-cookbook-hero')).toBeNull();
   });
 });

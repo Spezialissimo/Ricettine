@@ -5,7 +5,7 @@
 }
 h1 {
   margin: 0;
-  color: t.$accent;
+  color: var(--link);
   font-size: 1.5rem;
   overflow-wrap: anywhere;
 }
@@ -23,12 +23,12 @@ h1 {
   flex-wrap: wrap;
 }
 .alert {
-  color: #b3261e;
+  color: var(--danger);
 }
 .loading,
 .empty,
 .desc {
-  color: t.$muted;
+  color: var(--muted);
 }
 .desc {
   margin: 0 0 t.$space-4;
@@ -43,10 +43,10 @@ a.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: t.$radius;
-  background: t.$surface;
-  color: t.$ink;
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   padding: 0 t.$space-4;
   text-decoration: none;
@@ -54,14 +54,14 @@ a.btn {
 }
 button.new,
 button.retry {
-  background: t.$accent;
-  border-color: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 button.danger {
-  color: #b3261e;
-  border-color: #b3261e;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .badges {
@@ -72,15 +72,15 @@ button.danger {
 .badge {
   align-self: flex-start;
   font-size: 0.7rem;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 2px 8px;
 }
 .badge[data-badge='PUBLIC'] {
-  background: #e5f3e6;
+  background: var(--badge-public-bg);
 }
 .badge[data-badge='OWNER'] {
-  background: #fff4e0;
+  background: var(--badge-draft-bg);
 }
 
 .grid {
@@ -98,10 +98,10 @@ a.cookbook {
   gap: t.$space-2;
   height: 100%;
   padding: t.$space-3;
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: t.$radius;
-  color: t.$ink;
+  color: var(--ink);
   text-decoration: none;
 }
 .cover,
@@ -110,10 +110,12 @@ a.cookbook {
   width: 100%;
   object-fit: cover;
   border-radius: t.$radius;
-  background: t.$border;
+  background: var(--border);
 }
 .cover {
-  max-height: 260px;
+  // the same 3:2 crop as the view, not a wide strip
+  width: min(100%, 560px);
+  aspect-ratio: 3 / 2;
   margin-bottom: t.$space-3;
 }
 .cover-thumb {
@@ -130,7 +132,7 @@ a.cookbook {
   overflow-wrap: anywhere;
 }
 .count {
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
@@ -149,8 +151,8 @@ li.entry {
   justify-content: space-between;
   gap: t.$space-3;
   padding: t.$space-2 t.$space-3;
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: t.$radius;
 }
 .thumb {
@@ -158,7 +160,7 @@ li.entry {
   height: 56px;
   border-radius: 8px;
   object-fit: cover;
-  background: t.$border;
+  background: var(--border);
   flex: none;
 }
 .entry-body {
@@ -170,13 +172,13 @@ li.entry {
 .entry-title {
   font-weight: 700;
   overflow-wrap: anywhere;
-  color: t.$ink;
+  color: var(--ink);
   display: inline-flex;
   align-items: center;
   min-height: 44px;
 }
 .entry-meta {
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
@@ -190,4 +192,100 @@ li.entry {
   .grid {
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+.section-title {
+  margin: 0 0 t.$space-2;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+// The edit page's details (owner): name, description and visibility in place.
+.details {
+  display: grid;
+  gap: t.$space-4;
+  margin-bottom: t.$space-6;
+  padding: t.$space-4;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: t.$radius;
+  .field {
+    display: grid;
+    gap: t.$space-1;
+  }
+  label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  input[type='text'],
+  textarea {
+    @include t.touch-target;
+    width: 100%;
+    padding: t.$space-2 t.$space-3;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--ink);
+    font: inherit;
+  }
+  textarea {
+    resize: vertical;
+  }
+  [aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+  .field-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.85rem;
+  }
+  .visibility {
+    display: flex;
+    flex-wrap: wrap;
+    gap: t.$space-2 t.$space-4;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    legend {
+      margin-bottom: t.$space-1;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    label {
+      @include t.touch-target;
+      display: inline-flex;
+      align-items: center;
+      gap: t.$space-2;
+      font-size: 1rem;
+      color: var(--ink);
+      font-weight: 400;
+    }
+    input {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+  }
+}
+
+// Edit / Save: the page's main action, filled green like the recipe page's Edit
+a.btn.primary,
+button.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.book-desc {
+  max-width: 65ch;
+  margin: t.$space-4 0 t.$space-6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }

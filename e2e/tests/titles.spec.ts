@@ -7,8 +7,12 @@ test('page titles follow the route and the recipe', async ({ browser }, testInfo
   await expect(anon).toHaveTitle('Log in · Ricettine');
 
   const { page: p } = await newUserPage(browser, testInfo, 'ttl');
-  await p.goto('/cookbooks');
+  await p.goto('/cookbooks'); // old URL, now the Cookbooks tab of My kitchen
   await expect(p).toHaveTitle('Cookbooks · Ricettine');
+  await p.goto('/kitchen');
+  await expect(p).toHaveTitle('My kitchen · Ricettine');
+  await p.goto('/');
+  await expect(p).toHaveTitle('Discover · Ricettine');
 
   const name = `Title soup ${testInfo.project.name}`;
   const { shareUrl } = await publishRecipe(p, { title: name, ingredients: ['salt'], steps: ['Boil'] });

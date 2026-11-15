@@ -1,3 +1,4 @@
+import { IconComponent, IconName } from '../../shared/icon.component';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
@@ -15,6 +16,7 @@ export function photoProblem(file: File): string | null {
  */
 @Component({
   selector: 'app-photo-picker',
+  imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host {
@@ -28,26 +30,40 @@ export function photoProblem(file: File): string | null {
       justify-content: center;
       width: 100%;
       padding: 0 16px;
-      border: 1px solid #e2dcd3;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      background: #fff;
+      background: var(--surface);
       color: inherit;
       font: inherit;
       font-weight: 600;
       cursor: pointer;
     }
+    // icon only: a 44 px square, the name in aria-label and the tooltip
+    :host(.icon) button {
+      width: 44px;
+      padding: 0;
+    }
     :host(.primary) button {
-      background: #c8553d;
-      border-color: #c8553d;
-      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
     }
   `,
   template: `
-    <button type="button" [attr.aria-label]="ariaLabel() || null" (click)="file.click()">
-      @if (icon()) {
-        <span aria-hidden="true">{{ icon() }}&nbsp;</span>
+    <button
+      type="button"
+      [attr.aria-label]="ariaLabel() || null"
+      [attr.title]="iconName() ? ariaLabel() || label() : null"
+      (click)="file.click()"
+    >
+      @if (iconName(); as n) {
+        <app-icon [name]="n" />
+      } @else {
+        @if (icon()) {
+          <span aria-hidden="true">{{ icon() }}&nbsp;</span>
+        }
+        {{ label() }}
       }
-      {{ label() }}
     </button>
     <input
       #file
@@ -67,6 +83,8 @@ export class PhotoPickerComponent {
   readonly ariaLabel = input<string>('');
   /** Decorative emoji before the label, hidden from screen readers. */
   readonly icon = input<string>('');
+  /** An SVG icon instead of the text label (add the host class `icon`); the label stays the accessible name. */
+  readonly iconName = input<IconName | null>(null);
   readonly capture = input(false);
   readonly picked = output<File>();
   readonly rejected = output<string>();

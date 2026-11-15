@@ -2,12 +2,17 @@
 
 :host {
   display: block;
-  max-width: 480px;
-  margin: 0 auto;
+}
+.intro {
+  margin: 0 0 t.$space-4;
+  color: var(--muted);
+}
+:host > h2 {
+  margin-top: t.$space-6;
 }
 h1 {
   margin: 0 0 t.$space-4;
-  color: t.$accent;
+  color: var(--link);
   font-size: 1.5rem;
 }
 h2 {
@@ -16,8 +21,8 @@ h2 {
 }
 .card {
   display: block;
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: t.$radius;
   padding: t.$space-4;
   margin-bottom: t.$space-4;
@@ -34,30 +39,30 @@ input:not([type='file']) {
   margin-top: t.$space-1;
   padding: 0 t.$space-3;
   font: inherit;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: t.$radius;
-  background: t.$surface;
-  color: t.$ink;
+  background: var(--surface);
+  color: var(--ink);
 }
 input.invalid {
-  border-color: #b3261e;
+  border-color: var(--danger);
 }
 .hint {
   display: block;
   font-weight: 400;
   font-size: 0.8rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 .error,
 .alert {
-  color: #b3261e;
+  color: var(--danger);
   font-weight: 400;
   font-size: 0.85rem;
   margin: t.$space-1 0;
   display: block;
 }
 .ok {
-  color: t.$muted;
+  color: var(--muted);
 }
 button.primary,
 .btn {
@@ -67,8 +72,8 @@ button.primary,
   justify-content: center;
   border: 0;
   border-radius: t.$radius;
-  background: t.$accent;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
   padding: 0 t.$space-4;
   cursor: pointer;
@@ -77,7 +82,7 @@ button.primary {
   width: 100%;
 }
 button.danger {
-  background: #b3261e;
+  background: var(--danger-fill);
 }
 button[disabled] {
   opacity: 0.6;
@@ -88,25 +93,29 @@ button[disabled] {
   gap: t.$space-3;
   flex-wrap: wrap;
 }
+// "Choose photo" is a <label> (for its file input): drop the form-label spacing so it lines up
+.avatar-row label.btn {
+  margin: 0;
+}
 .avatar {
   width: 72px;
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: t.$bg;
+  background: var(--bg);
 }
 .avatar.placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 .spinner {
   width: 20px;
   height: 20px;
-  border: 3px solid t.$border;
-  border-top-color: t.$accent;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -123,7 +132,7 @@ button[disabled] {
   @include t.touch-target;
   display: flex;
   align-items: center;
-  color: t.$accent;
+  color: var(--link);
 }
 ul.list {
   list-style: none;
@@ -137,10 +146,10 @@ ul.list li {
   gap: t.$space-3;
   flex-wrap: wrap;
   padding: t.$space-3 0;
-  border-bottom: 1px solid t.$border;
+  border-bottom: 1px solid var(--border);
 }
 .muted {
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 .actions {

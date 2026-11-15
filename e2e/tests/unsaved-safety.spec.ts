@@ -1,5 +1,5 @@
 import { Page, expect } from '@playwright/test';
-import { createRecipe, expectSaved, logIn, newContext, newUserPage, pickPhoto, stepPhotoButton, test } from '../helpers';
+import { createRecipe, expectSaved, logIn, newContext, newUserPage, openAccountMenu, pickPhoto, stepPhotoButton, test } from '../helpers';
 
 const step1 = (page: Page) => page.getByRole('textbox', { name: 'Step 1' });
 
@@ -129,8 +129,9 @@ test('conflict block includes an ingredient-only edit', async ({ browser }, test
 test('a failed logout keeps the user signed in and shows an error', async ({ browser }, testInfo) => {
   const { page, who } = await newUserPage(browser, testInfo, 'logout-fail');
   await page.route('**/api/auth/logout', (route) => route.abort('failed'));
-  await page.getByRole('button', { name: 'Log out' }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Cannot reach the server' })).toBeVisible();
+  const menu = await openAccountMenu(page);
+  await menu.getByRole('button', { name: 'Log out' }).click();
+  await expect(menu.getByRole('alert').filter({ hasText: 'Cannot reach the server' })).toBeVisible();
   await expect(page.getByRole('banner').getByText(who.displayName, { exact: true })).toBeVisible();
   await expect(page).not.toHaveURL(/\/login$/);
   await page.reload();
