@@ -13,6 +13,7 @@ DATA_DIR=""
 RESET_BODY='{"newPassword":"correct-horse-battery"}'
 
 export RICETTINE_DOMAIN=localhost
+# RICETTINE_DEMO_ENABLED=true is exported for the whole run (default-off is covered by smoke.sh and e2e).
 # The demo site is on for the whole run; the demo host name only matters to the self-host overlay (round 1)
 export RICETTINE_DEMO_DOMAIN=demo.localhost RICETTINE_DEMO_ENABLED=true
 dc() { docker compose -p "$PROJECT" "$@"; }
@@ -132,7 +133,6 @@ post_status "https://localhost/api/password-resets/$token" "$RESET_BODY" >/dev/n
 logs="$(dc logs --no-color caddy 2>&1)"
 [[ "$logs" != *"$token"* ]] || fail "caddy logs contain a request token"
 check_error_log
-
 echo "round 1 ok"
 
 # ---------------------------------------------------------------- round 2: AWS origin

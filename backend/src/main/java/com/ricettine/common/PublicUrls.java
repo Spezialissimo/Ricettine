@@ -28,9 +28,18 @@ public class PublicUrls {
 
 	/** Base without a trailing slash. Must be called within a request. */
 	public String base() {
-		String base = SiteContext.current() == Site.DEMO && demo != null && demo.url() != null ? demo.url()
-				: configuredBaseUrl.isBlank() ? ServletUriComponentsBuilder.fromCurrentContextPath()
-			.build().toUriString() : configuredBaseUrl.trim();
+		String base;
+		if (SiteContext.current() == Site.DEMO) {
+			// The demo never borrows the main site's configured base URL: without a demo URL, use the request's host.
+			base = demo != null && demo.url() != null ? demo.url() : fromRequest();
+		}
+		else {
+			base = configuredBaseUrl.isBlank() ? fromRequest() : configuredBaseUrl.trim();
+		}
 		return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+	}
+
+	private static String fromRequest() {
+		return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
 	}
 }

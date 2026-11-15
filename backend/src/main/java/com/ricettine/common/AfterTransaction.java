@@ -21,7 +21,7 @@ public class AfterTransaction {
 	public void afterCommit(String what, Runnable action) {
 		Site site = SiteContext.current();
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			run(what, SiteContext.current(), action);
+			run(what, site, action);
 			return;
 		}
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
