@@ -4,7 +4,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -27,7 +29,11 @@ public class SiteDataSourceConfig {
 
 	@Bean
 	@Primary
-	DataSource dataSource(JdbcConnectionDetails details, DemoProperties demo, Environment environment) {
+	DataSource dataSource(ObjectProvider<JdbcConnectionDetails> detailsProvider, DataSourceProperties properties,
+			DemoProperties demo, Environment environment) {
+		// JdbcConnectionDetails exists only when a service connection (tests, Docker Compose) provides it; the
+		// DataSourceAutoConfiguration one backs off because of this bean, so fall back to spring.datasource.*.
+		JdbcConnectionDetails details = detailsProvider.getIfAvailable(() -> new PropertiesDetails(properties));
 		HikariDataSource main = hikari(details, details.getJdbcUrl(), "main");
 		Binder.get(environment).bind("spring.datasource.hikari", Bindable.ofInstance(main));
 		if (!demo.enabled()) {
@@ -49,6 +55,29 @@ public class SiteDataSourceConfig {
 	MigrateResult demoFlyway(@Qualifier("dataSource") DataSource routing) {
 		DataSource demoPool = ((SiteRoutingDataSource) routing).pool(Site.DEMO);
 		return Flyway.configure().dataSource(demoPool).locations(MIGRATIONS).load().migrate();
+	}
+
+	private record PropertiesDetails(DataSourceProperties properties) implements JdbcConnectionDetails {
+
+		@Override
+		public String getJdbcUrl() {
+			return properties.determineUrl();
+		}
+
+		@Override
+		public String getUsername() {
+			return properties.determineUsername();
+		}
+
+		@Override
+		public String getPassword() {
+			return properties.determinePassword();
+		}
+
+		@Override
+		public String getDriverClassName() {
+			return properties.determineDriverClassName();
+		}
 	}
 
 	private static HikariDataSource hikari(JdbcConnectionDetails details, String url, String poolName) {

@@ -72,6 +72,19 @@ class SiteIsolationIT extends DemoIntegrationTest {
 	}
 
 	@Test
+	void mainWritesNeverReachDemo() throws Exception {
+		Cookie cookie = data.user("mia", false);
+		mvc.perform(post("/api/recipes").with(csrf()).cookie(cookie)).andExpect(status().isCreated());
+
+		String demoUrl = JdbcUrls.withDatabase(details.getJdbcUrl(), "ricettine_demo");
+		JdbcTemplate demoOnly = new JdbcTemplate(
+				new DriverManagerDataSource(demoUrl, details.getUsername(), details.getPassword()));
+		assertThat(demoOnly.queryForObject("select count(*) from recipe", Long.class)).isZero();
+		assertThat(demoOnly.queryForObject("select count(*) from app_user", Long.class)).isZero();
+		assertThat(jdbc.queryForObject("select count(*) from recipe", Long.class)).isEqualTo(1L);
+	}
+
+	@Test
 	void demoDatabaseIsRecreatedOnStartup() {
 		String scratch = "ricettine_demo_recreate_it";
 		DemoDatabase.recreate(dataSource, scratch);
