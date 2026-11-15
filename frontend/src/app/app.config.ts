@@ -30,8 +30,11 @@ export const appConfig: ApplicationConfig = {
     // Site first: on the demo, load() signs in silently, so deep links land on their page and the
     // guards (which run after the initializers) already see a user.
     provideAppInitializer(async () => {
-      await inject(Site).load();
-      await inject(AuthStore).load();
+      // inject() only works before the first await
+      const site = inject(Site);
+      const auth = inject(AuthStore);
+      await site.load();
+      await auth.load();
     }),
   ],
 };

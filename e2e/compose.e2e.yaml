@@ -8,3 +8,6 @@ services:
       RICETTINE_LIMITS_LOGINIP_LIMIT: "100000"
       RICETTINE_LIMITS_ANONYMOUSAUTH_LIMIT: "100000"
       RICETTINE_REMOTE_IMAGES_ALLOW_PRIVATE_ADDRESSES: "true"
+      # the demo site, reached with the X-Ricettine-Site: demo header (see helpers/demo.ts)
+      RICETTINE_DEMO_ENABLED: "true"
+      RICETTINE_DEMO_URL: http://demo.localhost:8080
