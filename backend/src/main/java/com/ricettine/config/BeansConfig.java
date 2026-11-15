@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import com.ricettine.site.DemoProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +19,7 @@ import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 
 @Configuration
-@EnableConfigurationProperties(LimitsConfig.class)
+@EnableConfigurationProperties({ LimitsConfig.class, DemoProperties.class })
 public class BeansConfig {
 
 	/**
