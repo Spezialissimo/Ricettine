@@ -10,6 +10,7 @@ import { AuthStore } from '../../core/auth.store';
 import { routes } from '../../app.routes';
 import { leaveEditorGuard } from './leave-editor.guard';
 import { RecipeEditorPage } from './recipe-editor.page';
+import { provideSite } from '../../testing/site';
 
 async function mount(api: Partial<RecipeApi>, before: () => void = () => {}) {
   TestBed.configureTestingModule({
@@ -773,5 +774,50 @@ describe('RecipeEditorPage', () => {
       expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('Restored');
       expect(el.textContent).toContain(en.editor.restored);
     });
+  });
+});
+
+describe('RecipeEditorPage in the demo', () => {
+  async function mountDemo() {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: RecipeApi, useValue: {} },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'local' }) } },
+        },
+      ],
+    });
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const f = TestBed.createComponent(RecipeEditorPage);
+    await settle(f);
+    return { f, el: f.nativeElement as HTMLElement, nav };
+  }
+  afterEach(clearOverlays);
+
+  it('shows a notice, and Save and Publish say nothing is saved', async () => {
+    const { f, el, nav } = await mountDemo();
+    expect(el.querySelector('.demo-notice')?.textContent).toContain(en.demo.notSaved);
+    (el.querySelector('button.publish') as HTMLButtonElement).click();
+    await settle(f);
+    expect(el.querySelector('.demo-toast')?.textContent).toContain(en.demo.notSaved);
+    byText(el.querySelector('.editor-header')!, 'button', en.editor.save)!.click();
+    await settle(f);
+    expect(nav).not.toHaveBeenCalled();
+  });
+
+  it('hides the Delete menu item', async () => {
+    const { f, el } = await mountDemo();
+    (el.querySelector('button.more') as HTMLButtonElement).click();
+    await settle(f);
+    expect(document.body.textContent).not.toContain(en.editor.delete);
+  });
+
+  it('leaveGuardAllowsInDemo', async () => {
+    const { f } = await mountDemo();
+    expect(await f.componentInstance.canLeave()).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
+import { Site } from '../core/site';
 import { RecipeApi } from './recipe.api';
 
 /** Creates an empty draft and moves on to its editor (the new URL replaces this one in history). */
@@ -26,6 +27,7 @@ import { RecipeApi } from './recipe.api';
 export class NewRecipePage {
   private readonly api = inject(RecipeApi);
   private readonly router = inject(Router);
+  private readonly site = inject(Site);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
@@ -35,6 +37,11 @@ export class NewRecipePage {
   async start(): Promise<void> {
     this.error.set(null);
     try {
+      if (this.site.demo()) {
+        // the demo keeps its draft in memory: no request, and no id from the server
+        await this.router.navigateByUrl('/recipes/local/edit', { replaceUrl: true });
+        return;
+      }
       const recipe = await this.api.create();
       await this.router.navigateByUrl(`/recipes/${recipe.id}/edit`, { replaceUrl: true });
     } catch (e) {

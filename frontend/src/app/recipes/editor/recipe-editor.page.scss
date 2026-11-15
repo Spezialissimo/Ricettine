@@ -365,3 +365,18 @@ h2 {
     display: inline-flex;
   }
 }
+
+// the demo's "not saved" message after Save or Publish
+.demo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin: 0;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}

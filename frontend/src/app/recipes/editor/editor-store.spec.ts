@@ -3,6 +3,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthStore } from '../../core/auth.store';
+import { provideSite } from '../../testing/site';
 import { PendingSaves } from '../../core/pending-saves';
 import { RecipeApi } from '../recipe.api';
 import { Recipe } from '../recipe.model';
@@ -843,5 +844,93 @@ describe('conflictText', () => {
       }),
     );
     expect(text).toBe('Lasagne\n\nLess salt\n\nBrown\n\nBake');
+  });
+});
+
+describe('EditorStore in the demo', () => {
+  function demo(opts: { api?: Partial<RecipeApi>; http?: boolean } = {}) {
+    TestBed.configureTestingModule({
+      providers: [
+        EditorStore,
+        provideSite({ demo: true }),
+        ...(opts.http
+          ? [provideHttpClient(), provideHttpClientTesting()]
+          : [{ provide: RecipeApi, useValue: opts.api ?? {} }]),
+      ],
+    });
+    return TestBed.inject(EditorStore);
+  }
+  beforeEach(() => {
+    vi.useFakeTimers();
+    localStorage.clear();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('localDraftLoadsWithoutRequest', async () => {
+    const store = demo({ http: true });
+    await store.load('local');
+    expect(TestBed.inject(HttpTestingController).match(() => true)).toEqual([]);
+    expect(store.local).toBe(true);
+    expect(store.loaded()).toBe(true);
+    expect(store.id()).toBe('local');
+    expect(store.recipe()).toEqual(emptyInput());
+    expect(store.status()).toBe('idle');
+  });
+
+  it('demoEditsNeverSave', async () => {
+    const store = demo({ http: true });
+    await store.load('local');
+    store.update((r) => ({ ...r, title: 'Pasta' }));
+    await vi.advanceTimersByTimeAsync(5000);
+    await store.flush();
+    expect(store.recipe().title).toBe('Pasta');
+    expect(store.status()).toBe('idle');
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('demoPhotoIsPreviewOnly', async () => {
+    const created = vi.fn(() => 'blob:demo');
+    const revoked = vi.fn();
+    URL.createObjectURL = created;
+    URL.revokeObjectURL = revoked;
+    const store = demo({ http: true });
+    await store.load('local');
+    await store.uploadPhoto('cover', new File(['x'], 'p.jpg', { type: 'image/jpeg' }));
+    expect(store.uploadFor('cover')).toMatchObject({ status: 'done', preview: 'blob:demo' });
+    expect(store.recipe().coverMediaId).toBeNull();
+    TestBed.inject(HttpTestingController).verify();
+    TestBed.resetTestingModule();
+    expect(revoked).toHaveBeenCalledWith('blob:demo');
+  });
+
+  it('demoPublishShowsNotSaved: publish is blocked without a request', async () => {
+    const store = demo({ http: true });
+    await store.load('local');
+    expect(await store.publish()).toBe('blocked');
+    TestBed.inject(HttpTestingController).verify();
+  });
+
+  it('demoWritesNoUnsavedBackup', async () => {
+    const store = demo({ http: true });
+    await store.load('local');
+    store.update((r) => ({ ...r, title: 'Pasta' }));
+    store.setInvalidAmounts({ '0.0': 'abc' });
+    await vi.advanceTimersByTimeAsync(5000);
+    TestBed.resetTestingModule();
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('ricettine.unsaved.'));
+    expect(keys).toEqual([]);
+  });
+
+  it('existingRecipeInDemoLoadsFromServerButNeverSaves', async () => {
+    const get = vi.fn().mockResolvedValue(serverRecipe({ id: 'r9', title: 'Lasagne', version: 3 }));
+    const save = vi.fn();
+    const store = demo({ api: { get, save } });
+    await store.load('r9');
+    expect(get).toHaveBeenCalledWith('r9');
+    expect(store.recipe().title).toBe('Lasagne');
+    store.update((r) => ({ ...r, title: 'Lasagne 2' }));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).not.toHaveBeenCalled();
+    expect(store.recipe().title).toBe('Lasagne 2');
   });
 });
