@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -29,9 +28,8 @@ public class DemoReadOnlyFilter extends OncePerRequestFilter {
 
 	private final boolean readOnly;
 
-	/** {@code ricettine.demo.read-only} (default true) exists so the other demo-site integration tests can write. */
-	public DemoReadOnlyFilter(@Value("${ricettine.demo.read-only:true}") boolean readOnly) {
-		this.readOnly = readOnly;
+	public DemoReadOnlyFilter(DemoProperties demo) {
+		this.readOnly = demo.readOnly();
 	}
 
 	@Override

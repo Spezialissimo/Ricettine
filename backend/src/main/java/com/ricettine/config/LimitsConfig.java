@@ -36,7 +36,7 @@ public class LimitsConfig {
 	private final Entry loginAccount = new Entry(10, Duration.ofMinutes(15));
 	private final Entry loginIp = new Entry(30, Duration.ofMinutes(15));
 	private final Entry anonymousAuth = new Entry(30, Duration.ofMinutes(15));
-	private final Entry demoSession = new Entry(30, Duration.ofMinutes(15));
+	private final Entry demoSession = new Entry(30, Duration.ofMinutes(10));
 	private final Entry uploads = new Entry(60, Duration.ofMinutes(10));
 	private final Entry profile = new Entry(120, Duration.ofMinutes(1));
 

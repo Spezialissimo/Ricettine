@@ -56,6 +56,8 @@ ricettine:
     url: ${RICETTINE_DEMO_URL:}
     database: ricettine_demo
     pool-size: 3
+    # Test-only switch (the demo site refuses writes); must stay true in production.
+    read-only: true
   media:
     # Concurrent image decodes; others wait (processing-wait, default 30s), then 503 busy.
     max-concurrent-processing: 2
@@ -67,7 +69,7 @@ ricettine:
     login-account: { limit: 10, window: PT15M }
     login-ip: { limit: 30, window: PT15M }
     anonymous-auth: { limit: 30, window: PT15M }
-    demo-session: { limit: 30, window: PT15M }
+    demo-session: { limit: 30, window: PT10M }
     uploads: { limit: 60, window: PT10M }
     profile: { limit: 120, window: PT1M }
   security:

@@ -81,7 +81,7 @@ class DemoModeIT extends DemoIntegrationTest {
 	@ParameterizedTest(name = "{0} {1}")
 	@MethodSource("mutatingEndpoints")
 	void everyMutatingEndpointIsReadOnlyOnDemo(String method, String path) throws Exception {
-		Cookie session = demoSession("10.1.0.1");
+		Cookie session = demoSession();
 		mvc.perform(demo(request(HttpMethod.valueOf(method), path)).cookie(session)
 				.contentType(MediaType.APPLICATION_JSON).content("{}"))
 			.andExpect(status().isForbidden())
@@ -97,7 +97,7 @@ class DemoModeIT extends DemoIntegrationTest {
 
 	@Test
 	void demoSessionSignsInAsOspiteForOneDay() throws Exception {
-		Cookie session = demoSession("10.1.0.2");
+		Cookie session = demoSession();
 		mvc.perform(demo(get("/api/me")).cookie(session)).andExpect(status().isOk())
 			.andExpect(jsonPath("$.username").value("ospite"));
 		Integer ttl = SiteContext.callAs(Site.DEMO,
@@ -156,14 +156,14 @@ class DemoModeIT extends DemoIntegrationTest {
 
 	@Test
 	void logoutAllowedOnDemo() throws Exception {
-		Cookie session = demoSession("10.1.0.3");
+		Cookie session = demoSession();
 		mvc.perform(demo(post("/api/auth/logout")).with(csrf()).cookie(session)).andExpect(status().isNoContent());
 	}
 
 	private final java.util.concurrent.atomic.AtomicInteger nextIp = new java.util.concurrent.atomic.AtomicInteger();
 
 	/** A fresh client address per call, so the demo-session limit is never hit by the parameterized cases. */
-	private Cookie demoSession(String ignored) throws Exception {
+	private Cookie demoSession() throws Exception {
 		int n = nextIp.incrementAndGet();
 		return mvc.perform(demo(post("/api/demo/session")).with(csrf()).with(ip("10.9." + (n / 250) + "." + (n % 250))))
 			.andExpect(status().isNoContent()).andReturn().getResponse().getCookie("SESSION");
