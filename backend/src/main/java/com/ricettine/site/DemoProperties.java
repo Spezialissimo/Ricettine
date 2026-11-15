@@ -2,6 +2,7 @@ package com.ricettine.site;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * Public demo settings. {@code url} is the public demo site URL (not a JDBC URL); blank database and non-positive
@@ -10,7 +11,7 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  */
 @ConfigurationProperties("ricettine.demo")
 public record DemoProperties(boolean enabled, String url, String database, int poolSize,
-		boolean readOnly) {
+		@DefaultValue("true") boolean readOnly) {
 
 	static final String DEFAULT_DATABASE = "ricettine_demo";
 	static final int DEFAULT_POOL_SIZE = 3;
