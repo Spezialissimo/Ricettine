@@ -82,8 +82,17 @@ async function assertMainSiteUi(page: Page) {
 }
 
 /** `endAfter`: cut the image just below this element, so it ends on a whole element (not mid-field). */
-async function shoot(page: Page, name: string, endAfter?: Locator) {
+async function shoot(page: Page, name: string, endAfter?: Locator, scrollTo?: Locator) {
   await settle(page);
+  if (scrollTo) {
+    // start the image at this element (settle() leaves the page at the top), then wait for what scrolled into view
+    await scrollTo.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80));
+    await page.waitForFunction(() => {
+      const imgs = Array.from(document.images).filter((i) => i.getBoundingClientRect().width > 0);
+      return imgs.every((i) => i.complete && i.naturalWidth > 0);
+    });
+    await page.waitForTimeout(500);
+  }
   await assertMainSiteUi(page);
   let clip: { x: number; y: number; width: number; height: number } | undefined;
   if (endAfter) {
@@ -165,6 +174,19 @@ test.describe('desktop', { tag: '@desktop' }, () => {
     await page.getByRole('link', { name: /Primi della domenica/ }).first().click();
     await expect(page.getByRole('heading', { name: 'Primi della domenica', level: 1 })).toBeVisible();
     await shoot(page, 'cookbook-desktop.png');
+  });
+
+  test('recipe steps with photos', async ({ page }) => {
+    await prepare(page, 'it', 'light');
+    await openRecipe(page, 'Bigos, lo stufato del cacciatore');
+    await shoot(page, 'recipe-steps-desktop.png', undefined, page.locator('#steps-h'));
+  });
+
+  test('my kitchen', async ({ page }) => {
+    await prepare(page, 'it', 'light');
+    await page.goto('/kitchen');
+    await expect(page.getByRole('heading', { name: 'La mia cucina', level: 1 })).toBeVisible();
+    await shoot(page, 'kitchen-desktop.png');
   });
 
   test('recipe in English', async ({ page }) => {

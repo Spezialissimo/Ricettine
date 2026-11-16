@@ -1,6 +1,88 @@
+<div align="center">
+
 # Ricettine
 
-A self-hosted recipe app for friends and family. One image, one Postgres, no required configuration.
+[![CI](https://github.com/Spezialissimo/Ricettine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Spezialissimo/Ricettine/actions/workflows/ci.yml)
+[![Docker image](https://img.shields.io/badge/image-ghcr.io%2Fspezialissimo%2Fricettine-blue?logo=docker)](https://github.com/Spezialissimo/Ricettine/pkgs/container/ricettine)
+
+[Live site](https://ricettine.food) · [**Try the demo**](https://demo.ricettine.food)
+
+</div>
+
+Ricettine is a small recipe website: you write your recipes, share them by link or publicly, and collect them in cookbooks that other people can help you fill.
+
+The original idea comes from the simple need for my girlfriend and me to have a space where we could share and manage our recipes. I decided to take the chance to learn how a project can go from zero to a working service using Claude Code.
+
+The docs in this repo are quite comprehensive: check the index below if you are wondering what the stack is, how development with Claude Code was set up and how it went, and much more.
+
+## Contents
+
+- [Requirements](#requirements)
+- [What it does](#what-it-does)
+- [How it is built](#how-it-is-built)
+- [Quick start](#quick-start)
+- [A guide to the docs](#a-guide-to-the-docs)
+- [Credits](#credits)
+
+## Requirements
+
+These are the functional requirements we set at the start, in the [original design](docs/superpowers/specs/2026-11-03-ricettine-design.md), and they still shape every change.
+
+- **Self-hostable from the ground up.** One `docker compose up` with the published image and Postgres gives a working instance with no required configuration: sensible defaults, images on a local volume, a first-run screen that creates the admin, and no default passwords. Everything else is an environment variable. Upgrading means pulling the new image and restarting; database migrations run by themselves. The image is built for amd64 and arm64, images can live on local disk or any S3-compatible store, and HTTPS is a documented Caddy overlay.
+- **The same artifact, also hosted.** The public instance runs the same image and the same Compose setup on a single small AWS instance, with no cloud-specific code in the app apart from the optional S3 storage.
+- **Quick to use while cooking.** Writing a recipe on a phone with messy hands has to be easy enough that it actually happens: large touch targets, an editor that saves by itself, and nothing lost if the phone locks or the connection drops.
+- **Private things stay private.** Private recipes and cookbooks never appear in listings, drafts are visible only to their author, share links are not guessable, photo metadata (including location) is stripped on upload, and deleting an account deletes its data and files.
+- **Made for a small group.** Several accounts from day one, invite-only, with no email server needed: the admin hands out invite and password-reset links.
+- **Sharing and cookbooks together.** Any published recipe or cookbook can be shared by link, and two accounts can build a cookbook together.
+- **Ready for more than one language.** Every interface string goes through translation files; the app ships in Italian and English.
+- **Cheap to run.** Hosting for two people must not cost real money, and self-hosting must not need more than one command.
+
+## What it does
+
+**Invite-only accounts.** The first person to open a fresh install creates the admin account. After that nobody can register on their own: the admin creates single-use invite links (valid for 7 days) from the settings, and can also promote other users to admin or generate a password-reset link for someone who is locked out. Each person has a profile with an avatar and can delete their own account.
+
+**Discover.** The home page, "Scopri" in Italian, lists the latest recipes that people have published as public, with a photo, a title and the author. Each author has a public profile page with their public recipes and cookbooks.
+
+<img src="docs/images/feed-desktop.png" alt="The feed of the latest published recipes on desktop" width="720">
+
+**Recipes you can write down quickly.** The editor has a title, a cover photo, the number of portions, preparation and cooking times, a source (a link, a book or a person) and notes. Ingredients have an amount, a unit from a fixed list, a name and an optional note, and can be put into named groups such as "Sauce". Steps can be reordered and each step can have its own photo, uploaded or fetched from a link. The editor saves by itself while you type, and warns you before you leave with something unsaved.
+
+<img src="docs/images/editor-desktop.png" alt="The recipe editor on desktop: cover photo, portions and times, visibility, ingredients and numbered steps with a photo button each" width="720">
+
+**Drafts, private and public.** A new recipe is a draft that only you can see. When it has a title, an ingredient and a step you can publish it. A published recipe is either public (listed on Discover and on your profile) or private (not listed).
+
+**Reading and cooking.** The recipe page shows the photo, the times, the ingredients and the steps with their photos. A stepper changes the portions and scales the amounts, using kitchen fractions. "Keep screen on" asks the browser not to let the screen sleep while you cook.
+
+<img src="docs/images/recipe-steps-desktop.png" alt="A recipe page scrolled to the ingredients, in groups, and the first steps with their photos" width="720">
+
+**Share links.** Every recipe has a link that anyone can open without an account, and you can reset it to cut off whoever has the old one. Cookbooks have the same.
+
+**Cookbooks and co-authors.** A cookbook has a name, a description, an optional cover photo and a public or private setting. You add your recipes to it, and you can invite co-authors with a single-use link (valid for 7 days); co-authors can add recipes, and the owner can remove a co-author, who can also leave on their own. A cookbook has its own share link and a public page that works without an account.
+
+<img src="docs/images/cookbook-desktop.png" alt="A cookbook page on desktop with its cover, description and recipes" width="720">
+
+**My kitchen.** "La mia cucina" gathers your own recipes (drafts included) and your cookbooks, with an overview and a tab for each.
+
+<img src="docs/images/kitchen-desktop.png" alt="My kitchen: an overview of your recipes and cookbooks" width="720">
+
+**Italian and English, light and dark.** The interface is available in both languages and in a light and a dark theme; the settings let you follow the device or pick one. The language and theme are saved on the device.
+
+<img src="docs/images/recipe-desktop-en.png" alt="A recipe in English" width="360"> <img src="docs/images/recipe-desktop-dark.png" alt="The same recipe in Italian with the dark theme" width="360">
+
+**Desktop first, with a phone layout.** The layout is designed for a desktop and adapts at 768 px; on a phone the menus and actions move into a compact layout. Controls are labelled and touch targets are at least 44 px.
+
+<img src="docs/images/feed-mobile.png" alt="The feed on a phone" width="200"> <img src="docs/images/recipe-mobile.png" alt="A recipe on a phone" width="200"> <img src="docs/images/editor-mobile.png" alt="The recipe editor on a phone" width="200">
+
+**A read-only public demo.** The demo site runs on its own database, which is wiped at every start and seeded with sample recipes. Visitors sign in as a guest with one click and can try the editor, but nothing is saved.
+
+## How it is built
+
+- Backend: Spring Boot 4.1 on Java 25, Flyway migrations, PostgreSQL 17.
+- Frontend: Angular 22 (standalone components), Transloco, vitest.
+- End-to-end tests: Playwright 1.64.
+- Packaging: one Docker image (Node 24 build, Eclipse Temurin 25 runtime) and Docker Compose.
+- HTTPS and routing: Caddy 2.10.
+- Infrastructure: Terraform (>= 1.9, AWS provider 6.x), GitHub Actions.
 
 ## Quick start
 
@@ -8,103 +90,30 @@ A self-hosted recipe app for friends and family. One image, one Postgres, no req
 docker compose up -d
 ```
 
-This pulls the published image (`compose.yaml` needs no toolchain, and can be downloaded on its own). Open <http://localhost:8080> and create the admin account. That's it: the first visitor to a fresh install is guided through setup, and the admin can then invite other people with single-use links.
+Open <http://localhost:8080> and create the admin account; the admin then invites other people with single-use links. Configuration, HTTPS, upgrades and backups: [docs/deployment.md](docs/deployment.md).
 
-Data lives in two named volumes: `db-data` (Postgres) and `app-data` (uploaded images, mounted at `/data`).
+## A guide to the docs
 
-## Configuration
+**Using the app and running it**
 
-Everything is optional. Set variables in a `.env` file next to `compose.yaml` or in the `app` service's `environment`.
+- Check [docs/deployment.md](docs/deployment.md) if you want to run Ricettine yourself: Docker Compose, HTTPS, upgrades, backups and restores, and the AWS setup with Terraform.
+- Check [docs/development.md](docs/development.md) if you want to build and test it locally: the commands, the check scripts, how the screenshots and the demo content are produced.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
-| `RICETTINE_VERSION` | `latest` | Image tag to run, e.g. `1.2.0`. See Upgrading. |
-| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 60% of it (the rest covers metaspace, code cache and image decoding), so raise it for a large library rather than removing it (not used by `compose.aws.yaml`, which pins `1g`). |
-| `RICETTINE_TRUSTED_PROXIES` | matches nothing (Caddy overlays: loopback and private ranges) | Regex of peer addresses whose `X-Forwarded-For` the app believes, for the per-IP rate limits. With `:8080` published directly there is no proxy, so none is trusted; the Caddy overlays trust their Docker network. Set it only for your own reverse proxy. |
-| `RICETTINE_DEMO_ENABLED` | `false` | Serve a public demo site next to the real one, in its own database (`ricettine_demo`, wiped and recreated at every start). A request is the demo only if your reverse proxy sets `X-Ricettine-Site: demo` (case-insensitive); the app trusts that header, so only a proxy you control may set it, and it must overwrite any client-sent value. With `compose.https.yaml`, `RICETTINE_DEMO_DOMAIN` does this for you. |
-| `RICETTINE_DEMO_URL` | - | Public URL of the demo site, e.g. `https://demo.example.com`. Optional; the app reports it in `/api/setup/status`. |
-| `RICETTINE_DEMO_DOMAIN` | - | `compose.https.yaml` only: a second host name that Caddy serves as the demo site (and gets a certificate for). Also set `RICETTINE_DEMO_ENABLED=true` and `RICETTINE_DEMO_URL`. Point its DNS at the same server. |
-| `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. **Only applied when the `db-data` volume is first created**: changing it later does not change the existing database's password (change it inside Postgres with `ALTER USER ricettine PASSWORD '...'` and then update the variable). |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/ricettine` | JDBC URL, if you use your own Postgres. |
-| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `ricettine` | Database credentials. |
-| `RICETTINE_STORAGE_TYPE` | `local` | Image storage: `local` or `s3`. |
-| `RICETTINE_STORAGE_LOCAL_PATH` | `/data/media` | Directory for `local` storage (inside the `app-data` volume). |
-| `RICETTINE_STORAGE_S3_BUCKET` | - | Bucket name (required when type is `s3`). |
-| `RICETTINE_STORAGE_S3_REGION` | SDK default | S3 region. |
-| `RICETTINE_STORAGE_S3_ENDPOINT` | AWS | Custom endpoint for S3-compatible stores (MinIO, R2, ...). |
-| `RICETTINE_STORAGE_S3_PATH_STYLE` | `false` | Use path-style addressing (needed by most S3-compatible stores). |
-| `RICETTINE_STORAGE_S3_API_CALL_TIMEOUT` | `PT30S` | Overall time limit for one S3 call, retries included (ISO-8601 duration). |
-| `RICETTINE_STORAGE_S3_API_CALL_ATTEMPT_TIMEOUT` | `PT10S` | Time limit for a single S3 attempt. |
-| `RICETTINE_STORAGE_S3_CONNECTION_TIMEOUT` | `PT5S` | Time limit for opening the connection to S3. |
-| `RICETTINE_SECURITY_MAX_CONCURRENT_HASHES` | `4` | Password hashes (login, sign-up, password change) computed at once; each needs ~16 MB. Extra requests wait up to 10 s, then get "busy, try again". |
-| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=60 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=64m` | JVM options. The default sizes the heap to 60% of the container memory limit and caps metaspace and the code cache. |
+**How it is built**
 
-## HTTPS
+- Check [docs/architecture.md](docs/architecture.md) if you are interested in how the pieces fit together: containers, backend modules, data model, main flows and the frontend.
+- Check [docs/decisions.md](docs/decisions.md) if you are interested in why it is that way: the main design decisions in short ADR form.
+- Check [docs/security.md](docs/security.md) if you are interested in what protects it: the measures in code and in the infrastructure.
+- Check [docs/quality.md](docs/quality.md) if you are interested in how it is tested: test layers, check scripts, CI and the code audit.
+- Check [CREDITS.md](CREDITS.md) if you want to know where the demo recipes and photos come from.
 
-To serve the app on your own domain with a certificate from Let's Encrypt:
+**How it was built with Claude Code**
 
-1. Point a DNS A record for the domain at the server and open ports 80 and 443 (443/udp for HTTP/3).
-2. Run one command:
+- Check [docs/ai-workflow.md](docs/ai-workflow.md) if you are interested in the process: how Claude Code was used, what steers it, and what went wrong.
+- Check [docs/roadmap.md](docs/roadmap.md) if you are interested in the order of work: the nine plans with their dates, and what is next.
+- Check [CLAUDE.md](CLAUDE.md) if you want to see the project instructions that Claude Code reads at the start of every session.
+- Check [docs/superpowers](docs/superpowers) if you want the raw record: the specs, plans, audits and follow-ups of every plan.
 
-```sh
-RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.https.yaml up -d
-```
+## Credits
 
-(or put `RICETTINE_DOMAIN` in `.env`). Caddy terminates TLS, redirects HTTP to HTTPS, sets HSTS, and the app is no longer published on `:8080`; invite and reset links use `https://<domain>`.
-
-Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
-
-If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, set `RICETTINE_TRUSTED_PROXIES` to a regex matching your proxy's address as the app sees it (otherwise `X-Forwarded-For` and `X-Forwarded-Proto` are ignored: every client shares the proxy's rate limit, the `SESSION` and `XSRF-TOKEN` cookies lose `Secure`, and links are `http://` unless `RICETTINE_BASE_URL` is set), and disable access logs for the same reason.
-
-## Hosting on AWS
-
-`infra/terraform/` builds a small, EU-hosted stack (EC2, Route 53, CloudFront, S3) from scratch. Setup, first deploy, upgrades, restore and teardown are in [docs/deploy-aws.md](docs/deploy-aws.md).
-
-## Upgrading
-
-Images are published by CI to `ghcr.io/spezialissimo/ricettine` on every push to `main` (`latest`, `sha-...`) and on `v*` tags (semver), for amd64 and arm64. To upgrade:
-
-```sh
-docker compose pull && docker compose up -d
-```
-
-Database migrations run automatically on startup. Your data stays in the `db-data` and `app-data` volumes. To pin a version, set `RICETTINE_VERSION=x.y.z` in `.env` (default `latest`).
-
-If you run your own reverse proxy, set `RICETTINE_TRUSTED_PROXIES` before upgrading: the app now trusts no proxy by default, so without it forwarded headers are ignored (see above).
-
-### Building from source
-
-```sh
-docker compose -f compose.yaml -f compose.build.yaml up -d --build
-```
-
-## Backups
-
-The scripts live in `deploy/`. Run them from the repo root (`deploy/backup.sh`), or copy them next to `compose.yaml` and run them there; they use the compose files and `.env` in the current directory and honour `COMPOSE_FILE`.
-
-`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). A failed local run leaves no files behind; in S3 mode a failed run may leave a dump without its media partner, so use the newest complete pair. `RICETTINE_STORAGE_TYPE`, `BACKUP_S3_URI` and `BACKUP_DIR` are read from the environment or, if unset there, from `.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
-
-```sh
-# nightly at 03:15
-15 3 * * * cd /opt/ricettine && deploy/backup.sh >>backup.log 2>&1
-```
-
-To restore, replacing the current data: `deploy/restore.sh backups/ricettine-<UTC>.dump [backups/ricettine-<UTC>-media.tar.gz]`. The database restore is one transaction: if it fails, the database is unchanged and the app stays stopped (`docker compose up -d app` starts it again). The media directory is replaced by the archive. To restore from S3, `aws s3 cp` the dump (and media archive) down first.
-
-Restore onto the same or a newer app version. Restoring an older dump over a newer schema is not supported; restore into a fresh stack instead (`docker compose down -v`, `docker compose up -d`, then `deploy/restore.sh`). `scripts/backup-restore-check.sh` runs a full backup, wipe, restore and failed-restore drill.
-
-## Development and checks
-
-- Backend: `cd backend && ./mvnw verify` (Java 25; integration tests need Docker). CI: `backend`.
-- Frontend: `cd frontend && npm ci && npx ng test --watch=false`, build with `npx ng build`, dev server `npx ng serve` (proxies `/api` to `localhost:8080`). CI: `frontend`. Formatting: `npm run format:check` (CI runs it), fix with `npx prettier --write .`.
-- Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports, against the built image). CI: `e2e`.
-- Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`). CI: `smoke` and `smoke-arm64`.
-- Regenerating screenshots: `scripts/screenshots.sh` (builds the image, starts the demo stack as project `ricettine-shots`, takes the nine README/docs images with `e2e/screenshots.config.ts` into `docs/images/`, compresses any over 600 KB with pngquant in Docker, tears down with `-v`). Manual, not in CI.
-- Lint: `scripts/infra-check.sh` (workflows, shell scripts, Caddyfiles, Terraform with mock providers; tools run in Docker). CI: `infra`.
-- Backup drill: `scripts/backup-restore-check.sh` (backup, wipe, restore, failed restore). CI: `infra`.
-- HTTPS smoke test: `scripts/https-smoke.sh` (needs ports 80 and 443 free; checks both Caddy overlays). Manual.
-- Multi-arch check: `scripts/multiarch-check.sh` (builds amd64 + arm64, smoke-tests both; amd64 runs under QEMU on an arm64 host). Manual.
-- AWS deployment check: `scripts/aws-verify.sh <domain>` (read-only, needs the AWS CLI and credentials). Manual.
-
-CI (`.github/workflows/ci.yml`) runs the ones marked with a job on every pull request and on pushes to `main`.
+Demo recipes and photos come from third-party sources; see [CREDITS.md](CREDITS.md).

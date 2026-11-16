@@ -10,7 +10,7 @@ TIMEOUT="${SHOTS_TIMEOUT:-180}"
 MAX_BYTES=614400
 export COMPOSE_FILE=compose.yaml:compose.build.yaml:e2e/compose.e2e.yaml
 COMPOSE=(docker compose -p "${SHOTS_COMPOSE_PROJECT:-ricettine-shots}")
-IMAGES=(feed-desktop recipe-desktop editor-desktop cookbook-desktop feed-mobile recipe-mobile editor-mobile recipe-desktop-en recipe-desktop-dark)
+IMAGES=(feed-desktop recipe-desktop editor-desktop cookbook-desktop feed-mobile recipe-mobile editor-mobile recipe-desktop-en recipe-desktop-dark recipe-steps-desktop kitchen-desktop)
 
 cleanup() { "${COMPOSE[@]}" down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT

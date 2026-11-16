@@ -1,13 +1,144 @@
-# Deploying Ricettine on AWS
+# Deployment
+
+How to run Ricettine yourself: with Docker Compose on any host, or on AWS with the Terraform in `infra/terraform/`. For the design behind the stack see [architecture.md](architecture.md); for the security measures see [security.md](security.md).
+
+- [Self-hosting with Docker Compose](#self-hosting-with-docker-compose): configuration, HTTPS, upgrading, backups.
+- [Hosting on AWS](#hosting-on-aws): topology, cost, first deploy, upgrade, restore, rotate the origin secret, demo site, teardown.
+
+## Self-hosting with Docker Compose
+
+`docker compose up -d` starts the published image and Postgres (see the Quick start in the [README](../README.md)). Data lives in two named volumes: `db-data` (Postgres) and `app-data` (uploaded images, mounted at `/data`). `compose.yaml` is image-only; the overlays `compose.build.yaml` (build locally), `compose.https.yaml` (Caddy with Let's Encrypt) and `compose.aws.yaml` (the AWS host) are added with `-f`.
+
+### Configuration
+
+Everything is optional. Set variables in a `.env` file next to `compose.yaml` or in the `app` service's `environment`.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
+| `RICETTINE_VERSION` | `latest` | Image tag to run, e.g. `1.2.0`. See [Upgrading](#upgrading). |
+| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 60% of it (the rest covers metaspace, code cache and image decoding), so raise it for a large library rather than removing it (not used by `compose.aws.yaml`, which pins `1g`). |
+| `RICETTINE_TRUSTED_PROXIES` | matches nothing (Caddy overlays: loopback and private ranges) | Regex of peer addresses whose `X-Forwarded-For` the app believes, for the per-IP rate limits. With `:8080` published directly there is no proxy, so none is trusted; the Caddy overlays trust their Docker network. Set it only for your own reverse proxy. |
+| `RICETTINE_DEMO_ENABLED` | `false` | Serve a public demo site next to the real one, in its own database (`ricettine_demo`, wiped and recreated at every start). A request is the demo only if your reverse proxy sets `X-Ricettine-Site: demo` (case-insensitive); the app trusts that header, so only a proxy you control may set it, and it must overwrite any client-sent value. With `compose.https.yaml`, `RICETTINE_DEMO_DOMAIN` does this for you. |
+| `RICETTINE_DEMO_URL` | - | Public URL of the demo site, e.g. `https://demo.example.com`. Optional; the app reports it in `/api/setup/status`. |
+| `RICETTINE_DEMO_DOMAIN` | - | `compose.https.yaml` only: a second host name that Caddy serves as the demo site (and gets a certificate for). Also set `RICETTINE_DEMO_ENABLED=true` and `RICETTINE_DEMO_URL`. Point its DNS at the same server. |
+| `POSTGRES_PASSWORD` | `ricettine` | Database password (used by both `db` and `app` in `compose.yaml`). Postgres is not published to the host. **Only applied when the `db-data` volume is first created**: changing it later does not change the existing database's password (change it inside Postgres with `ALTER USER ricettine PASSWORD '...'` and then update the variable). |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://db:5432/ricettine` | JDBC URL, if you use your own Postgres. |
+| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | `ricettine` | Database credentials. |
+| `RICETTINE_STORAGE_TYPE` | `local` | Image storage: `local` or `s3`. |
+| `RICETTINE_STORAGE_LOCAL_PATH` | `/data/media` | Directory for `local` storage (inside the `app-data` volume). |
+| `RICETTINE_STORAGE_S3_BUCKET` | - | Bucket name (required when type is `s3`). |
+| `RICETTINE_STORAGE_S3_REGION` | SDK default | S3 region. |
+| `RICETTINE_STORAGE_S3_ENDPOINT` | AWS | Custom endpoint for S3-compatible stores (MinIO, R2, ...). |
+| `RICETTINE_STORAGE_S3_PATH_STYLE` | `false` | Use path-style addressing (needed by most S3-compatible stores). |
+| `RICETTINE_STORAGE_S3_API_CALL_TIMEOUT` | `PT30S` | Overall time limit for one S3 call, retries included (ISO-8601 duration). |
+| `RICETTINE_STORAGE_S3_API_CALL_ATTEMPT_TIMEOUT` | `PT10S` | Time limit for a single S3 attempt. |
+| `RICETTINE_STORAGE_S3_CONNECTION_TIMEOUT` | `PT5S` | Time limit for opening the connection to S3. |
+| `RICETTINE_SECURITY_MAX_CONCURRENT_HASHES` | `4` | Password hashes (login, sign-up, password change) computed at once; each needs ~16 MB. Extra requests wait up to 10 s, then get "busy, try again". |
+| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=60` | JVM options. The default sizes the heap to 60% of the container memory limit. Metaspace and the code cache are left uncapped on purpose (see the comment in the `Dockerfile`); the image also sets `MALLOC_ARENA_MAX=2` to bound native memory. |
+
+### HTTPS
+
+To serve the app on your own domain with a certificate from Let's Encrypt:
+
+1. Point a DNS A record for the domain at the server and open ports 80 and 443 (443/udp for HTTP/3).
+2. Run one command:
+
+```sh
+RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.https.yaml up -d
+```
+
+(or put `RICETTINE_DOMAIN` in `.env`). Caddy terminates TLS, redirects HTTP to HTTPS, sets HSTS, and the app is no longer published on `:8080`; invite and reset links use `https://<domain>`.
+
+Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
+
+If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, set `RICETTINE_TRUSTED_PROXIES` to a regex matching your proxy's address as the app sees it (otherwise `X-Forwarded-For` and `X-Forwarded-Proto` are ignored: every client shares the proxy's rate limit, the `SESSION` and `XSRF-TOKEN` cookies lose `Secure`, and links are `http://` unless `RICETTINE_BASE_URL` is set), and disable access logs for the same reason.
+
+### Upgrading
+
+Images are published by CI to `ghcr.io/spezialissimo/ricettine` on every push to `main` (`latest`, `sha-...`) and on `v*` tags (semver), for amd64 and arm64. To upgrade:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+Database migrations run automatically on startup. Your data stays in the `db-data` and `app-data` volumes. To pin a version, set `RICETTINE_VERSION=x.y.z` in `.env` (default `latest`).
+
+If you run your own reverse proxy, set `RICETTINE_TRUSTED_PROXIES` before upgrading: the app now trusts no proxy by default, so without it forwarded headers are ignored (see the `RICETTINE_TRUSTED_PROXIES` row under Configuration).
+
+#### Building from source
+
+```sh
+docker compose -f compose.yaml -f compose.build.yaml up -d --build
+```
+
+### Backups
+
+The scripts live in `deploy/`. Run them from the repo root (`deploy/backup.sh`), or copy them next to `compose.yaml` and run them there; they use the compose files and `.env` in the current directory and honour `COMPOSE_FILE`.
+
+`deploy/backup.sh` writes a timestamped database dump (`ricettine-<UTC>.dump`) and, with local storage, a media archive (`ricettine-<UTC>-media.tar.gz`) into `BACKUP_DIR` (default `./backups`). A failed local run leaves no files behind; in S3 mode a failed run may leave a dump without its media partner, so use the newest complete pair. `RICETTINE_STORAGE_TYPE`, `BACKUP_S3_URI` and `BACKUP_DIR` are read from the environment or, if unset there, from `.env`. Set `BACKUP_S3_URI=s3://bucket/prefix/` to upload with the `aws` CLI instead. With `RICETTINE_STORAGE_TYPE=s3` the media archive is skipped.
+
+```sh
+# nightly at 03:15
+15 3 * * * cd /opt/ricettine && deploy/backup.sh >>backup.log 2>&1
+```
+
+To restore, replacing the current data: `deploy/restore.sh backups/ricettine-<UTC>.dump [backups/ricettine-<UTC>-media.tar.gz]`. The database restore is one transaction: if it fails, the database is unchanged and the app stays stopped (`docker compose up -d app` starts it again). The media directory is replaced by the archive. To restore from S3, `aws s3 cp` the dump (and media archive) down first.
+
+Restore onto the same or a newer app version. Restoring an older dump over a newer schema is not supported; restore into a fresh stack instead (`docker compose down -v`, `docker compose up -d`, then `deploy/restore.sh`). `scripts/backup-restore-check.sh` runs a full backup, wipe, restore and failed-restore drill.
+
+## Hosting on AWS
 
 One small EC2 instance runs the app, Postgres and Caddy with Docker Compose. CloudFront sits in front of it.
 Terraform in `infra/terraform/` builds everything. There is no SSH: you reach the host with SSM Session Manager.
 
 Terraform state is local (`infra/terraform/terraform.tfstate`). It is gitignored and it holds secrets. Keep a copy somewhere safe.
 
-## What it costs
+### Topology
 
-Region eu-west-1, on-demand, approximate (eu-north-1 is about the same). Confirm with the [AWS Pricing Calculator](https://calculator.aws/) before you commit.
+```mermaid
+flowchart LR
+  viewer([Viewer])
+  r53[Route 53 zone]
+  subgraph cf[CloudFront, ACM certificates in us-east-1]
+    main[main distribution]
+    demo[demo distribution<br/>optional]
+  end
+  subgraph vpc[VPC: one public subnet, no NAT]
+    subgraph ec2[EC2 t4g.small, Docker Compose]
+      caddy[Caddy<br/>needs X-Origin-Verify]
+      app[app]
+      pg[(Postgres)]
+    end
+    ebs[(EBS data volume<br/>/srv/ricettine)]
+  end
+  media[(S3 media bucket)]
+  backups[(S3 backups bucket)]
+  ssm[SSM parameters<br/>origin secret, DB password]
+  sns[SNS topic ricettine-alerts]
+  alarm[CloudWatch alarm<br/>ricettine-backup-stale]
+  mail([alert_email])
+
+  viewer --> r53
+  viewer --> main
+  viewer --> demo
+  main -->|"HTTPS to origin.domain"| caddy
+  demo -->|"HTTPS to origin.domain"| caddy
+  caddy --> app
+  app --> pg
+  pg --- ebs
+  app --> media
+  ec2 -->|"daily dump"| backups
+  ec2 -.->|"reads at boot"| ssm
+  ec2 -->|"backup failed"| sns
+  backups -.->|"PutRequests metric"| alarm
+  alarm --> sns
+  sns --> mail
+```
+
+### What it costs
+
+**Estimate as of 2026-11.** Region eu-west-1, on-demand, approximate (eu-north-1 is about the same). Prices change: confirm with the [AWS Pricing Calculator](https://calculator.aws/) before you commit.
 
 | Item | $/month |
 |---|---|
@@ -27,7 +158,7 @@ The total is about **$18-21 per month** on-demand.
 
 A budget alarm (`budget.tf`) emails `alert_email`. See "Cost and budget" below for how to set it.
 
-## What Terraform builds
+### What Terraform builds
 
 - **Network:** a /16 VPC with one public subnet and an internet gateway. No NAT gateway.
 - **Firewall:** port 80 open to the world (Let's Encrypt HTTP-01 and the redirect). Port 443 only from the CloudFront origin-facing prefix list. No port 22.
@@ -44,7 +175,7 @@ A budget alarm (`budget.tf`) emails `alert_email`. See "Cost and budget" below f
   - Everything is uncached except `/media/*`, which follows the app's `Cache-Control` (recipe and cookbook photos are `private`, so never stored; avatars are cached for at most one day). Standard logging is off on purpose: invite, reset and share tokens are in URL paths.
 - **Backups:** `ricettine-backup.timer` runs `deploy/backup.sh` daily at 03:00 UTC (`Persistent=true`) and uploads the dump to `s3://<backups>/db/`. Photos already live in S3, so only the dump is uploaded. If the backup service fails, `ricettine-backup-failed.service` publishes the last 20 journal lines to the `ricettine-alerts` SNS topic, which emails `alert_email` (the instance role may only `sns:Publish` to that topic). A host-independent CloudWatch alarm, `ricettine-backup-stale`, covers a backup that never runs (timer not enabled, host stopped, failed SNS publish): it watches the `PutRequests` request metric for the `db/` prefix of the backups bucket and goes to ALARM, emailing the same topic, when no dump arrived for 26 hours or there is no data. Right after the first apply it fires until the first dump lands; that is expected.
 
-## Day-to-day on the host
+### Day-to-day on the host
 
 Open a shell (the exact command is the `ssm_session_command` output):
 
@@ -58,13 +189,13 @@ Useful commands there:
 - `sudo systemctl list-timers ricettine-backup.timer`
 - `cd /opt/ricettine && sudo docker compose ps`
 
-## Account setup
+### Account setup
 
 AWS has two kinds of new account. Check which one you have before you start: a console whose account menu shows **Projects** and **Team**, and an IAM page that says "Feature unavailable", is the new experience.
 
 **Classic account** ("Sign up for AWS (advanced)"). Once, by the owner:
 
-1. Create the AWS account on the **paid plan** (see the credits note in the cost table).
+1. Create the AWS account on the **paid plan** (see the credits notes under "What it costs").
 2. Turn on MFA for the root user, then never use root again.
 3. In IAM Identity Center, create a user with `AdministratorAccess` and use it through `aws configure sso` (then `aws sso login`).
 4. Do the onboarding tasks that earn the second $100 of credits.
@@ -84,7 +215,7 @@ For both kinds:
 
 On your machine you need Terraform (>= 1.9), the AWS CLI and the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) (`aws ssm start-session` does not work without it). `cp infra/terraform/example.tfvars infra/terraform/terraform.tfvars` and edit it (`*.tfvars` is gitignored).
 
-## First deploy
+### First deploy
 
 The certificate is validated through DNS, so the domain must already point at Route 53 before the full apply. Hence two steps.
 
@@ -110,7 +241,7 @@ terraform output name_servers
 
 Until step 3 finishes `origin.<domain>` does not exist, so the origin certificate cannot be issued earlier. That is expected: the host retries.
 
-## Recovering from a failed first boot
+### Recovering from a failed first boot
 
 cloud-init runs `runcmd` once per instance. If `dnf` or `curl` failed (network, a GitHub outage), the host is half set up and `ricettine.service` was never enabled. The script stops at the first failure.
 
@@ -125,7 +256,7 @@ cloud-init runs `runcmd` once per instance. If `dnf` or `curl` failed (network, 
 
 Once running, `ricettine.service` retries on failure every 30 seconds for about 30 minutes (for example while the instance profile becomes usable). `sudo journalctl -u ricettine` shows why.
 
-## Upgrade
+### Upgrade
 
 `ignore_changes = [ami, user_data_base64]` means **template changes and `image_tag` in the tfvars only affect a new instance**. Editing `image_tag` and running `terraform apply` does not change the running host. To upgrade the app on the running host:
 
@@ -137,15 +268,15 @@ sudo systemctl restart ricettine
 
 `config.env` is the file to edit: `start.sh` rewrites `/opt/ricettine/.env` from it (plus the SSM secrets) on every start, so edits to `.env` are lost. The restart stops the stack, pulls the image for `IMAGE_TAG`, and starts it again; database migrations run on startup. With `IMAGE_TAG=latest` a plain `sudo systemctl restart ricettine` pulls the newest image. Keep `image_tag` in the tfvars in step so a future replacement host starts on the same version.
 
-The compose files, Caddyfile and unit files on the host are written once by cloud-init. A change to them (a new release of this repo's `deploy/` files) reaches the host only through a replacement: `terraform apply -replace=aws_instance.main`. The data volume and database survive, and the restore path below is the safety net.
+The compose files, Caddyfile and unit files on the host are written once by cloud-init. A change to them (a new release of this repo's `deploy/` files) reaches the host only through a replacement: `terraform apply -replace=aws_instance.main`. The data volume and database survive, and the restore path below ("Restore from a backup") is the safety net.
 
-## Demo site
+### Demo site
 
 An optional public demo at `demo.<domain>` runs on the same host, with its own database that the app wipes and recreates at every start. The main site's data is never touched.
 
 How it works: the demo has its own CloudFront distribution and certificate. It sends `X-Ricettine-Site: demo` to the origin as a custom header, which overrides any value from the viewer, and the app serves the demo database for that header. The main distribution never forwards that header from viewers (a whitelist in the origin request policy, asserted in `tests/edge.tftest.hcl`), and Caddy only accepts requests that carry the origin secret, so nobody can pick the demo from the outside.
 
-**Do not go live (`demo_enabled=true`) until the read-only demo (Plan 9 PR 2) is deployed.** Until then a fresh demo database reports `setupRequired`, and the first visitor to the demo host could create an admin account.
+**Do not go live (`demo_enabled=true`) with an image that predates the read-only demo (merged in Plan 9, #50).** Such an image leaves a fresh demo database in `setupRequired`, and the first visitor to the demo host could create an admin account.
 
 The demo reseeds on every restart: at each start the app drops and recreates `ricettine_demo`, migrates it and seeds the content again. Anything visitors do, and every demo session, is gone after a restart or an instance replacement. Backups (`deploy/backup.sh`) cover the main database only.
 
@@ -158,7 +289,7 @@ Go-live (you run this):
 
 Rollback: set `demo_enabled=false`, run `terraform apply`, and replace the instance (`terraform apply -replace=aws_instance.main`). The demo resources are destroyed and the app stops serving the demo database. Main data is untouched either way.
 
-## Restore from a backup
+### Restore from a backup
 
 Dumps are in `s3://ricettine-backups-<account>/db/ricettine-<UTC>.dump`. Media is already in S3 and is not part of the dump. The media bucket is versioned, so a photo deleted by mistake can be restored for `backup_retention_days` by removing its delete marker or copying back the previous version (`aws s3api list-object-versions --bucket ricettine-media-<account> --prefix <key>`). A database restore does not touch photos. The instance role cannot read backups, so fetch the dump with your own credentials and give the host a short-lived link.
 
@@ -183,7 +314,7 @@ sudo rm /tmp/restore.dump
 
 The restore is one transaction: if it fails the database is unchanged and the app stays stopped until the last `up`. Restore onto the same or a newer app version, not an older one. After a restore, `docker compose ps` should show `app` healthy.
 
-## Rotate the origin secret
+### Rotate the origin secret
 
 The secret lives in two places that must match: the CloudFront custom header and `/opt/ricettine/.env` on the host (Caddy rejects other values with 403). Rotating it therefore causes a short window of 403s. Order of steps that keeps it small:
 
@@ -200,20 +331,20 @@ Expect 403s from the first edge that gets the new header until step 3 completes 
 
 The Postgres password must never be rotated this way: Postgres reads it only when its volume is first created.
 
-## Cost and budget
+### Cost and budget
 
 See the cost table above: about $18-21 per month on-demand, so credits cover the first 4-10 months. `budget.tf` emails `alert_email` when actual gross spend passes 100 % of `monthly_budget_usd` and when the forecast passes 100 %. The default is $25, above the expected $18-21, so an alert means something is off. The budget counts gross spend before credits on purpose, so you see real spend while credits hide the bill.
 
 The forecast alert needs some spend history (a few days) before AWS can forecast, so it does not fire in the first days. Check the Billing console monthly, and again the day after teardown.
 
-## Next steps
+### Next steps
 
 Not built yet, in rough order of value:
 
 - A CloudWatch alarms stack: instance status checks, CPU credit balance, disk usage.
 - Optional idea: scheduled EBS snapshots of the data volume, as a second safety net next to the dumps.
 
-## Teardown
+### Teardown
 
 1. Take a final backup to S3 and bring it to your machine. On the host (SSM session): `sudo systemctl start ricettine-backup.service`, and check `sudo journalctl -u ricettine-backup.service` ends without errors. Then on your machine:
    ```

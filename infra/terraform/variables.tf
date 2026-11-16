@@ -21,7 +21,7 @@ variable "origin_subdomain" {
 }
 
 variable "demo_enabled" {
-  description = "Serve the public demo site (own CloudFront distribution, certificate and DNS name) from the same host. The instance picks it up through DEMO_DOMAIN in config.env: see docs/deploy-aws.md."
+  description = "Serve the public demo site (own CloudFront distribution, certificate and DNS name) from the same host. The instance picks it up through DEMO_DOMAIN in config.env: see docs/deployment.md#demo-site."
   type        = bool
   default     = false
 }

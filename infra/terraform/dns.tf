@@ -1,5 +1,5 @@
 # Terraform creates the zone; the owner points the registrar's nameservers at the `name_servers` output.
-# First deploy is two steps (see docs/deploy-aws.md): apply this zone alone, delegate, then apply everything.
+# First deploy is two steps (see docs/deployment.md#first-deploy): apply this zone alone, delegate, then apply everything.
 resource "aws_route53_zone" "main" {
   name    = var.domain_name
   comment = "Ricettine"
