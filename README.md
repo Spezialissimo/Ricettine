@@ -101,7 +101,7 @@ Restore onto the same or a newer app version. Restoring an older dump over a new
 - Browser e2e: `scripts/e2e.sh` (Playwright, mobile and desktop viewports, against the built image). CI: `e2e`.
 - Image + stack smoke test: `scripts/smoke.sh` (builds the image, starts compose, checks health and the SPA, then tears everything down with `-v`). CI: `smoke` and `smoke-arm64`.
 - Regenerating screenshots: `scripts/screenshots.sh` (builds the image, starts the demo stack as project `ricettine-shots`, takes the nine README/docs images with `e2e/screenshots.config.ts` into `docs/images/`, compresses any over 600 KB with pngquant in Docker, tears down with `-v`). Manual, not in CI.
-- Lint: `scripts/infra-check.sh` (workflows, shell scripts, Caddyfiles, Terraform with mock providers; tools run in Docker). CI: `infra`.
+- Lint: `scripts/infra-check.sh` (workflows, shell scripts, Caddyfiles, Terraform with mock providers, and `scripts/docs-check.sh`: every Mermaid block in `README.md` and `docs/*.md` renders and every relative link resolves; tools run in Docker). CI: `infra`.
 - Backup drill: `scripts/backup-restore-check.sh` (backup, wipe, restore, failed restore). CI: `infra`.
 - HTTPS smoke test: `scripts/https-smoke.sh` (needs ports 80 and 443 free; checks both Caddy overlays). Manual.
 - Multi-arch check: `scripts/multiarch-check.sh` (builds amd64 + arm64, smoke-tests both; amd64 runs under QEMU on an arm64 host). Manual.

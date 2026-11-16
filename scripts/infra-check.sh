@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Lints CI workflows (actionlint), shell scripts (shellcheck), Caddyfiles and the Terraform stack.
+# Lints CI workflows (actionlint), shell scripts (shellcheck), Caddyfiles and the Terraform stack, and checks the docs
+# (scripts/docs-check.sh: Mermaid blocks render, relative links resolve).
 # Each tool runs in Docker; stops at the first failure. Terraform runs with mock providers only (no AWS access).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -64,5 +65,8 @@ tf fmt -check -recursive -diff
 tf init -backend=false -input=false >/dev/null
 tf validate
 tf test
+
+echo "docs check..."
+scripts/docs-check.sh
 
 echo "INFRA CHECK OK"
