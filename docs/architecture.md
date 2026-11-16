@@ -38,6 +38,10 @@ flowchart LR
 - Without S3 settings the app stores images on a local volume (`RICETTINE_STORAGE_TYPE=local`).
 - Database dumps go from the host to a separate S3 bucket (`deploy/backup.sh`, a systemd timer).
 
+### Memory budget
+
+The app container has a 1 GiB limit (`mem_limit: 1g` in `compose.aws.yaml`; `RICETTINE_MEM_LIMIT` in `compose.yaml`), and one JVM serves both sites. The `Dockerfile` sets `-XX:MaxRAMPercentage=60` (heap is 60% of the limit; the default would be 25%) and `MALLOC_ARENA_MAX=2` (fewer glibc arenas), leaving room for metaspace, code cache and native image-decoding buffers. `scripts/e2e.sh` and `scripts/smoke.sh` fail if the app container was restarted or OOM-killed during the run, and log its memory use and peak.
+
 ## Site routing
 
 Both sites run in the same JVM. Every request gets a site, `MAIN` or `DEMO`, from the `X-Ricettine-Site` header (`SiteFilter`). It is `DEMO` only when the demo is enabled and the header says `demo`. The application `DataSource` is a router (`SiteRoutingDataSource`) over two Hikari pools, one per database, and picks the pool from the current site. Blob keys of the demo live under the `demo/` prefix. The header is trusted, so only the edge sets it: the demo CloudFront distribution adds it, the main one never forwards it from viewers, and the self-host Caddyfile overwrites it. See [decisions](decisions.md#7-demo-isolation-by-routed-database) and [security](security.md#demo-isolation-and-read-only-behaviour).

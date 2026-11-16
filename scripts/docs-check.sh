@@ -45,8 +45,13 @@ for f in "${files[@]}"; do
     /^[[:space:]]*```mermaid[[:space:]]*$/ && !inblock { inblock = 1; n++; out = dir "/" (start + n) ".mmd"; first = NR; printf "" > out; next }
     /^[[:space:]]*```[[:space:]]*$/ && inblock { inblock = 0; close(out); print first; next }
     inblock { print >> out }
-    END { if (inblock) { print "unterminated mermaid block starting at line " first > "/dev/stderr"; exit 1 } }
+    END { if (inblock) { print first > (dir "/unterminated") } }
   ' "$f")
+  # the awk runs inside a process substitution, so its failure is not seen by set -e: it leaves a marker instead
+  if [ -f "$work/unterminated" ]; then
+    fail "$f: mermaid block starting at line $(cat "$work/unterminated") is never closed"
+    rm -f "$work/unterminated"
+  fi
 done
 
 i=1
@@ -69,14 +74,16 @@ for f in "${files[@]}"; do
   dir="$(dirname "$f")"
   while IFS= read -r target; do
     [ -n "$target" ] || continue
-    target="${target#<}"
-    target="${target%%>*}"
-    target="${target%% *}"
+    case "$target" in
+      \<*) target="${target#<}"; target="${target%%>*}" ;;
+      *' "'* | *" '"*) target="${target%% [\"\']*}" ;; # drop a link title
+    esac
     case "$target" in
       http://* | https://* | mailto:* | '#'* | '') continue ;;
     esac
     path="${target%%#*}"
     path="${path%%\?*}"
+    path="${path//%20/ }"
     [ -n "$path" ] || continue
     case "$path" in
       /*) resolved="$ROOT$path" ;;
@@ -85,7 +92,22 @@ for f in "${files[@]}"; do
     checked=$((checked + 1))
     [ -e "$resolved" ] || fail "$f links to a missing target: $target"
   done < <(awk '/^[[:space:]]*```/ { infence = !infence; next } !infence { print }' "$f" \
-    | sed "$inline_code" | grep -oE '\]\([^)]*\)' | sed -e 's/^](//' -e 's/)$//' || true)
+    | sed "$inline_code" | awk '
+      # prints the target of every [text](target), with balanced parentheses inside the target
+      {
+        line = $0
+        while ((i = index(line, "](")) > 0) {
+          rest = substr(line, i + 2); depth = 1; out = ""
+          for (k = 1; k <= length(rest); k++) {
+            c = substr(rest, k, 1)
+            if (c == "(") depth++
+            else if (c == ")" && --depth == 0) break
+            out = out c
+          }
+          if (depth == 0) print out
+          line = substr(rest, k + 1)
+        }
+      }')
 done
 echo "  $checked link(s) checked"
 
