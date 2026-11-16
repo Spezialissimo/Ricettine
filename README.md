@@ -1,3 +1,5 @@
+<div align="center">
+
 # Ricettine
 
 [![CI](https://github.com/Spezialissimo/Ricettine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Spezialissimo/Ricettine/actions/workflows/ci.yml)
@@ -5,11 +7,35 @@
 
 [Live site](https://ricettine.food) · [**Try the demo**](https://demo.ricettine.food)
 
+</div>
+
 My girlfriend and I wanted one place to write down our recipes and to collect them in cookbooks. So I started building one: a small recipe app that we host ourselves and that we can open to friends and family by invitation.
 
 Along the way it became something else too. I wanted to learn how far Claude Code can take a project from nothing to something finished, so I used Ricettine as the test. Every feature went through the same loop: a written spec, a plan split into small pull requests, implementation by Claude Code subagents, a review, and CI on every pull request. The same process covered the Docker image, the end-to-end tests, a code audit of the first five plans, and the move to AWS with Terraform. I decided what the product should be and what was good enough; Claude Code wrote the code, the tests and the docs.
 
 This repository is the result, and the `docs` folder is an honest account of it: what the app does, how it is built, what went wrong and what is still missing. The live site is where we use it. The demo is a read-only copy with sample recipes (Italian, like the rest of the content), so you can look around without an account.
+
+## Contents
+
+- [Requirements](#requirements)
+- [What it does](#what-it-does)
+- [How it is built](#how-it-is-built)
+- [Quick start](#quick-start)
+- [A guide to the docs](#a-guide-to-the-docs)
+- [Credits](#credits)
+
+## Requirements
+
+These are the functional requirements we set at the start, in the [original design](docs/superpowers/specs/2026-11-03-ricettine-design.md), and they still shape every change.
+
+- **Self-hostable from the ground up.** One `docker compose up` with the published image and Postgres gives a working instance with no required configuration: sensible defaults, images on a local volume, a first-run screen that creates the admin, and no default passwords. Everything else is an environment variable. Upgrading means pulling the new image and restarting; database migrations run by themselves. The image is built for amd64 and arm64, images can live on local disk or any S3-compatible store, and HTTPS is a documented Caddy overlay.
+- **The same artifact, also hosted.** The public instance runs the same image and the same Compose setup on a single small AWS instance, with no cloud-specific code in the app apart from the optional S3 storage.
+- **Quick to use while cooking.** Writing a recipe on a phone with messy hands has to be easy enough that it actually happens: large touch targets, an editor that saves by itself, and nothing lost if the phone locks or the connection drops.
+- **Private things stay private.** Private recipes and cookbooks never appear in listings, drafts are visible only to their author, share links are not guessable, photo metadata (including location) is stripped on upload, and deleting an account deletes its data and files.
+- **Made for a small group.** Several accounts from day one, invite-only, with no email server needed: the admin hands out invite and password-reset links.
+- **Sharing and cookbooks together.** Any published recipe or cookbook can be shared by link, and two accounts can build a cookbook together.
+- **Ready for more than one language.** Every interface string goes through translation files; the app ships in Italian and English.
+- **Cheap to run.** Hosting for two people must not cost real money, and self-hosting must not need more than one command.
 
 ## What it does
 
