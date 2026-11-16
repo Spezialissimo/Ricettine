@@ -47,9 +47,15 @@ describe('FeedPage', () => {
     const authors = Array.from(el.querySelectorAll('a.author')) as HTMLAnchorElement[];
     expect(authors[0].textContent).toContain('by Ann');
     expect(authors[0].getAttribute('href')).toBe('/u/ann');
-    expect(links[0].textContent).toContain('2026');
-    expect(links[0].querySelector('img')?.getAttribute('src')).toBe('/media/m/T.jpg?s=tok-a');
-    expect(links[1].querySelector('img')).toBeNull();
+    const cards = Array.from(el.querySelectorAll('li.card')) as HTMLElement[];
+    // the author sits on the date line, after a decorative separator
+    expect(cards[0].querySelector('.meta')?.textContent).toContain('2026');
+    expect(cards[0].querySelector('.meta a.author')).toBe(authors[0]);
+    expect(cards[0].querySelector('.meta [aria-hidden="true"]')?.textContent).toBe('·');
+    expect(cards[0].querySelector('img.thumb')?.getAttribute('src')).toBe('/media/m/T.jpg?s=tok-a');
+    // decorative: the title link next to it names the card
+    expect(cards[0].querySelector('img.thumb')?.getAttribute('alt')).toBe('');
+    expect(cards[1].querySelector('img')).toBeNull();
     expect(more(el)).toBeNull();
   });
 

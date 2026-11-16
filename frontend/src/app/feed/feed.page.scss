@@ -22,26 +22,112 @@ button.more:disabled {
   cursor: default;
 }
 
-// The card box sits on the <li> so the author link can live beside (not inside) the recipe link.
+// The whole card opens the recipe through the title link (its ::after covers the card); the author link sits
+// above that cover, on the date line. A link and its card are siblings, never nested anchors.
+// On the phone the card is exactly as tall as its image: the thumbnail is tall enough for a two-line title above
+// a 44 px meta row, so the author link has a real, unclipped 44 px target that never overlaps the title.
 li.card {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  grid-template-areas:
+    'thumb name'
+    'thumb meta';
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: t.$space-3;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: t.$radius;
   overflow: hidden;
 }
+li.card .thumb {
+  grid-area: thumb;
+  width: 88px;
+  height: 88px;
+}
 li.card a.recipe {
+  grid-area: name;
+  align-self: end;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
   border: 0;
   border-radius: 0;
-  flex: 1;
+  background: none;
+  line-height: 1.2;
+  padding: 0 t.$space-3 0 0;
 }
-a.author {
-  @include t.touch-target;
+li.card a.recipe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+li.card a.recipe:focus-visible {
+  outline: none;
+}
+li.card a.recipe:focus-visible::after {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+  border-radius: t.$radius;
+}
+li.card .meta {
+  grid-area: meta;
+  align-self: start;
   display: flex;
   align-items: center;
-  padding: 0 t.$space-3;
+  gap: 6px;
+  min-height: t.$touch-target;
+  margin: 0;
+  padding: 0 t.$space-3 0 0;
+}
+// the link's padding makes the target at least 44 px wide; the negative margin keeps the text where the gap says
+a.author {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: t.$touch-target;
+  min-height: t.$touch-target;
+  padding: 0 8px;
+  margin: 0 -8px;
   color: var(--muted);
-  font-size: 0.85rem;
   text-decoration: underline;
+  border-radius: 6px;
+}
+a.author:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+
+@media (min-width: t.$bp-desktop) {
+  li.card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'thumb'
+      'name'
+      'meta';
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    column-gap: 0;
+  }
+  li.card .thumb {
+    width: 100%;
+    height: 120px;
+  }
+  li.card a.recipe {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    padding: 10px 12px 0;
+  }
+  li.card .meta {
+    padding: 0 12px;
+  }
 }
