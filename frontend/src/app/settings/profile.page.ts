@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { DISPLAY_NAME_VALIDATORS, USERNAME_VALIDATORS } from '../auth/account-form.component';
 import { errorKeyOf } from '../core/api-error';
@@ -12,7 +11,7 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, TranslocoDirective, RouterLink],
+  imports: [ReactiveFormsModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './settings-page.scss',
   template: `
@@ -100,10 +99,6 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
         }
         <button type="submit" class="primary" [disabled]="busy()">{{ t('common.save') }}</button>
       </form>
-      <nav class="links">
-        <a routerLink="/settings/password">{{ t('settings.linkPassword') }}</a>
-        <a routerLink="/settings/delete">{{ t('settings.linkDelete') }}</a>
-      </nav>
     </ng-container>
   `,
 })

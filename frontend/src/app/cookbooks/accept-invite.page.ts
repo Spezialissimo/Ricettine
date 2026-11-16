@@ -15,7 +15,7 @@ import { CookbookInvitePreview } from './cookbook.model';
     <ng-container *transloco="let t">
       @if (error(); as e) {
         <p class="alert" role="alert">{{ t(e) }}</p>
-        <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.title') }}</a>
+        <a class="btn" routerLink="/kitchen/cookbooks">{{ t('cookbooks.title') }}</a>
       } @else if (preview(); as p) {
         <h1>{{ t('cookbooks.acceptTitle') }}</h1>
         <p class="desc">
@@ -30,7 +30,7 @@ import { CookbookInvitePreview } from './cookbook.model';
           <button type="button" class="new" [disabled]="busy()" (click)="accept()">
             {{ t('cookbooks.accept') }}
           </button>
-          <a class="btn" routerLink="/cookbooks">{{ t('cookbooks.notNow') }}</a>
+          <a class="btn" routerLink="/kitchen/cookbooks">{{ t('cookbooks.notNow') }}</a>
         </div>
       } @else {
         <p class="loading" role="status">{{ t('cookbooks.loading') }}</p>

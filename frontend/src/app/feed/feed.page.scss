@@ -1,17 +1,17 @@
 @use '../../styles/tokens' as t;
 
 .meta {
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 button.more {
   @include t.touch-target;
   display: block;
   margin: t.$space-4 auto 0;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: t.$radius;
-  background: t.$surface;
-  color: t.$ink;
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-weight: 600;
   padding: 0 t.$space-4;
@@ -26,8 +26,8 @@ button.more:disabled {
 li.card {
   display: flex;
   flex-direction: column;
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: t.$radius;
   overflow: hidden;
 }
@@ -41,7 +41,7 @@ a.author {
   display: flex;
   align-items: center;
   padding: 0 t.$space-3;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
   text-decoration: underline;
 }

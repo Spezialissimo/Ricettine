@@ -24,11 +24,12 @@ async function mount(start: number) {
   const el = f.nativeElement as HTMLElement;
   const btn = (name: string) =>
     el.querySelector(`button[aria-label="${name}"]`) as HTMLButtonElement;
-  return { f, el, btn, host: f.componentInstance };
+  const pill = () => el.querySelector('app-portions-stepper') as HTMLElement;
+  return { f, el, btn, pill, host: f.componentInstance };
 }
 
 describe('PortionsStepperComponent', () => {
-  it('disables - at 1 and + at 100', async () => {
+  it('disables − at 1 and + at 100', async () => {
     let r = await mount(1);
     expect(r.btn('Fewer portions').disabled).toBe(true);
     expect(r.btn('More portions').disabled).toBe(false);
@@ -38,9 +39,13 @@ describe('PortionsStepperComponent', () => {
     expect(r.btn('More portions').disabled).toBe(true);
   });
 
-  it('emits on click and shows the serves text in a status region', async () => {
+  it('is one pill "− N servings +": the count between the buttons, in a status region', async () => {
     const r = await mount(4);
-    expect(r.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('Serves 4');
+    const parts = Array.from(r.pill().children).map(
+      (c) => c.getAttribute('aria-label') ?? c.getAttribute('role'),
+    );
+    expect(parts).toEqual(['Fewer portions', 'status', 'More portions']);
+    expect(r.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('4 servings');
     r.btn('More portions').click();
     await settle(r.f);
     expect(r.host.value()).toBe(5);
@@ -49,19 +54,26 @@ describe('PortionsStepperComponent', () => {
     r.btn('Fewer portions').click();
     await settle(r.f);
     expect(r.host.value()).toBe(3);
-    expect(r.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('Serves 3');
+    expect(r.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('3 servings');
   });
 
-  it('offers Reset only when different from the written portions', async () => {
+  it('says "1 serving" for one', async () => {
+    const r = await mount(1);
+    expect(r.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('1 serving');
+  });
+
+  it('has no Reset; it is marked scaled while it differs from the written portions', async () => {
     const r = await mount(4);
-    const reset = () =>
-      Array.from(r.el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Reset');
-    expect(reset()).toBeUndefined();
+    expect(r.pill().classList.contains('scaled')).toBe(false);
+    expect(
+      Array.from(r.el.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Reset'),
+    ).toBe(false);
     r.btn('More portions').click();
     await settle(r.f);
-    reset()!.click();
+    expect(r.pill().classList.contains('scaled')).toBe(true);
+    expect(r.el.querySelectorAll('button').length).toBe(2);
+    r.btn('Fewer portions').click();
     await settle(r.f);
-    expect(r.host.value()).toBe(4);
-    expect(reset()).toBeUndefined();
+    expect(r.pill().classList.contains('scaled')).toBe(false);
   });
 });

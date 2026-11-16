@@ -32,35 +32,43 @@ describe('DetailChipsComponent', () => {
   });
 
   it('shows filled chips with values and dashed placeholders for missing ones', async () => {
-    const { el } = await mount({
-      portions: 4,
-      prepMinutes: 30,
-      cookMinutes: null,
-      source: 'Nonna',
-    });
+    const { el } = await mount({ portions: 4, prepMinutes: 30, cookMinutes: null });
     const c = chips(el);
     expect(c.map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
       'Serves 4',
       'Prep 30m',
       en.editor.chips.addCook,
-      'Nonna',
     ]);
-    expect(c.map((b) => b.classList.contains('empty'))).toEqual([false, false, true, false]);
+    expect(c.map((b) => b.classList.contains('empty'))).toEqual([false, false, true]);
     c.forEach((b) => expect(b.getAttribute('aria-haspopup')).toBe('dialog'));
   });
 
-  it('formats hours and shows every missing detail as a placeholder', async () => {
+  it('formats hours', async () => {
     const { el } = await mount({ prepMinutes: 90 });
-    const text = chips(el).map((b) => b.textContent?.replace(/\s+/g, ' ').trim());
-    expect(text).toEqual([
-      'Serves 1',
-      'Prep 1h 30',
-      en.editor.chips.addCook,
-      en.editor.chips.addSource,
-    ]);
+    expect(chips(el)[1].textContent?.replace(/\s+/g, ' ').trim()).toBe('Prep 1h 30');
   });
 
-  it('opens the time sheet on the cook tab as a centered dialog on desktop', async () => {
+  it('source is a plain labelled text field, not a chip; typing saves it, blank clears it', async () => {
+    const { f, el, store } = await mount({
+      source: 'https://example.com/a-very-long/recipe-link.html',
+    });
+    const input = el.querySelector('.source input') as HTMLInputElement;
+    expect(el.querySelector(`label[for="${input.id}"]`)?.textContent).toContain(
+      en.editor.sourceSheet.label,
+    );
+    expect(input.value).toBe('https://example.com/a-very-long/recipe-link.html');
+    expect(input.placeholder).toBe(en.editor.sourcePlaceholder);
+    input.value = 'Nonna';
+    input.dispatchEvent(new Event('input'));
+    await settle(f);
+    expect(store.recipe().source).toBe('Nonna');
+    input.value = '  ';
+    input.dispatchEvent(new Event('input'));
+    await settle(f);
+    expect(store.recipe().source).toBeNull();
+  });
+
+  it('Cook time opens its own sheet (no tabs) as a centered dialog on desktop', async () => {
     mockMatchMedia(true);
     const { f, el } = await mount();
     chips(el)[2].click();
@@ -68,10 +76,8 @@ describe('DetailChipsComponent', () => {
     const pane = document.querySelector('.cdk-overlay-pane') as HTMLElement;
     expect(pane.classList).toContain('editor-sheet');
     expect(pane.classList).toContain('editor-sheet--center');
-    const tab = Array.from(pane.querySelectorAll('[role="tab"]')).find(
-      (t) => t.textContent?.trim() === en.editor.time.cook,
-    );
-    expect(tab?.getAttribute('aria-selected')).toBe('true');
+    expect(pane.querySelector('h2')?.textContent).toContain(en.editor.time.cookTitle);
+    expect(pane.querySelector('[role="tab"]')).toBeNull();
   });
 
   it('opens a bottom sheet on the phone', async () => {

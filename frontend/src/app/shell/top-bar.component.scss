@@ -1,0 +1,215 @@
+@use '../../styles/tokens' as t;
+
+:host {
+  display: contents;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--topbar-bg);
+  color: var(--topbar-ink);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  min-height: t.$topbar-height;
+  padding: 0 t.$space-4;
+  max-width: t.$content-max-width;
+  margin: 0 auto;
+}
+
+.logo {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  margin-right: auto;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--topbar-ink);
+  text-decoration: none;
+}
+
+.main-nav,
+.new {
+  display: none;
+}
+
+app-account-menu {
+  flex: none;
+  max-width: 60%;
+}
+
+// signed out (a shared recipe or cookbook): Log in, styled like the "+ New recipe" pill
+.login {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 t.$space-4;
+  border-radius: 999px;
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (min-width: t.$bp-desktop) {
+  .bar {
+    gap: t.$space-4;
+    min-height: t.$topbar-height-desktop;
+  }
+  .logo {
+    margin-right: 0;
+  }
+  .main-nav {
+    display: flex;
+    align-items: center;
+    gap: t.$space-2;
+    margin-right: auto;
+    margin-left: t.$space-4;
+    a {
+      @include t.touch-target;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 t.$space-3;
+      color: var(--topbar-muted);
+      text-decoration: none;
+      &:hover {
+        color: var(--topbar-ink);
+      }
+      &.active {
+        color: var(--topbar-ink);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 6px;
+      }
+    }
+  }
+  .new {
+    @include t.touch-target;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 t.$space-6;
+    border-radius: 999px;
+    background: var(--pill-bg);
+    color: var(--pill-ink);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+}
+
+// Phone: ☰ before the logo and the menu panel from the left.
+.burger {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--topbar-ink);
+  cursor: pointer;
+}
+.burger {
+  margin-left: calc(-1 * #{t.$space-2});
+}
+.burger:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.35);
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 11;
+  width: min(80vw, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-1;
+  padding: t.$space-3;
+  padding-top: calc(#{t.$space-3} + env(safe-area-inset-top));
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  a {
+    @include t.touch-target;
+    display: flex;
+    align-items: center;
+    gap: t.$space-2;
+    padding: 0 t.$space-3;
+    border-radius: 10px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 1.05rem;
+    &:hover {
+      background: var(--subtle);
+    }
+    &.active {
+      font-weight: 600;
+      box-shadow: inset 3px 0 0 var(--accent);
+      background: var(--subtle);
+    }
+  }
+  .drawer-new {
+    margin-top: t.$space-2;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    &:hover {
+      background: var(--accent);
+      filter: brightness(1.08);
+    }
+  }
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: t.$space-2;
+}
+// the logo on the panel's white: the top bar's green as text
+.drawer .drawer-logo {
+  padding: 0 t.$space-3;
+  color: var(--accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+  &:hover {
+    background: transparent;
+  }
+}
+.drawer-close {
+  @include t.touch-target;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+@media (min-width: t.$bp-desktop) {
+  .burger,
+  .backdrop,
+  .drawer {
+    display: none;
+  }
+}

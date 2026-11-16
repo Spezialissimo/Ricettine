@@ -1,5 +1,5 @@
-import { Browser, BrowserContext, Page, TestInfo, expect } from '@playwright/test';
-import { expectSaved } from './ui';
+import { Browser, BrowserContext, Locator, Page, TestInfo, expect } from '@playwright/test';
+import { expectSaved, openAccountMenu } from './ui';
 
 export { test } from './test';
 export * from './ui';
@@ -28,13 +28,21 @@ export function person(testInfo: TestInfo, tag: string): Person {
 }
 
 /**
- * A fresh browser context configured exactly like the current project (viewport, touch, UA). Every spec
- * makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
+ * A fresh browser context configured exactly like the current project (viewport, touch, UA, locale), or with
+ * another browser language. Every spec makes its extra contexts here. Playwright's `trace` and `screenshot` options already cover contexts
  * made through `browser.newContext`; `test` (./test.ts) closes them when the test ends.
  */
-export function newContext(browser: Browser, testInfo: TestInfo): Promise<BrowserContext> {
-  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
-  return browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
+export function newContext(browser: Browser, testInfo: TestInfo, opts: { locale?: string } = {}): Promise<BrowserContext> {
+  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, locale } = testInfo.project.use;
+  return browser.newContext({
+    baseURL,
+    viewport,
+    userAgent,
+    deviceScaleFactor,
+    isMobile,
+    hasTouch,
+    locale: opts.locale ?? locale,
+  });
 }
 
 /** "Landed on home": the feed at `/` and the user's display name in the shell. */
@@ -52,13 +60,13 @@ export async function logIn(page: Page, who: Pick<Person, 'email' | 'password' |
 }
 
 export async function logOut(page: Page) {
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await (await openAccountMenu(page)).getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 }
 
 /** As the logged-in admin: create an invite through the UI and return the path of the invite link. */
 export async function createInvitePath(page: Page): Promise<string> {
-  await page.goto('/admin/invites');
+  await page.goto('/settings/admin/invites');
   await page.getByRole('button', { name: 'Create invite' }).click();
   await expect(page.getByRole('heading', { name: 'Invite link (single use)' })).toBeVisible();
   const url = (await page.locator('[data-url]').innerText()).trim();
@@ -132,30 +140,59 @@ export async function createRecipe(page: Page, data: NewRecipeData): Promise<str
     if (unit) await page.getByLabel('Unit', { exact: true }).nth(i).selectOption(unit);
   }
   for (const [i, text] of (data.steps ?? []).entries()) {
-    await page.getByRole('button', { name: '+ Add step' }).or(page.getByRole('button', { name: '+ Next step' })).filter({ visible: true }).click();
+    await page.getByRole('button', { name: 'Add step', exact: true }).click();
     await page.getByRole('textbox', { name: /^Step \d+$/ }).nth(i).fill(text);
   }
   await expectSaved(page);
   return page.url();
 }
 
-/** Drives the UI: creates a cookbook named `name` and lands on its page. */
+/**
+ * Drives the UI: creates a cookbook named `name` and lands on its one view, its share link /c/:token
+ * (/cookbooks/:id forwards there). Returns that view's path.
+ */
 export async function createCookbook(page: Page, name: string): Promise<string> {
   await page.goto('/cookbooks');
-  await page.getByRole('button', { name: '+ New cookbook' }).click();
+  // "Create your first cookbook" while the list is empty, "+ New cookbook" above a list
+  await page.getByRole('button', { name: /^(\+ New cookbook|Create your first cookbook)$/ }).click();
   await page.getByRole('dialog').getByLabel('Name').fill(name);
   await page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page).toHaveURL(/\/cookbooks\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/c\/[A-Za-z0-9_-]+$/);
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
-  return page.url();
+  return new URL(page.url()).pathname;
 }
 
-/** Creates a recipe, publishes it (private) and returns the editor URL and the share URL. */
+/** On a cookbook's view (/c/:token): Edit, to its edit page (/cookbooks/:id/edit). */
+export async function editCookbook(page: Page) {
+  await page.locator('app-cookbook-hero').getByRole('link', { name: 'Edit', exact: true }).click();
+  await expect(page).toHaveURL(/\/cookbooks\/[0-9a-f-]{36}\/edit$/);
+  await expect(page.getByRole('heading', { name: 'Edit cookbook', level: 1 })).toBeVisible();
+}
+
+/** Opens a cookbook view's Share sheet and returns it (its link is in `[data-url]`). */
+export async function openCookbookShare(page: Page): Promise<Locator> {
+  await page.locator('app-cookbook-hero').getByRole('button', { name: 'Share', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Share this cookbook' });
+  await expect(sheet.locator('[data-url]')).toBeVisible();
+  return sheet;
+}
+
+/** A recipe's id from its editor (or view) URL. */
+export const recipeIdOf = (url: string) => url.match(/\/recipes\/([0-9a-f-]{36})\//)![1];
+
+/** The recipe's share link, read through the owner API (the editor no longer shows it). */
+export async function recipeShareUrl(page: Page, id: string): Promise<string> {
+  const res = await page.request.get(`/api/recipes/${id}`);
+  expect(res.ok()).toBe(true);
+  return (await res.json()).shareUrl;
+}
+
+/** Creates a recipe, publishes it (private) and returns the editor URL and the share URL (the page stays on the editor). */
 export async function publishRecipe(page: Page, data: NewRecipeData): Promise<{ editorUrl: string; shareUrl: string }> {
   const editorUrl = await createRecipe(page, data);
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
-  await expect(page.locator('[data-url]')).toBeVisible();
-  const shareUrl = (await page.locator('[data-url]').innerText()).trim();
+  await expect(page.locator('.editor-header .state')).toContainText('Published');
+  const shareUrl = await recipeShareUrl(page, recipeIdOf(editorUrl));
   return { editorUrl, shareUrl };
 }
 

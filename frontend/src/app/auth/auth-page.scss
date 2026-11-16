@@ -9,18 +9,18 @@
 
 h1 {
   margin: 0 0 t.$space-2;
-  color: t.$accent;
+  color: var(--link);
   font-size: 1.5rem;
 }
 
 .intro {
   margin: 0 0 t.$space-4;
-  color: t.$muted;
+  color: var(--muted);
 }
 
 .card {
-  background: t.$surface;
-  border: 1px solid t.$border;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: t.$radius;
   padding: t.$space-4;
 }
@@ -29,5 +29,5 @@ h1 {
   @include t.touch-target;
   display: inline-flex;
   align-items: center;
-  color: t.$accent;
+  color: var(--link);
 }

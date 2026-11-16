@@ -40,7 +40,7 @@ done
 
 curl -fsS "$BASE/" | grep -q '<app-root' || fail "/ does not contain <app-root"
 status="$(curl -fsS "$BASE/api/setup/status")"
-[ "$status" = '{"setupRequired":true}' ] || fail "unexpected /api/setup/status: $status"
+[ "$status" = '{"setupRequired":true,"demo":false,"demoUrl":null}' ] || fail "unexpected /api/setup/status: $status"
 curl -fsS "$BASE/r/anything" | grep -q '<app-root' || fail "/r/anything is not index HTML"
 
 heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxRAMPercentage || true)"

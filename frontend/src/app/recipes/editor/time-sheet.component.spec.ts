@@ -6,14 +6,14 @@ import { EditorStore } from './editor-store';
 import { fakeEditorStore } from './editor-store.testing';
 import { TimeSheetComponent } from './time-sheet.component';
 
-async function mount(tab: 'prep' | 'cook', over = {}) {
+async function mount(kind: 'prep' | 'cook', over = {}) {
   const store = fakeEditorStore(over);
   const close = vi.fn();
   TestBed.configureTestingModule({
     providers: [
       provideTestTransloco(),
       { provide: EditorStore, useValue: store },
-      { provide: DIALOG_DATA, useValue: { tab } },
+      { provide: DIALOG_DATA, useValue: { kind } },
       { provide: DialogRef, useValue: { close } },
     ],
   });
@@ -51,24 +51,17 @@ describe('TimeSheetComponent', () => {
     expect(store.recipe().prepMinutes).toBe(80);
   });
 
-  it('has a tab per time; the Cook tab edits cookMinutes', async () => {
-    const { f, el, store } = await mount('prep', { prepMinutes: 15 });
-    const tabs = Array.from(el.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
-    expect(tabs.map((t) => t.textContent?.trim())).toEqual([
-      en.editor.time.prep,
-      en.editor.time.cook,
-    ]);
-    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
-    tabs[1].click();
-    await settle(f);
-    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+  it('is one sheet per time, titled for it, with no tabs; the cook sheet edits only cookMinutes', async () => {
+    const { f, el, store } = await mount('cook', { prepMinutes: 15 });
+    expect(el.querySelector('h2')?.textContent).toContain(en.editor.time.cookTitle);
+    expect(el.querySelector('[role="tab"]')).toBeNull();
     button(el, '1h 30').click();
     await settle(f);
     expect(store.recipe().cookMinutes).toBe(90);
     expect(store.recipe().prepMinutes).toBe(15);
   });
 
-  it('opens on the requested tab, clears a time, and Done closes', async () => {
+  it('shows the current time, clears it, and Done closes', async () => {
     const { f, el, store, close } = await mount('cook', { cookMinutes: 45 });
     expect((el.querySelector('input[name="hours"]') as HTMLInputElement).value).toBe('0');
     expect((el.querySelector('input[name="minutes"]') as HTMLInputElement).value).toBe('45');

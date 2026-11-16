@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { PASSWORD_VALIDATORS } from '../auth/account-form.component';
 import { errorKeyOf } from '../core/api-error';
@@ -8,7 +7,7 @@ import { SettingsApi } from './settings.api';
 
 @Component({
   selector: 'app-password-page',
-  imports: [ReactiveFormsModule, TranslocoDirective, RouterLink],
+  imports: [ReactiveFormsModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './settings-page.scss',
   template: `
@@ -55,7 +54,6 @@ import { SettingsApi } from './settings.api';
           {{ t('settings.passwordSubmit') }}
         </button>
       </form>
-      <a class="btn-back" routerLink="/settings/profile">{{ t('common.back') }}</a>
     </ng-container>
   `,
 })

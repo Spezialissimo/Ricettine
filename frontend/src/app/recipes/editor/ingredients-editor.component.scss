@@ -23,7 +23,7 @@
 }
 label {
   font-size: 0.75rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 input,
 select {
@@ -31,13 +31,13 @@ select {
   width: 100%;
   font: inherit;
   padding: 0 t.$space-2;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
 }
 input[aria-invalid='true'] {
-  border-color: #b3261e;
+  border-color: var(--danger);
 }
 // The row layout follows the width the ingredients get (half a desktop page, or a phone), not the viewport.
 :host {
@@ -47,9 +47,9 @@ input[aria-invalid='true'] {
   display: grid;
   gap: t.$space-2;
   padding: t.$space-2;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: t.$surface;
+  background: var(--surface);
   align-items: end;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) t.$touch-target;
   grid-template-areas: 'amount unit del' 'name name name' 'note note note' 'err err err';
@@ -74,12 +74,12 @@ input[aria-invalid='true'] {
   margin: 0;
 }
 .field-error {
-  color: #b3261e;
+  color: var(--danger);
   font-size: 0.85rem;
 }
 .hint {
   margin: 0;
-  color: t.$muted;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 .btn {
@@ -88,10 +88,10 @@ input[aria-invalid='true'] {
   align-items: center;
   justify-content: center;
   padding: 0 t.$space-4;
-  border: 1px solid t.$border;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: t.$bg;
-  color: t.$ink;
+  background: var(--bg);
+  color: var(--ink);
   font-weight: 600;
   cursor: pointer;
 }
@@ -99,7 +99,7 @@ input[aria-invalid='true'] {
   width: t.$touch-target;
   padding: 0;
   font-size: 1.1rem;
-  color: t.$muted;
+  color: var(--muted);
 }
 .btn:disabled {
   opacity: 0.5;

@@ -12,8 +12,13 @@ services:
       - "443:443/udp"
     environment:
       RICETTINE_DOMAIN: ${RICETTINE_DOMAIN:?Set RICETTINE_DOMAIN}
+      # optional: a second host name that serves the demo site (empty: none)
+      RICETTINE_DEMO_DOMAIN: ${RICETTINE_DEMO_DOMAIN:-}
+      # `demo-on` only when the domain is set, so deploy/Caddyfile imports the demo block only then
+      RICETTINE_DEMO_IMPORT: /etc/caddy/demo${RICETTINE_DEMO_DOMAIN:+-on}/*.caddy
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/Caddyfile.demo:/etc/caddy/demo-on/demo.caddy:ro
       - caddy-data:/data
       - caddy-config:/config
 

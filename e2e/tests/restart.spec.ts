@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { expect } from '@playwright/test';
-import { FIXTURE_PHOTO, expectHome, newUserPage, test } from '../helpers';
+import { FIXTURE_PHOTO, accountMenuLink, expectHome, newUserPage, test, navTo } from '../helpers';
 
 const compose = process.env.E2E_COMPOSE_PROJECT;
 
@@ -10,7 +10,7 @@ test.skip(!compose, 'E2E_COMPOSE_PROJECT is not set: this test restarts the app 
 test('session and avatar survive an app restart', async ({ browser, baseURL }, testInfo) => {
   test.setTimeout(240_000);
   const { who, page } = await newUserPage(browser, testInfo, 'restart');
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await accountMenuLink(page, 'Settings');
   await page.getByLabel('Choose photo').setInputFiles(FIXTURE_PHOTO);
   const avatar = page.getByRole('img', { name: 'Your avatar' });
   await expect(avatar).toBeVisible();
@@ -36,9 +36,9 @@ test('session and avatar survive an app restart', async ({ browser, baseURL }, t
   // still on /settings/profile: no redirect to /login, session intact, avatar rendered again
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(avatar).toBeVisible();
-  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await navTo(page, 'Discover', testInfo.project.name);
   await expectHome(page, who.displayName);
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await accountMenuLink(page, 'Settings');
   await expect(avatar).toBeVisible();
   expect((await page.request.get(src)).status()).toBe(200);
 });

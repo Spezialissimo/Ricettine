@@ -71,6 +71,30 @@ override_resource {
 }
 
 override_resource {
+  target          = aws_acm_certificate.demo
+  override_during = plan
+  values = {
+    arn = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    domain_validation_options = [
+      {
+        domain_name           = "demo.recipes.example.com"
+        resource_record_name  = "_ghi.demo.recipes.example.com."
+        resource_record_type  = "CNAME"
+        resource_record_value = "_jkl.acm-validations.aws."
+      }
+    ]
+  }
+}
+
+override_resource {
+  target          = aws_cloudfront_distribution.demo
+  override_during = plan
+  values = {
+    domain_name = "d222222abcdef8.cloudfront.net"
+  }
+}
+
+override_resource {
   target          = aws_cloudfront_cache_policy.media
   override_during = plan
   values = {
@@ -367,5 +391,140 @@ run "origin_errors_are_not_cached" {
       alltrue([for r in aws_cloudfront_distribution.main.custom_error_response : r.error_caching_min_ttl == 0 && r.response_page_path == null]),
     ])
     error_message = "403, 404, 500, 502, 503 and 504 must have error_caching_min_ttl 0 and no custom page"
+  }
+}
+
+# ---------------------------------------------------------------- demo site
+
+run "demo_disabled_creates_nothing" {
+  command = plan
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.demo) == 0 && length(aws_acm_certificate.demo) == 0 && length(aws_acm_certificate_validation.demo) == 0
+    error_message = "with demo_enabled=false there must be no demo distribution or certificate"
+  }
+
+  assert {
+    condition     = length(aws_route53_record.demo_a) == 0 && length(aws_route53_record.demo_aaaa) == 0 && length(aws_route53_record.demo_cert_validation) == 0
+    error_message = "with demo_enabled=false there must be no demo DNS records"
+  }
+
+  assert {
+    condition     = alltrue([for o in aws_cloudfront_distribution.main.origin : alltrue([for h in o.custom_header : h.name != "X-Ricettine-Site"])])
+    error_message = "the main distribution must never set X-Ricettine-Site"
+  }
+
+  assert {
+    condition     = strcontains(local.cloud_init, "DEMO_DOMAIN=\n")
+    error_message = "config.env must leave DEMO_DOMAIN empty when the demo is disabled"
+  }
+}
+
+run "demo_distribution_sets_site_header" {
+  command = plan
+
+  variables {
+    demo_enabled = true
+  }
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.demo) == 1 && length(one(aws_cloudfront_distribution.demo[0].origin).custom_header) == 2
+    error_message = "the demo origin carries exactly two custom headers (the checks below must not pass vacuously)"
+  }
+
+  assert {
+    condition     = contains([for h in one(aws_cloudfront_distribution.demo[0].origin).custom_header : h.name if h.value == "demo"], "X-Ricettine-Site")
+    error_message = "the demo origin must set X-Ricettine-Site to demo"
+  }
+
+  assert {
+    condition     = contains([for h in one(aws_cloudfront_distribution.demo[0].origin).custom_header : h.name if h.value == random_password.origin_secret.result], "X-Origin-Verify")
+    error_message = "the demo origin must carry X-Origin-Verify"
+  }
+
+  assert {
+    condition     = contains(aws_cloudfront_distribution.demo[0].aliases, "demo.recipes.example.com") && length(aws_cloudfront_distribution.demo[0].aliases) == 1
+    error_message = "the demo distribution serves demo.<domain> only"
+  }
+
+  assert {
+    condition     = alltrue([for o in aws_cloudfront_distribution.demo[0].origin : o.domain_name == "origin.recipes.example.com"])
+    error_message = "the demo distribution uses the same origin host"
+  }
+
+  assert {
+    condition     = aws_cloudfront_distribution.demo[0].default_cache_behavior[0].origin_request_policy_id == aws_cloudfront_origin_request_policy.app.id && aws_cloudfront_distribution.demo[0].default_cache_behavior[0].cache_policy_id == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" && aws_cloudfront_distribution.demo[0].default_cache_behavior[0].viewer_protocol_policy == "redirect-to-https"
+    error_message = "the demo distribution shares the main behaviour settings"
+  }
+
+  assert {
+    condition     = length(aws_cloudfront_distribution.demo[0].logging_config) == 0
+    error_message = "CloudFront logging must stay off for the demo too"
+  }
+
+  assert {
+    condition     = strcontains(local.cloud_init, "DEMO_DOMAIN=demo.recipes.example.com\n")
+    error_message = "config.env must carry DEMO_DOMAIN"
+  }
+
+  assert {
+    condition     = length(aws_route53_record.demo_a) == 1 && length(aws_route53_record.demo_aaaa) == 1 && aws_route53_record.demo_a[0].name == "demo.recipes.example.com" && aws_route53_record.demo_aaaa[0].type == "AAAA"
+    error_message = "the demo name has A and AAAA aliases"
+  }
+}
+
+run "demo_uses_own_certificate" {
+  command = plan
+
+  variables {
+    demo_enabled = true
+  }
+
+  assert {
+    condition     = aws_acm_certificate.demo[0].domain_name == "demo.recipes.example.com" && aws_acm_certificate.demo[0].validation_method == "DNS"
+    error_message = "the demo certificate is for the demo name and DNS-validated"
+  }
+
+  assert {
+    condition     = aws_acm_certificate.demo[0].arn != aws_acm_certificate.main.arn
+    error_message = "the demo distribution must not reuse the main certificate"
+  }
+
+  assert {
+    condition     = alltrue([for v in aws_cloudfront_distribution.demo[0].viewer_certificate : v.acm_certificate_arn == aws_acm_certificate_validation.demo[0].certificate_arn && v.minimum_protocol_version == "TLSv1.2_2021" && v.ssl_support_method == "sni-only"])
+    error_message = "the demo distribution uses its own validated certificate with SNI and the TLS floor"
+  }
+
+  assert {
+    condition     = length(aws_route53_record.demo_cert_validation) == 1 && alltrue([for r in aws_route53_record.demo_cert_validation : r.zone_id == aws_route53_zone.main.zone_id])
+    error_message = "one demo validation record in the created zone"
+  }
+}
+
+run "main_distribution_does_not_forward_site_header" {
+  command = plan
+
+  variables {
+    demo_enabled = true
+  }
+
+  assert {
+    condition     = !contains([for i in flatten([for h in aws_cloudfront_origin_request_policy.app.headers_config : [for hh in h.headers : tolist(hh.items)]]) : lower(i)], "x-ricettine-site")
+    error_message = "the origin request policy must not forward X-Ricettine-Site from viewers"
+  }
+
+  assert {
+    condition     = alltrue([for h in aws_cloudfront_origin_request_policy.app.headers_config : h.header_behavior == "whitelist"])
+    error_message = "the origin request policy must be a whitelist (allViewer would forward X-Ricettine-Site)"
+  }
+
+  assert {
+    condition     = alltrue([for o in aws_cloudfront_distribution.main.origin : alltrue([for h in o.custom_header : lower(h.name) != "x-ricettine-site"])])
+    error_message = "the main distribution must not set X-Ricettine-Site"
+  }
+
+  assert {
+    condition     = aws_cloudfront_distribution.main.default_cache_behavior[0].origin_request_policy_id == aws_cloudfront_origin_request_policy.app.id && aws_cloudfront_distribution.main.ordered_cache_behavior[0].origin_request_policy_id == aws_cloudfront_origin_request_policy.app.id
+    error_message = "both main behaviours must use the whitelist policy"
   }
 }

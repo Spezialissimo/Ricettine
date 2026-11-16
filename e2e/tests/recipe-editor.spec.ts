@@ -1,28 +1,30 @@
 import { Locator, Page, expect } from '@playwright/test';
-import { createRecipe, expectSaved, leaveUntouchedDraft, logIn, logOut, newRecipeLink, newUserPage, test } from '../helpers';
+import { clickNewRecipe, createRecipe, expectSaved, leaveUntouchedDraft, logIn, logOut, newUserPage, test } from '../helpers';
 
 async function addStep(page: Page, desktop: boolean, current?: Locator) {
   if (desktop && current) await current.press('Control+Enter');
-  else if (desktop) await page.getByRole('button', { name: '+ Add step' }).click();
-  else await page.getByRole('button', { name: '+ Next step' }).click();
+  else await page.getByRole('button', { name: 'Add step', exact: true }).click(); // in the Steps section on both layouts
 }
 
 test('create, autosave and publish a recipe, text only', async ({ browser }, testInfo) => {
   const desktop = testInfo.project.name === 'desktop';
   const { page } = await newUserPage(browser, testInfo, 'recipe');
 
-  await newRecipeLink(page, testInfo.project.name).click();
+  await clickNewRecipe(page, testInfo.project.name);
   await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/edit$/);
 
   // layout
   const ingHead = (await page.getByRole('heading', { name: 'Ingredients' }).boundingBox())!;
   const stepsHead = (await page.getByRole('heading', { name: 'Steps' }).boundingBox())!;
-  const bar = page.getByRole('button', { name: '+ Next step' });
+  const bar = page.locator('.bottom-bar').getByRole('button', { name: 'Publish', exact: true }); // phone: Publish at the bottom
   if (desktop) {
     expect(stepsHead.x).toBeGreaterThan(ingHead.x + 300);
     await expect(bar).toBeHidden();
   } else {
     expect(stepsHead.y).toBeGreaterThan(ingHead.y);
+    // notes come before the steps on the phone
+    const notesBox = (await page.getByLabel('Notes').boundingBox())!;
+    expect(notesBox.y).toBeLessThan(stepsHead.y);
     await expect(bar).toBeVisible();
   }
 
@@ -35,13 +37,11 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
   await expect(page.getByRole('button', { name: 'Serves 4' })).toBeVisible();
 
   await page.getByRole('button', { name: '+ Prep time' }).click();
-  await page.getByRole('dialog', { name: 'Times' }).getByRole('button', { name: '30m' }).click();
+  await page.getByRole('dialog', { name: 'Prep time' }).getByRole('button', { name: '30m' }).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Prep 30m' })).toBeVisible();
 
-  await page.getByRole('button', { name: '+ Source' }).click();
-  await page.getByRole('dialog', { name: "Where's it from?" }).getByLabel('Source').fill('Nonna');
-  await page.keyboard.press('Escape');
+  await page.getByLabel('Source', { exact: true }).fill('Nonna'); // a plain field, not a sheet
 
   // two ingredient groups
   const groups = page.locator('.ing-group');
@@ -94,7 +94,7 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
   await expect(page.getByLabel('Title')).toHaveValue('Lasagne');
   await expect(page.getByRole('button', { name: 'Serves 4' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prep 30m' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Source: Nonna' })).toBeVisible();
+  await expect(page.getByLabel('Source', { exact: true })).toHaveValue('Nonna');
   await expect(groups).toHaveCount(2);
   await expect(groups.nth(0).getByLabel('Group name')).toHaveValue('Ragu');
   await expect(groups.nth(0).getByLabel('Amount')).toHaveValue('500');
@@ -115,21 +115,23 @@ test('create, autosave and publish a recipe, text only', async ({ browser }, tes
 
   // published: the last step cannot be deleted
   for (let i = 0; i < 2; i++) {
-    await stepBoxes.nth(0).click();
-    await page.getByRole('button', { name: 'Delete step' }).click();
+    await page.getByRole('button', { name: 'Delete step 1' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click(); // it asks first
   }
   await expect(stepBoxes).toHaveCount(1);
-  await stepBoxes.nth(0).click();
-  await expect(page.getByRole('button', { name: 'Delete step' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete step 1' })).toBeDisabled();
   await expect(steps.getByText('A published recipe needs at least one.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(page).toHaveURL(/\/recipes$/);
+  // Save on a published recipe: its one view is the share link
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]+$/);
+  await expect(page.getByRole('heading', { name: 'Lasagne', level: 1 })).toBeVisible();
+  await page.goto('/kitchen/recipes');
   const card = page.locator('a.recipe').filter({ hasText: 'Lasagne' });
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('Private');
 
-  // Done on an untouched new draft: not listed
+  // Save on an untouched new draft: not listed
   await leaveUntouchedDraft(page, testInfo.project.name, 1);
 });
 
@@ -162,11 +164,9 @@ test('a published recipe can never become incomplete', async ({ browser }, testI
   await expect(page.locator('.editor-header .state')).toContainText('Published');
 
   // (c) R10: the real step is the last counting one even though a blank step exists
-  await stepBoxes.nth(0).click();
-  await expect(page.getByRole('button', { name: 'Delete step' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete step 1' })).toBeDisabled();
   await expect(steps.getByText(hint)).toBeVisible();
-  await stepBoxes.nth(1).click();
-  await expect(page.getByRole('button', { name: 'Delete step' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Delete step 2' })).toBeEnabled();
 
   // (b) the last ingredient and the last group cannot be deleted (the blank row was never saved: publishing adopts the server copy)
   const rows = ingredients.locator('.ing-row');
@@ -236,4 +236,50 @@ test('logging out right after typing keeps the text', async ({ browser }, testIn
   await logIn(page, who);
   await page.goto(url);
   await expect(page.getByLabel('Title')).toHaveValue('Pie with apples');
+});
+
+test('editor: steps are separate cards, delete asks first, Preview shows the reader view and returns', async ({ browser }, testInfo) => {
+  const desktop = testInfo.project.name === 'desktop';
+  const { page } = await newUserPage(browser, testInfo, 'preview');
+  const url = await createRecipe(page, { title: 'Preview pie', ingredients: ['flour'], steps: ['Mix', 'Bake'] });
+  const cards = page.locator('li.step');
+  await expect(cards.first()).toHaveCSS('border-top-style', 'solid');
+  // the card's header: move handle, number, then the delete icon right after the number
+  const card = (await cards.nth(1).boundingBox())!;
+  const bin = (await page.getByRole('button', { name: 'Delete step 2' }).boundingBox())!;
+  const grip = (await page.getByRole('button', { name: 'Reorder step 2' }).boundingBox())!;
+  const num = (await cards.nth(1).locator('.step-number').boundingBox())!;
+  expect(grip.x).toBeLessThan(num.x);
+  expect(bin.x).toBeGreaterThan(num.x + num.width);
+  expect(bin.x).toBeLessThan(num.x + num.width + 24);
+  expect(Math.abs(bin.y + bin.height / 2 - (num.y + num.height / 2))).toBeLessThan(3);
+  expect(bin.y).toBeLessThan(card.y + 24);
+
+  // delete asks; Cancel keeps the step
+  await page.getByRole('button', { name: 'Delete step 2' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete step 2?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(cards).toHaveCount(2);
+
+  // phone: Publish and Preview at the bottom, Add step inside the Steps section
+  if (!desktop) {
+    await expect(page.locator('.bottom-bar').getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
+    await expect(page.locator('section.steps').getByRole('button', { name: 'Add step', exact: true })).toBeVisible();
+    await expect(page.locator('.editor-header').getByRole('button', { name: 'Publish', exact: true })).toBeHidden();
+  }
+
+  const preview = desktop ? page.locator('.editor-header').getByRole('button', { name: 'Preview' }) : page.locator('.bottom-bar').getByRole('button', { name: 'Preview' });
+  await preview.click();
+  await expect(page).toHaveURL(/\/recipes\/[0-9a-f-]{36}\/preview$/);
+  const banner = page.locator('.preview-banner');
+  await expect(banner.getByText('Preview: this is how readers will see your recipe.')).toBeVisible();
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Back to editor' })).toHaveCount(0);
+  // the banner stays in view while scrolling
+  await page.mouse.wheel(0, 2000);
+  await expect(banner).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'Preview pie', level: 1 })).toBeVisible();
+  await expect(page.getByText('Bake')).toBeVisible();
+  await banner.getByRole('link', { name: 'Back to editor' }).click();
+  await expect(page).toHaveURL(url);
 });

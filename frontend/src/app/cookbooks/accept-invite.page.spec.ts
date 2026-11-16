@@ -52,7 +52,7 @@ describe('AcceptInvitePage', () => {
   it('Not now goes to the cookbooks list without accepting', async () => {
     const acceptInvite = vi.fn();
     const { el } = await mount({ previewInvite: vi.fn().mockResolvedValue(preview), acceptInvite });
-    expect(btnOrLink(el, en.cookbooks.notNow)!.getAttribute('href')).toBe('/cookbooks');
+    expect(btnOrLink(el, en.cookbooks.notNow)!.getAttribute('href')).toBe('/kitchen/cookbooks');
     expect(acceptInvite).not.toHaveBeenCalled();
   });
 
@@ -74,6 +74,6 @@ describe('AcceptInvitePage', () => {
     btn(el, en.cookbooks.accept)!.click();
     await settle(f);
     expect(el.querySelector('[role=alert]')?.textContent).toContain(en.errors.already_member);
-    expect(el.querySelector('a[href="/cookbooks"]')).toBeTruthy();
+    expect(el.querySelector('a[href="/kitchen/cookbooks"]')).toBeTruthy();
   });
 });

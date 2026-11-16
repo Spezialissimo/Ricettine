@@ -4,7 +4,7 @@ const VULGAR: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75 };
 const MAX = 1_000_000;
 
 /**
- * Parses an ingredient amount typed by a person: `0.5`, `0,5`, `1/2`, `1 1/2`, `½`, `1½`.
+ * Parses an ingredient amount typed by a person: `0.5`, `0,5`, `1/2`, `1 1/2`, `½`, `1½`, in any UI language.
  * Empty text means "no amount" (null); anything unparseable or not in (0, 1 000 000] is 'invalid'.
  * The result is rounded to 3 decimals (the server limit).
  */
@@ -25,16 +25,19 @@ function parseValue(s: string): number | null {
     const den = Number(m[3]);
     return den === 0 ? null : (m[1] ? Number(m[1]) : 0) + Number(m[2]) / den;
   }
-  // '1,000' reads as one thousand to an English reader and as one to a decimal-comma one: ask rather than guess.
-  // A leading 0 ('0,500') cannot be a thousands group, so that stays a decimal.
-  if (/^[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) return null;
+  // Comma and dot are both a decimal point, in every language: '1,000' and '1.000' are 1. No thousands separators.
   m = /^(\d+|\d*[.,]\d+)$/.exec(s);
   return m ? Number(s.replace(',', '.')) : null;
 }
 
-/** Plain decimal text for the editor's input field; the reading view uses displayAmount. */
-export function formatAmount(n: number | null): string {
-  return n === null ? '' : String(n);
+/**
+ * Plain decimal text for the editor's input field, with the language's decimal separator and no grouping
+ * (`0,5` in Italian, `1000` not `1.000`), so parseAmount reads it back unchanged. The reading view uses
+ * displayAmount.
+ */
+export function formatAmount(n: number | null, locale: string): string {
+  if (n === null) return '';
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 3, useGrouping: false }).format(n);
 }
 
 /** Multiplies a written amount for the chosen portions; no amount stays no amount. */
@@ -62,9 +65,23 @@ export function displayAmount(
   unit: Unit | null,
   opts: { scaled: boolean; locale: string },
 ): string {
-  if (n === null) return '';
-  const num = (v: number, max: number) =>
-    new Intl.NumberFormat(opts.locale, { maximumFractionDigits: max }).format(v);
+  return shownAmount(n, unit, opts)?.text ?? '';
+}
+
+/** What the reading view shows: the text and the value it stands for (to pick the unit's plural form). */
+export function shownAmount(
+  n: number | null,
+  unit: Unit | null,
+  opts: { scaled: boolean; locale: string },
+): { value: number; text: string } | null {
+  if (n === null) return null;
+  const num = (v: number, max: number) => {
+    const value = Number(v.toFixed(max));
+    return {
+      value,
+      text: new Intl.NumberFormat(opts.locale, { maximumFractionDigits: max }).format(v),
+    };
+  };
   if (unit === 'g' || unit === 'ml') {
     if (!opts.scaled) return num(n, 3);
     if (n < 10) return num(Math.max(Math.round(n * 10) / 10, 0.1), 1);
@@ -80,6 +97,7 @@ export function displayAmount(
   );
   if (!opts.scaled && Math.abs(value - (n - whole)) > 0.01) return num(n, 3);
   if (value === 1) whole += 1;
-  if (whole === 0 && value === 0) return '⅛'; // a positive amount never shows as 0
-  return (whole > 0 ? num(whole, 0) : '') + glyph;
+  if (whole === 0 && value === 0) return { value: 1 / 8, text: '⅛' }; // a positive amount never shows as 0
+  const text = (whole > 0 ? num(whole, 0).text : '') + glyph;
+  return { value: whole + (value === 1 ? 0 : value), text };
 }

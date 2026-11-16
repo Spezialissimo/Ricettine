@@ -4,7 +4,8 @@
 set -euo pipefail
 cd /opt/ricettine
 
-# Non-secret settings written by cloud-init: REGION, DOMAIN_NAME, ORIGIN_DOMAIN, MEDIA_BUCKET, IMAGE_TAG
+# Non-secret settings written by cloud-init: REGION, DOMAIN_NAME, ORIGIN_DOMAIN, MEDIA_BUCKET, IMAGE_TAG,
+# and DEMO_DOMAIN (empty or missing: no demo site)
 # shellcheck disable=SC1091
 . ./config.env
 
@@ -38,6 +39,12 @@ RICETTINE_STORAGE_S3_BUCKET=$MEDIA_BUCKET
 RICETTINE_STORAGE_S3_REGION=$REGION
 RICETTINE_DATA_DIR=/srv/ricettine
 ENV
+if [ -n "${DEMO_DOMAIN:-}" ]; then
+  cat >>"$tmp" <<ENV
+RICETTINE_DEMO_ENABLED=true
+RICETTINE_DEMO_URL=https://$DEMO_DOMAIN
+ENV
+fi
 mv "$tmp" .env
 
 if ! docker compose pull; then

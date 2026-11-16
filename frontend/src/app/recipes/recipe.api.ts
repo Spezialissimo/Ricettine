@@ -34,6 +34,13 @@ export class RecipeApi {
   remove(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`/api/recipes/${encodeURIComponent(id)}`));
   }
+  /** A photo by its web address (an image dragged out of a web page): the server downloads it. */
+  uploadPhotoFromUrl(id: string, url: string): Promise<Photo> {
+    return firstValueFrom(
+      this.http.post<Photo>(`/api/recipes/${encodeURIComponent(id)}/photos/from-url`, { url }),
+    );
+  }
+
   uploadPhoto(id: string, file: File): Promise<Photo> {
     const body = new FormData();
     body.append('file', file);

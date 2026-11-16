@@ -1,4 +1,4 @@
-import { displayAmount, formatAmount, parseAmount, scaleAmount } from './amount';
+import { displayAmount, formatAmount, parseAmount, scaleAmount, shownAmount } from './amount';
 
 describe('parseAmount', () => {
   it.each([
@@ -6,6 +6,9 @@ describe('parseAmount', () => {
     ['0,5', 0.5],
     ['1,5', 1.5],
     ['1.000', 1],
+    ['1,000', 1],
+    ['12,345', 12.345],
+    ['2.500', 2.5],
     ['0,500', 0.5],
     ['1,50', 1.5],
     ['1/2', 0.5],
@@ -31,20 +34,56 @@ describe('parseAmount', () => {
     '1/2/3',
     '1.',
     '0/5',
-    '1,000',
-    '12,345',
     '1,500.5',
+    '1.000,5',
     '1,000,000',
+    '1.000.000',
   ])('rejects %j', (text) => {
     expect(parseAmount(text)).toBe('invalid');
   });
 });
 
 describe('formatAmount', () => {
-  it('formats decimals and null', () => {
-    expect(formatAmount(0.5)).toBe('0.5');
-    expect(formatAmount(500)).toBe('500');
-    expect(formatAmount(null)).toBe('');
+  it('writes the language decimal separator, never a thousands separator', () => {
+    expect(formatAmount(0.5, 'en')).toBe('0.5');
+    expect(formatAmount(0.5, 'it')).toBe('0,5');
+    expect(formatAmount(1234.5, 'en')).toBe('1234.5');
+    expect(formatAmount(1234.5, 'it')).toBe('1234,5');
+    expect(formatAmount(0.333, 'it')).toBe('0,333');
+    expect(formatAmount(null, 'it')).toBe('');
+  });
+
+  it('reads back what it writes, in both languages', () => {
+    for (const n of [0.5, 1, 1.25, 1000, 12.345]) {
+      expect(parseAmount(formatAmount(n, 'en'))).toBe(n);
+      expect(parseAmount(formatAmount(n, 'it'))).toBe(n);
+    }
+  });
+});
+
+describe('shownAmount', () => {
+  it('returns the value the text stands for', () => {
+    expect(shownAmount(1.5, 'cup', { scaled: false, locale: 'en' })).toEqual({
+      value: 1.5,
+      text: '1½',
+    });
+    expect(shownAmount(0.98, 'cup', { scaled: true, locale: 'en' })).toEqual({
+      value: 1,
+      text: '1',
+    });
+    expect(shownAmount(333.33, 'g', { scaled: true, locale: 'it' })).toEqual({
+      value: 335,
+      text: '335',
+    });
+    expect(shownAmount(2.678, 'kg', { scaled: true, locale: 'it' })).toEqual({
+      value: 2.68,
+      text: '2,68',
+    });
+    expect(shownAmount(0.01, 'tsp', { scaled: true, locale: 'en' })).toEqual({
+      value: 0.125,
+      text: '⅛',
+    });
+    expect(shownAmount(null, 'g', { scaled: false, locale: 'en' })).toBeNull();
   });
 });
 

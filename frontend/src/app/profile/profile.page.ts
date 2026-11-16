@@ -4,6 +4,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKey, toApiError } from '../core/api-error';
 import { mediaUrl } from '../core/media';
 import { PageTitle } from '../core/page-title';
+import { LanguageService } from '../core/language';
 import { ProfileApi } from './profile.api';
 import { Profile, ProfileRecipe } from './profile.model';
 
@@ -89,12 +90,9 @@ import { Profile, ProfileRecipe } from './profile.model';
                     <span class="body">
                       <span class="name">{{ b.name }}</span>
                       <span class="meta">{{
-                        t(
-                          b.recipeCount === 1
-                            ? 'cookbooks.recipeCountOne'
-                            : 'cookbooks.recipeCountOther',
-                          { count: b.recipeCount }
-                        )
+                        t(language.pluralKey('cookbooks.recipeCount', b.recipeCount), {
+                          count: b.recipeCount,
+                        })
                       }}</span>
                       @if (p.self) {
                         <span class="badge" [attr.data-badge]="b.visibility.toLowerCase()">{{
@@ -115,6 +113,7 @@ import { Profile, ProfileRecipe } from './profile.model';
   `,
 })
 export class UserProfilePage {
+  protected readonly language = inject(LanguageService);
   private readonly api = inject(ProfileApi);
   private readonly title = inject(PageTitle);
   private readonly username = inject(ActivatedRoute).snapshot.paramMap.get('username') ?? '';
@@ -148,9 +147,10 @@ export class UserProfilePage {
     return mediaUrl(url);
   }
 
+  /** Your own drafts (no share link yet) open the recipe page, never the editor: Edit is there (owner, Plan 7). */
   protected recipeLink(r: ProfileRecipe): string[] {
     return r.status === 'DRAFT' || !r.shareToken
-      ? ['/recipes', r.id, 'edit']
+      ? ['/recipes', r.id, 'view']
       : ['/r', r.shareToken];
   }
 

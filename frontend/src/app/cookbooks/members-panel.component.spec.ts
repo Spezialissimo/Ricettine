@@ -152,6 +152,6 @@ describe('MembersPanelComponent', () => {
     btn(overlay(), en.cookbooks.leaveConfirmButton)!.click();
     await settle(f);
     expect(removeAuthor).toHaveBeenCalledWith('c1', 'u2', false);
-    expect(nav).toHaveBeenCalledWith('/cookbooks');
+    expect(nav).toHaveBeenCalledWith('/kitchen/cookbooks');
   });
 });

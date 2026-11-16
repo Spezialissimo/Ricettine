@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Read-only checks of a deployed Ricettine on AWS. Usage: scripts/aws-verify.sh <domain>
-# Needs curl and the AWS CLI with credentials (the owner's SSO profile). Optional:
+# Needs curl and the AWS CLI with credentials (AWS_PROFILE, e.g. from aws login or aws sso login). Optional:
 #   VERIFY_TOKEN_PHOTO_URL  full URL of a private photo, to check CloudFront does not cache it
-#   AWS_REGION              region of the buckets (default eu-west-1)
+#   DEMO_DOMAIN             demo site host (e.g. demo.example.com); when set, the demo site is checked too
+#   AWS_REGION              region of the buckets (default: the profile's region, else eu-west-1)
 set -uo pipefail
 
 domain="${1:?usage: aws-verify.sh <domain>}"
-region="${AWS_REGION:-eu-west-1}"
+region="${AWS_REGION:-${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || true)}}"
+region="${region:-eu-west-1}"
 failures=0
 
 pass() { echo "ok   $1"; }
@@ -25,6 +27,25 @@ hdrs="$(headers "https://$domain/actuator/health" || true)"
 for h in x-robots-tag strict-transport-security; do
   if grep -q "^$h:" <<<"$hdrs"; then pass "$h present"; else fail "$h missing"; fi
 done
+
+# 1b. the main site is not the demo; with DEMO_DOMAIN set, the demo host serves the demo site
+status="$(curl -sS -m 20 "https://$domain/api/setup/status" || true)"
+case "$status" in
+  *'"demo":false'*) pass "main site is not the demo" ;;
+  *) fail "main /api/setup/status does not say \"demo\":false: $status" ;;
+esac
+if [ -n "${DEMO_DOMAIN:-}" ]; then
+  body="$(curl -sS -m 20 "https://$DEMO_DOMAIN/actuator/health" || true)"
+  case "$body" in
+    *'"status":"UP"'*) pass "demo health is UP" ;;
+    *) fail "demo health is not UP: $body" ;;
+  esac
+  status="$(curl -sS -m 20 "https://$DEMO_DOMAIN/api/setup/status" || true)"
+  case "$status" in
+    *'"demo":true'*) pass "demo host serves the demo site" ;;
+    *) fail "demo /api/setup/status does not say \"demo\":true: $status" ;;
+  esac
+fi
 
 # 2. plain http redirects
 code="$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "http://$domain/" || true)"

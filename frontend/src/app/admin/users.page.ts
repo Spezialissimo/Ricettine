@@ -13,18 +13,18 @@ import { AuthStore } from '../core/auth.store';
 import { CopyLinkComponent } from '../shared/copy-link.component';
 import { AdminApi } from './admin.api';
 import { AdminUser as User, PasswordReset } from './admin.model';
-import { AdminTabsComponent } from './admin-tabs.component';
 
 type Reset = PasswordReset & { name: string };
 
 @Component({
   selector: 'app-users-page',
-  imports: [TranslocoDirective, CopyLinkComponent, AdminTabsComponent],
+  imports: [TranslocoDirective, CopyLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../settings/settings-page.scss',
   template: `
     <ng-container *transloco="let t">
-      <app-admin-tabs />
+      <h1>{{ t('admin.users') }}</h1>
+      <p class="intro">{{ t('admin.usersIntro') }}</p>
       @if (error(); as e) {
         <p class="alert" role="alert">{{ t(e) }}</p>
       }

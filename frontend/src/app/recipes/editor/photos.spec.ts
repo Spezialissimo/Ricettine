@@ -46,13 +46,28 @@ const buttonNamed = (root: HTMLElement, name: string) =>
     (b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === name,
   ) as HTMLButtonElement | undefined;
 
-function dropEvent(type: string, files: File[]): Event {
+function dropEvent(
+  type: string,
+  files: File[],
+  over: {
+    types?: string[];
+    items?: { kind: string; getAsFile: () => File | null }[];
+    data?: Record<string, string>;
+  } = {},
+): Event {
   const ev = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(ev, 'dataTransfer', {
-    value: { files, types: ['Files'], dropEffect: 'none' },
+    value: {
+      files,
+      types: over.types ?? ['Files'],
+      items: over.items ?? [],
+      dropEffect: 'none',
+      getData: (t: string) => over.data?.[t] ?? '',
+    },
   });
   return ev;
 }
+const fromPage = (data: Record<string, string>) => ({ types: Object.keys(data), data });
 
 describe('step photos', () => {
   let created: string[];
@@ -115,14 +130,25 @@ describe('step photos', () => {
     expect(region.textContent?.trim()).toBe('');
   });
 
-  it('offers Add photo / Replace / Remove with the step number in their names, and Remove clears the reference', async () => {
+  it('offers Add photo / Replace / Remove as icon buttons named for the step; Replace and Remove sit on the photo', async () => {
     const { f, el, store } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m1')) });
-    expect(buttonNamed(el, 'Add photo to step 1')?.textContent?.trim()).toBe('Add photo');
+    const add = buttonNamed(el, 'Add photo to step 1')!;
+    expect(add.querySelector('app-icon')).not.toBeNull();
+    expect(add.getAttribute('title')).toBe('Add photo to step 1');
     expect(buttonNamed(el, 'Add photo to step 2')).toBeTruthy();
     choose(inputs(el)[0], jpeg());
     await settle(f);
     expect(buttonNamed(el, 'Add photo to step 1')).toBeUndefined();
-    expect(buttonNamed(el, 'Replace photo of step 1')?.textContent?.trim()).toBe('Replace');
+    const onPhoto = stepEl(el, 0).querySelector('.frame .on-photo-actions')!;
+    expect(
+      buttonNamed(onPhoto as HTMLElement, 'Replace photo of step 1')?.querySelector('app-icon'),
+    ).not.toBeNull();
+    expect(
+      buttonNamed(onPhoto as HTMLElement, 'Remove photo of step 1')?.getAttribute('title'),
+    ).toBe('Remove photo of step 1');
+    expect(stepEl(el, 0).querySelector('.frame .drop-replace')?.textContent).toContain(
+      en.editor.dropToReplace,
+    );
     buttonNamed(el, 'Remove photo of step 1')!.click();
     await settle(f);
     expect(store.recipe().steps[0].photoMediaId).toBeNull();
@@ -178,6 +204,147 @@ describe('step photos', () => {
     await settle(f);
     expect(api.uploadPhoto).not.toHaveBeenCalled();
     expect(el.textContent).toContain(en.errors.unsupported_image);
+  });
+
+  it('drop: reads the file from items when files is empty (Safari, the Photos app)', async () => {
+    const { f, el, api } = await mount({ uploadPhoto: vi.fn().mockResolvedValue(photo('m4')) });
+    const file = jpeg(10);
+    stepEl(el, 0).dispatchEvent(
+      dropEvent('drop', [], { items: [{ kind: 'file', getAsFile: () => file }] }),
+    );
+    await settle(f);
+    expect(api.uploadPhoto).toHaveBeenCalledWith('r1', file);
+  });
+
+  it('drop: no readable file says so instead of doing nothing', async () => {
+    const { f, el, api } = await mount({ uploadPhoto: vi.fn() });
+    stepEl(el, 0).dispatchEvent(dropEvent('drop', []));
+    await settle(f);
+    expect(api.uploadPhoto).not.toHaveBeenCalled();
+    expect(el.textContent).toContain(en.errors.photo_unreadable);
+  });
+
+  it('drop: an image dragged from a web page is downloaded by the server from its address', async () => {
+    const uploadPhotoFromUrl = vi.fn().mockResolvedValue(photo('m5'));
+    const { f, el, store, api } = await mount({ uploadPhotoFromUrl, uploadPhoto: vi.fn() });
+    const li = stepEl(el, 1);
+    const page = fromPage({
+      'text/uri-list': 'https://blog.example/post',
+      'text/html':
+        '<a href="https://blog.example/post"><img src="https://cdn.example/pie.jpg"></a>',
+    });
+    const over = dropEvent('dragover', [], page);
+    li.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(true);
+    li.dispatchEvent(dropEvent('drop', [], page));
+    await settle(f);
+    // the image inside the link, not the page the link points to
+    expect(uploadPhotoFromUrl).toHaveBeenCalledWith('r1', 'https://cdn.example/pie.jpg');
+    expect(api.uploadPhoto).not.toHaveBeenCalled();
+    expect(store.recipe().steps[1].photoMediaId).toBe('m5');
+  });
+
+  it('drop: a plain image link from a web page uses the link', async () => {
+    const uploadPhotoFromUrl = vi.fn().mockResolvedValue(photo('m6'));
+    const { f, el } = await mount({ uploadPhotoFromUrl });
+    stepEl(el, 0).dispatchEvent(
+      dropEvent(
+        'drop',
+        [],
+        fromPage({ 'text/uri-list': '# comment\r\nhttps://cdn.example/a.png' }),
+      ),
+    );
+    await settle(f);
+    expect(uploadPhotoFromUrl).toHaveBeenCalledWith('r1', 'https://cdn.example/a.png');
+  });
+
+  it('drop: an embedded (data:) image from a page is read in the browser, no download', async () => {
+    const uploadPhotoFromUrl = vi.fn();
+    const uploadPhoto = vi.fn().mockResolvedValue(photo('m7'));
+    const { f, el } = await mount({ uploadPhotoFromUrl, uploadPhoto });
+    stepEl(el, 0).dispatchEvent(
+      dropEvent(
+        'drop',
+        [],
+        fromPage({ 'text/html': '<img src="data:image/png;base64,iVBORw0KGgo=">' }),
+      ),
+    );
+    await settle(f);
+    expect(uploadPhotoFromUrl).not.toHaveBeenCalled();
+    const sent = uploadPhoto.mock.calls[0][1] as File;
+    expect(sent.type).toBe('image/png');
+    expect(sent.size).toBe(8);
+  });
+
+  it('drop: an image the page keeps to itself (blob:) explains what to do', async () => {
+    const uploadPhotoFromUrl = vi.fn();
+    const { f, el } = await mount({ uploadPhotoFromUrl });
+    stepEl(el, 0).dispatchEvent(
+      dropEvent('drop', [], fromPage({ 'text/uri-list': 'blob:https://x.example/123' })),
+    );
+    await settle(f);
+    expect(uploadPhotoFromUrl).not.toHaveBeenCalled();
+    expect(el.textContent).toContain(en.errors.photo_from_link);
+  });
+
+  it('drop on the step text box: an image becomes the photo, a bare link is typed in', async () => {
+    const uploadPhotoFromUrl = vi.fn().mockResolvedValue(photo('m9'));
+    const { f, el, store } = await mount({ uploadPhotoFromUrl });
+    const textarea = stepEl(el, 0).querySelector('textarea')!;
+    const image = fromPage({
+      'text/uri-list': 'https://blog.example/p',
+      'text/html': '<img src="https://cdn.example/a.jpg">',
+    });
+    const over = dropEvent('dragover', [], image);
+    textarea.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(true);
+    textarea.dispatchEvent(dropEvent('drop', [], image));
+    await settle(f);
+    expect(uploadPhotoFromUrl).toHaveBeenCalledWith('r1', 'https://cdn.example/a.jpg');
+    expect(store.recipe().steps[0].text).toBe('Boil');
+
+    const link = fromPage({
+      'text/uri-list': 'https://blog.example/tips',
+      'text/plain': 'https://blog.example/tips',
+    });
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(dropEvent('drop', [], link));
+    await settle(f);
+    expect(uploadPhotoFromUrl).toHaveBeenCalledTimes(1);
+    expect(store.recipe().steps[0].text).toBe('Boilhttps://blog.example/tips');
+  });
+
+  it('drop: a plain text selection over the step text box is left to the browser', async () => {
+    const { el } = await mount({ uploadPhotoFromUrl: vi.fn() });
+    const textarea = stepEl(el, 0).querySelector('textarea')!;
+    const over = dropEvent(
+      'dragover',
+      [],
+      fromPage({ 'text/html': '<b>salt</b>', 'text/plain': 'salt' }),
+    );
+    textarea.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(false);
+  });
+
+  it('a web-address upload that fails on the network offers Retry with the same address', async () => {
+    const uploadPhotoFromUrl = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new HttpErrorResponse({ status: 502, error: { code: 'image_url_unreachable' } }),
+      )
+      .mockResolvedValueOnce(photo('m8'));
+    const { f, el, store } = await mount({ uploadPhotoFromUrl });
+    stepEl(el, 0).dispatchEvent(
+      dropEvent('drop', [], fromPage({ 'text/uri-list': 'https://cdn.example/a.jpg' })),
+    );
+    await settle(f);
+    const retry = stepEl(el, 0).querySelector<HTMLButtonElement>('button.retry');
+    expect(retry).not.toBeNull();
+    retry!.click();
+    await settle(f);
+    expect(uploadPhotoFromUrl).toHaveBeenCalledTimes(2);
+    expect(uploadPhotoFromUrl.mock.calls[1][1]).toBe('https://cdn.example/a.jpg');
+    expect(store.recipe().steps[0].photoMediaId).toBe('m8');
   });
 
   it('attachPhoto goes to the last tapped step', async () => {

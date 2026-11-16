@@ -1,14 +1,15 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
-  Injector,
-  afterNextRender,
   computed,
+  DestroyRef,
   effect,
+  ElementRef,
   inject,
+  Injector,
   signal,
   untracked,
   viewChild,
@@ -19,16 +20,24 @@ import { errorKey, errorKeyOf, fieldErrorKey, toApiError } from '../../core/api-
 import { AuthStore } from '../../core/auth.store';
 import { RecipeInput, Visibility } from '../recipe.model';
 import { DetailChipsComponent } from './detail-chips.component';
-import { EditorStore, conflictText } from './editor-store';
+import { EditorStore, conflictText, PhotoSlot } from './editor-store';
 import { confirmSheet } from '../../shared/confirm-dialog.component';
 import { IngredientsEditorComponent } from './ingredients-editor.component';
 import { PhotoDropDirective } from './photo-drop.directive';
-import { PhotoPickerComponent } from './photo-picker.component';
+import { photoProblem } from './photo-picker.component';
 import { PhotoSlotComponent } from './photo-slot.component';
+import { IconComponent } from '../../shared/icon.component';
 import { SharePanelComponent } from './share-panel.component';
 import { StepsEditorComponent } from './steps-editor.component';
 import { countingIngredients, countingSteps } from './completeness';
 import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
+import {
+  carriesFiles,
+  carriesLinkOnly,
+  carriesText,
+  isTextField,
+  transferFiles,
+} from './photo-transfer';
 
 /**
  * The recipe editor. One DOM for both layouts (CSS at $bp-desktop): two columns on desktop (details,
@@ -43,9 +52,9 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
     IngredientsEditorComponent,
     StepsEditorComponent,
     PhotoDropDirective,
-    PhotoPickerComponent,
     PhotoSlotComponent,
     SharePanelComponent,
+    IconComponent,
     CdkMenuTrigger,
     CdkMenu,
     CdkMenuItem,
@@ -53,6 +62,12 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
   providers: [EditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './recipe-editor.page.scss',
+  host: {
+    '[class.dragging-files]': 'draggingFiles()',
+    '(window:dragover)': 'onWindowDragOver($event)',
+    '(window:drop)': 'onWindowDrop($event)',
+    '(window:paste)': 'onPaste($event)',
+  },
   template: `
     <ng-container *transloco="let t">
       @if (store.loadError(); as e) {
@@ -62,9 +77,6 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
       } @else {
         @let r = store.recipe();
         <header class="editor-header">
-          <button type="button" class="btn back" [disabled]="busy()" (click)="done()">
-            {{ t('editor.done') }}
-          </button>
           <span class="state">{{
             store.server()?.status === 'PUBLISHED'
               ? t('editor.published', { visibility: t('recipes.status.' + badge()) })
@@ -74,6 +86,16 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
             statusKey() === 'idle' ? '' : t('editor.status.' + statusKey())
           }}</span>
           <span class="spacer"></span>
+          <button
+            type="button"
+            class="icon-btn preview"
+            [attr.aria-label]="t('editor.preview')"
+            [attr.title]="t('editor.preview')"
+            [disabled]="busy()"
+            (click)="preview()"
+          >
+            <app-icon name="eye" />
+          </button>
           @if (store.server()?.status === 'DRAFT') {
             <button
               type="button"
@@ -85,6 +107,10 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
               {{ t('editor.publish') }}
             </button>
           }
+          <!-- Save (owner, Plan 7: "← Done" was confusing): stores everything, then shows the recipe -->
+          <button type="button" class="btn save" [disabled]="busy()" (click)="done()">
+            {{ t('editor.save') }}
+          </button>
           <button
             type="button"
             class="btn more"
@@ -146,12 +172,20 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
             <div
               class="cover"
               [class.has-photo]="!!r.coverMediaId || !!store.uploadFor('cover')"
+              [attr.data-drop-label]="t('editor.dropHere')"
               appPhotoDrop
               (dropped)="store.uploadPhoto('cover', $event)"
+              (droppedUrl)="store.uploadPhoto('cover', $event)"
               (rejected)="store.rejectPhoto('cover', $event)"
             >
               <app-photo-slot slot="cover" />
+              @if (!r.coverMediaId && !store.uploadFor('cover')) {
+                <span class="drop-hint">{{ t('editor.dropHint') }}</span>
+              }
             </div>
+            @if (missedDrop()) {
+              <p class="drop-missed" role="status">{{ t('editor.dropMissed') }}</p>
+            }
             <div class="title-field">
               <label for="recipe-title">{{ t('editor.title') }}</label>
               <input
@@ -241,18 +275,28 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
           </div>
         </div>
 
+        <!-- phone: the page's actions sit at the bottom, under the thumb -->
         <div class="bottom-bar">
-          <app-photo-picker
-            [capture]="true"
-            icon="📷"
-            [label]="t('editor.photo')"
-            [ariaLabel]="t('editor.addStepPhoto', { n: (steps()?.targetStep() ?? 0) + 1 })"
-            (picked)="steps()?.attachPhoto($event)"
-            (rejected)="rejectBarPhoto($event)"
-          />
-          <button type="button" class="btn primary" (click)="nextStep()">
-            {{ t('editor.nextStep') }}
+          <button
+            type="button"
+            class="icon-btn labelled preview"
+            [disabled]="busy()"
+            (click)="preview()"
+          >
+            <app-icon name="eye" />
+            {{ t('editor.preview') }}
           </button>
+          @if (store.server()?.status === 'DRAFT') {
+            <button
+              type="button"
+              class="btn primary publish"
+              [disabled]="busy() || store.uploadsUnfinished()"
+              [attr.aria-describedby]="store.uploadsUnfinished() ? 'uploads-hint' : null"
+              (click)="publish()"
+            >
+              {{ t('editor.publish') }}
+            </button>
+          }
         </div>
       }
     </ng-container>
@@ -260,6 +304,7 @@ import { MAX_NOTES, MAX_TITLE } from '../recipe-limits';
 })
 export class RecipeEditorPage {
   protected readonly store = inject(EditorStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
@@ -270,7 +315,12 @@ export class RecipeEditorPage {
   protected readonly visibilities: readonly Visibility[] = ['PRIVATE', 'PUBLIC'];
   protected readonly busy = signal(false);
   protected readonly actionError = signal<string | null>(null);
-  private readonly steps = viewChild(StepsEditorComponent);
+  /** True while files are dragged over the window: every drop target (cover, steps) shows itself. */
+  protected readonly draggingFiles = signal(false);
+  /** A photo dropped outside the cover and the steps: say where it goes (the tab is not replaced by the image). */
+  protected readonly missedDrop = signal(false);
+  private dragEnd?: ReturnType<typeof setTimeout>;
+  private missedEnd?: ReturnType<typeof setTimeout>;
   private readonly ingredients = viewChild(IngredientsEditorComponent);
   /** Set by a refused Publish while an amount is invalid; clears once all amounts are valid. */
   private readonly invalidAttempt = signal(false);
@@ -334,7 +384,11 @@ export class RecipeEditorPage {
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', beforeUnload);
-    inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', beforeUnload));
+    inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      clearTimeout(this.dragEnd);
+      clearTimeout(this.missedEnd);
+    });
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
   }
 
@@ -353,14 +407,31 @@ export class RecipeEditorPage {
     });
   }
 
-  /** The bottom bar has no step of its own: a refused file is reported on the step it was meant for. */
-  protected rejectBarPhoto(key: string): void {
-    const steps = this.store.recipe().steps.length;
-    this.store.rejectPhoto(steps === 0 ? 'cover' : (this.steps()?.targetStep() ?? steps - 1), key);
-  }
-
-  protected nextStep(): void {
-    this.steps()?.addStep();
+  /** Preview: saves like Done (stays when something cannot be saved yet), then shows the reader's view. */
+  async preview(): Promise<void> {
+    if (this.busy()) return;
+    if (this.store.uploading()) {
+      this.actionError.set('editor.uploadsInProgress');
+      return;
+    }
+    if (this.store.hasUnsavedInput()) {
+      this.actionError.set('editor.unsavedInput');
+      this.revealUnsavedInput();
+      return;
+    }
+    const id = this.store.server()?.id;
+    if (!id) return;
+    this.busy.set(true);
+    this.actionError.set(null);
+    try {
+      await this.store.flush();
+      if (this.store.autosave.dirty()) return;
+      await this.router.navigateByUrl(`/recipes/${id}/preview`);
+    } catch (e) {
+      this.actionError.set(errorKeyOf(e));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   /** Publish: save first, then publish. recipe_incomplete highlights the missing sections. */
@@ -423,8 +494,9 @@ export class RecipeEditorPage {
   }
 
   /**
-   * Done: an untouched new draft (still empty on the server at our version) is deleted; otherwise send
-   * pending changes and leave once they are saved. Shares the `busy` guard with Delete.
+   * Save (top right): an untouched new draft (still empty on the server at our version) is deleted and
+   * leads back to My kitchen; otherwise send pending changes and, once saved, show the recipe as readers see
+   * it. Shares the `busy` guard with Delete.
    */
   async done(): Promise<void> {
     if (this.busy()) return;
@@ -442,11 +514,14 @@ export class RecipeEditorPage {
     this.busy.set(true);
     this.actionError.set(null);
     try {
-      if (!(await this.store.removeIfUntouched())) {
-        await this.store.flush();
-        if (this.store.autosave.dirty()) return; // stay: the status/banner says why, nothing is lost
+      // an untouched new draft is discarded: back to My kitchen; otherwise save, then show the recipe
+      if (await this.store.removeIfUntouched()) {
+        await this.router.navigateByUrl('/kitchen/recipes');
+        return;
       }
-      await this.router.navigateByUrl('/recipes');
+      await this.store.flush();
+      if (this.store.autosave.dirty()) return; // stay: the status/banner says why, nothing is lost
+      await this.router.navigateByUrl(`/recipes/${this.store.server()!.id}/view`);
     } catch (e) {
       this.actionError.set(errorKeyOf(e));
     } finally {
@@ -467,7 +542,7 @@ export class RecipeEditorPage {
       });
       if (!confirmed) return;
       await this.store.remove();
-      await this.router.navigateByUrl('/recipes');
+      await this.router.navigateByUrl('/kitchen/recipes');
     } catch (e) {
       this.actionError.set(errorKeyOf(e));
     } finally {
@@ -482,5 +557,69 @@ export class RecipeEditorPage {
     } catch (e) {
       this.actionError.set(errorKeyOf(e));
     }
+  }
+
+  /**
+   * A photo is being dragged: files, or an image out of a web page (a link), except over a text field,
+   * where dropping a link as text stays possible.
+   */
+  private static hasFiles(ev: DragEvent): boolean {
+    if (carriesFiles(ev.dataTransfer)) return true;
+    return carriesLinkOnly(ev.dataTransfer) && !isTextField(ev.target);
+  }
+
+  /**
+   * Pasting an image (a screenshot, "Copy image"): while writing a step it becomes that step's photo,
+   * anywhere else the cover. Text pastes are left alone, and so are pastes inside a dialog. Text copied from
+   * an office app also carries a picture of itself: in a text field, a paste that carries text is text.
+   */
+  protected onPaste(ev: ClipboardEvent): void {
+    const file = transferFiles(ev.clipboardData).find((f) => f.type.startsWith('image/'));
+    if (!file) return;
+    const focused = document.activeElement;
+    if (focused?.closest('.cdk-overlay-container')) return;
+    if (isTextField(focused) && carriesText(ev.clipboardData)) return;
+    ev.preventDefault();
+    const slot = this.pasteSlot(focused);
+    const problem = photoProblem(file);
+    if (problem) this.store.rejectPhoto(slot, problem);
+    else void this.store.uploadPhoto(slot, file);
+  }
+
+  /** The step being written (focus inside it), else the cover. */
+  private pasteSlot(focused: Element | null): PhotoSlot {
+    const step = focused?.closest('li.step');
+    if (!step || !this.host.nativeElement.contains(step)) return 'cover';
+    const i = Array.from(this.host.nativeElement.querySelectorAll('li.step')).indexOf(step);
+    return i >= 0 ? i : 'cover';
+  }
+
+  /**
+   * Files dragged anywhere over the page: show the drop targets. `dragover` repeats while the pointer moves
+   * or rests over the page, so the state ends shortly after the last one (the drag left the window or ended).
+   * Outside a target the drag is still accepted, so the browser delivers the `drop` (a drag whose effect is
+   * "none" is cancelled on release and fires no `drop`); `onWindowDrop` then refuses it and explains, and the
+   * browser does not open the image instead.
+   */
+  protected onWindowDragOver(ev: DragEvent): void {
+    if (!RecipeEditorPage.hasFiles(ev)) return;
+    if (!ev.defaultPrevented) {
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+    }
+    this.draggingFiles.set(true);
+    clearTimeout(this.dragEnd);
+    this.dragEnd = setTimeout(() => this.draggingFiles.set(false), 250);
+  }
+
+  /** A drop a target did not take (it prevents default when it does): keep the editor and explain. */
+  protected onWindowDrop(ev: DragEvent): void {
+    clearTimeout(this.dragEnd);
+    this.draggingFiles.set(false);
+    if (!RecipeEditorPage.hasFiles(ev) || ev.defaultPrevented) return;
+    ev.preventDefault();
+    this.missedDrop.set(true);
+    clearTimeout(this.missedEnd);
+    this.missedEnd = setTimeout(() => this.missedDrop.set(false), 5000);
   }
 }

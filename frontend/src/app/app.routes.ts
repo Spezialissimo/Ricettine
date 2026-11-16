@@ -10,7 +10,7 @@ import { DeleteAccountPage } from './settings/delete-account.page';
 import { PasswordPage } from './settings/password.page';
 import { ProfilePage } from './settings/profile.page';
 import { FeedPage } from './feed/feed.page';
-import { MyRecipesPage } from './recipes/my-recipes.page';
+import { SettingsLayoutComponent } from './settings/settings-layout.component';
 import { NewRecipePage } from './recipes/new-recipe.page';
 import { ShellComponent } from './shell/shell.component';
 import { leaveEditorGuard } from './recipes/editor/leave-editor.guard';
@@ -28,6 +28,24 @@ export const routes: Routes = [
       // public: readable without an account, so outside the authGuard shell (own minimal header)
       {
         path: 'r/:token',
+        loadComponent: () =>
+          import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+      },
+      // the author's own recipe, draft or published, as readers see it (from My kitchen; Edit is on the page)
+      {
+        path: 'recipes/:id/view',
+        canActivate: [authGuard],
+        title: 'titles.recipe',
+        data: { via: 'own' },
+        loadComponent: () =>
+          import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
+      },
+      // the author's preview from the editor: the reader's page (own header), but signed in
+      {
+        path: 'recipes/:id/preview',
+        canActivate: [authGuard],
+        title: 'titles.preview',
+        data: { via: 'preview' },
         loadComponent: () =>
           import('./recipes/view/recipe-view.page').then((m) => m.RecipeViewPage),
       },
@@ -55,29 +73,56 @@ export const routes: Routes = [
             loadComponent: () => import('./profile/profile.page').then((m) => m.UserProfilePage),
           },
           {
-            path: 'recipes',
-            title: 'titles.myRecipes',
-            component: MyRecipesPage,
-            pathMatch: 'full',
+            path: 'kitchen',
+            loadComponent: () => import('./kitchen/kitchen.page').then((m) => m.KitchenPage),
+            children: [
+              {
+                path: '',
+                title: 'titles.kitchen',
+                loadComponent: () =>
+                  import('./kitchen/overview.page').then((m) => m.KitchenOverviewPage),
+              },
+              {
+                path: 'recipes',
+                title: 'titles.myRecipes',
+                loadComponent: () =>
+                  import('./recipes/my-recipes.page').then((m) => m.MyRecipesPage),
+              },
+              {
+                path: 'cookbooks',
+                title: 'titles.cookbooks',
+                loadComponent: () =>
+                  import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
+              },
+            ],
           },
-          { path: 'recipes/new', title: 'titles.newRecipe', component: NewRecipePage },
+          // Old list URLs (bookmarks, earlier links) land on the matching My kitchen tab.
+          { path: 'recipes', pathMatch: 'full', redirectTo: 'kitchen/recipes' },
+          { path: 'cookbooks', pathMatch: 'full', redirectTo: 'kitchen/cookbooks' },
+          {
+            path: 'recipes/new',
+            title: 'titles.newRecipe',
+            component: NewRecipePage,
+            data: { editor: true },
+          },
           {
             path: 'recipes/:id/edit',
             title: 'titles.editRecipe',
+            // the shell hides "+ New recipe" and, on the phone, its bottom navigation while editing
+            data: { editor: true },
             loadComponent: () =>
               import('./recipes/editor/recipe-editor.page').then((m) => m.RecipeEditorPage),
             canDeactivate: [leaveEditorGuard],
           },
           {
-            path: 'cookbooks',
-            title: 'titles.cookbooks',
-            pathMatch: 'full',
-            loadComponent: () =>
-              import('./cookbooks/my-cookbooks.page').then((m) => m.MyCookbooksPage),
-          },
-          {
             path: 'cookbooks/:id',
             title: 'titles.cookbook',
+            loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage),
+          },
+          {
+            path: 'cookbooks/:id/edit',
+            title: 'titles.cookbookEdit',
+            data: { mode: 'edit' },
             loadComponent: () => import('./cookbooks/cookbook.page').then((m) => m.CookbookPage),
           },
           {
@@ -86,23 +131,44 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./cookbooks/accept-invite.page').then((m) => m.AcceptInvitePage),
           },
-          { path: 'settings', pathMatch: 'full', redirectTo: 'settings/profile' },
-          { path: 'settings/profile', title: 'titles.profile', component: ProfilePage },
-          { path: 'settings/password', title: 'titles.password', component: PasswordPage },
-          { path: 'settings/delete', title: 'titles.deleteAccount', component: DeleteAccountPage },
-          { path: 'admin', pathMatch: 'full', redirectTo: 'admin/invites' },
           {
-            path: 'admin/invites',
-            title: 'titles.invites',
-            component: InvitesPage,
-            canActivate: [adminGuard],
+            path: 'settings',
+            component: SettingsLayoutComponent,
+            children: [
+              { path: '', pathMatch: 'full', redirectTo: 'profile' },
+              { path: 'profile', title: 'titles.profile', component: ProfilePage },
+              {
+                path: 'appearance',
+                title: 'titles.appearance',
+                loadComponent: () =>
+                  import('./settings/appearance.page').then((m) => m.AppearancePage),
+              },
+              {
+                path: 'language',
+                title: 'titles.language',
+                loadComponent: () => import('./settings/language.page').then((m) => m.LanguagePage),
+              },
+              { path: 'password', title: 'titles.password', component: PasswordPage },
+              { path: 'delete', title: 'titles.deleteAccount', component: DeleteAccountPage },
+              { path: 'admin', pathMatch: 'full', redirectTo: 'admin/invites' },
+              {
+                path: 'admin/invites',
+                title: 'titles.invites',
+                component: InvitesPage,
+                canActivate: [adminGuard],
+              },
+              {
+                path: 'admin/users',
+                title: 'titles.users',
+                component: UsersPage,
+                canActivate: [adminGuard],
+              },
+            ],
           },
-          {
-            path: 'admin/users',
-            title: 'titles.users',
-            component: UsersPage,
-            canActivate: [adminGuard],
-          },
+          // Admin moved into Settings; the old URLs still work.
+          { path: 'admin', pathMatch: 'full', redirectTo: 'settings/admin/invites' },
+          { path: 'admin/invites', redirectTo: 'settings/admin/invites' },
+          { path: 'admin/users', redirectTo: 'settings/admin/users' },
         ],
       },
       { path: '**', redirectTo: '' },

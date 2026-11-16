@@ -20,6 +20,18 @@ variable "origin_subdomain" {
   default     = "origin"
 }
 
+variable "demo_enabled" {
+  description = "Serve the public demo site (own CloudFront distribution, certificate and DNS name) from the same host. The instance picks it up through DEMO_DOMAIN in config.env: see docs/deploy-aws.md."
+  type        = bool
+  default     = false
+}
+
+variable "demo_subdomain" {
+  description = "Subdomain of domain_name for the demo site."
+  type        = string
+  default     = "demo"
+}
+
 variable "instance_type" {
   description = "EC2 instance type. Graviton only: the image is built for arm64 and amd64."
   type        = string

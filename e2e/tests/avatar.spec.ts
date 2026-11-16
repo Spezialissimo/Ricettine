@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { BrowserContext, Page, expect } from '@playwright/test';
 import exifr from 'exifr';
-import { FIXTURE_PHOTO, newUserPage, test } from '../helpers';
+import { FIXTURE_PHOTO, accountMenuLink, newUserPage, test } from '../helpers';
 
 test('fixture is what it claims: landscape pixels, EXIF Orientation 6, GPS present', async () => {
   const exif = await exifr.parse(readFileSync(FIXTURE_PHOTO), { gps: true, tiff: true, translateValues: false });
@@ -24,7 +24,7 @@ test.describe.serial('avatar upload', () => {
   const avatar = () => page.getByRole('img', { name: 'Your avatar' });
 
   test('a portrait phone photo shows upright and is stripped of EXIF/GPS', async () => {
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await accountMenuLink(page, 'Settings');
     await expect(page).toHaveURL(/\/settings\/profile$/);
     await page.getByLabel('Choose photo').setInputFiles(FIXTURE_PHOTO);
     await expect(avatar()).toBeVisible();

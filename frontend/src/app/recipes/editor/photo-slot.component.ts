@@ -1,16 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { mediaUrl } from '../../core/media';
 import { EditorStore, PhotoSlot } from './editor-store';
 import { PhotoPickerComponent } from './photo-picker.component';
+import { IconComponent } from '../../shared/icon.component';
 
 /**
  * One photo place (the cover or a step): the image (local preview while uploading, then the server
- * thumb), the "Uploading…" label or error (a failed upload keeps its preview and offers Retry), and Add photo / Replace / Remove with names that say where.
+ * thumb; a photo given by web address shows "Uploading…" in place of the picker), the "Uploading…" label or error (a failed upload keeps its preview and offers Retry), and Add photo / Replace / Remove with names that say where.
  */
 @Component({
   selector: 'app-photo-slot',
-  imports: [TranslocoDirective, PhotoPickerComponent],
+  imports: [TranslocoDirective, PhotoPickerComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host {
@@ -48,7 +49,7 @@ import { PhotoPickerComponent } from './photo-picker.component';
       padding: 2px 8px;
       border-radius: 8px;
       background: rgba(0, 0, 0, 0.6);
-      color: #fff;
+      color: var(--on-accent);
       font-size: 0.8rem;
     }
     .actions {
@@ -56,14 +57,63 @@ import { PhotoPickerComponent } from './photo-picker.component';
       gap: 8px;
       flex-wrap: wrap;
     }
+    // Replace and Remove: over the darkened photo, centred, in the app's usual white icon buttons. Shown on
+    // hover or keyboard focus; on touch screens (no hover) a tap on the photo shows or hides them.
+    .on-photo-actions {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.45);
+      color: var(--ink);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+    .frame.revealed .on-photo-actions,
+    .frame:focus-within .on-photo-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (hover: hover) {
+      .frame:hover .on-photo-actions {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .on-photo-actions {
+        transition: none;
+      }
+    }
+    // while a photo is dragged over the page or onto this place: the image says it will be replaced
+    .drop-replace {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-weight: 700;
+      pointer-events: none;
+    }
+    :host-context(.drop-over) .drop-replace,
+    :host-context(.dragging-files) .drop-replace {
+      display: flex;
+    }
     .btn {
       min-height: 44px;
       min-width: 44px;
       padding: 0 16px;
-      border: 1px solid #e2dcd3;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      background: #fff;
-      color: #b3261e;
+      background: var(--surface);
+      color: var(--danger);
       font: inherit;
       font-weight: 600;
       cursor: pointer;
@@ -77,9 +127,16 @@ import { PhotoPickerComponent } from './photo-picker.component';
       clip-path: inset(50%);
       white-space: nowrap;
     }
+    .pending {
+      margin: 0;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+    }
     .error {
       margin: 0;
-      color: #b3261e;
+      color: var(--danger);
       font-size: 0.85rem;
     }
   `,
@@ -88,7 +145,12 @@ import { PhotoPickerComponent } from './photo-picker.component';
       @let up = upload();
       @let thumb = photo();
       @if (thumb || up?.preview) {
-        <div class="frame" [class.has-thumb]="!!thumb">
+        <div
+          class="frame"
+          [class.has-thumb]="!!thumb"
+          [class.revealed]="revealed()"
+          (click)="toggleActions($event)"
+        >
           @if (thumb) {
             <img
               class="photo-thumb"
@@ -102,6 +164,28 @@ import { PhotoPickerComponent } from './photo-picker.component';
           }
           @if (up?.status === 'uploading') {
             <span class="label" aria-hidden="true">{{ t('editor.uploading') }}</span>
+          } @else {
+            <span class="drop-replace" aria-hidden="true">{{ t('editor.dropToReplace') }}</span>
+            <div class="on-photo-actions">
+              <app-photo-picker
+                class="icon"
+                [capture]="capture()"
+                iconName="replace"
+                [label]="t('editor.replace')"
+                [ariaLabel]="pickerName(t)"
+                (picked)="pick($event)"
+                (rejected)="store.rejectPhoto(slot(), $event)"
+              />
+              <button
+                type="button"
+                class="icon-btn danger remove"
+                [attr.aria-label]="removeName(t)"
+                [attr.title]="removeName(t)"
+                (click)="store.removePhoto(slot())"
+              >
+                <app-icon name="trash" />
+              </button>
+            </div>
           }
         </div>
       }
@@ -113,7 +197,7 @@ import { PhotoPickerComponent } from './photo-picker.component';
         <p class="error" role="alert">{{ t(e) }}</p>
       }
       <div class="actions">
-        @if (up?.status === 'failed' && up?.file) {
+        @if (up?.status === 'failed' && (up?.file || up?.url)) {
           <button
             type="button"
             class="btn retry"
@@ -123,30 +207,29 @@ import { PhotoPickerComponent } from './photo-picker.component';
             {{ t('editor.retry') }}
           </button>
         }
-        <app-photo-picker
-          [capture]="capture()"
-          [label]="
-            t(
-              thumb || up?.preview
-                ? 'editor.replace'
-                : isCover()
-                  ? 'editor.cover'
-                  : 'editor.addPhoto'
-            )
-          "
-          [ariaLabel]="pickerName(t)"
-          (picked)="pick($event)"
-          (rejected)="store.rejectPhoto(slot(), $event)"
-        />
-        @if (thumb || up?.preview) {
-          <button
-            type="button"
-            class="btn"
-            [attr.aria-label]="removeName(t)"
-            (click)="store.removePhoto(slot())"
-          >
-            {{ t('editor.remove') }}
-          </button>
+        @if (!(thumb || up?.preview) && up?.status === 'uploading') {
+          <!-- a photo given by its web address has no preview while the server downloads it -->
+          <p class="pending" aria-hidden="true">{{ t('editor.uploading') }}</p>
+        } @else if (!(thumb || up?.preview)) {
+          @if (isCover()) {
+            <app-photo-picker
+              [capture]="capture()"
+              [label]="t('editor.cover')"
+              [ariaLabel]="pickerName(t)"
+              (picked)="pick($event)"
+              (rejected)="store.rejectPhoto(slot(), $event)"
+            />
+          } @else {
+            <app-photo-picker
+              class="icon"
+              [capture]="capture()"
+              iconName="camera"
+              [label]="t('editor.addPhoto')"
+              [ariaLabel]="pickerName(t)"
+              (picked)="pick($event)"
+              (rejected)="store.rejectPhoto(slot(), $event)"
+            />
+          }
         }
       </div>
     </ng-container>
@@ -187,6 +270,13 @@ export class PhotoSlotComponent {
     return this.isCover()
       ? t('editor.retryCoverUpload')
       : t('editor.retryStepUpload', { n: this.n() });
+  }
+
+  /** Touch screens have no hover: a tap on the photo itself shows or hides Replace and Remove. */
+  protected readonly revealed = signal(false);
+  protected toggleActions(ev: MouseEvent): void {
+    if ((ev.target as Element).closest('button')) return;
+    this.revealed.update((v) => !v);
   }
 
   protected retry(): void {

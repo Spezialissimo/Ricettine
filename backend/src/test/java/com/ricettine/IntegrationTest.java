@@ -33,7 +33,9 @@ import tools.jackson.databind.ObjectMapper;
 public abstract class IntegrationTest {
 
 	@ServiceConnection
-	protected static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+	protected static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
+		// Each cached Spring context holds its own pools (the demo contexts two); the default 100 runs out.
+		.withCommand("postgres", "-c", "max_connections=300");
 
 	static {
 		postgres.start();
@@ -60,9 +62,14 @@ public abstract class IntegrationTest {
 	/** Every test starts from an empty database: users (and with them everything they own) and all sessions. */
 	@BeforeEach
 	void resetDatabase() {
+		truncateAll();
+		data = new TestData(mvc, json, jdbc, accounts);
+	}
+
+	/** Empties the database of the current site; DemoIntegrationTest runs it for the demo site too. */
+	protected void truncateAll() {
 		jdbc.execute("truncate table app_user, one_time_token, instance_setup cascade");
 		jdbc.execute("delete from spring_session");
-		data = new TestData(mvc, json, jdbc, accounts);
 	}
 
 	/**

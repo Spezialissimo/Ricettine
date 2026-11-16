@@ -512,7 +512,7 @@ run "cloud_init_is_valid_yaml_with_exact_file_contents" {
         "/etc/systemd/system/ricettine-backup.timer"               = file("../../deploy/aws/ricettine-backup.timer")
         "/etc/systemd/system/ricettine-backup.service"             = replace(replace(file("../../deploy/aws/ricettine-backup.service"), "__BACKUPS_BUCKET__", "ricettine-backups-123456789012"), "__REGION__", "eu-west-1")
         "/etc/systemd/system/docker.service.d/ricettine-data.conf" = "[Unit]\n# Containers must never start before the data volume is mounted\nRequiresMountsFor=/srv/ricettine\n"
-        "/opt/ricettine/config.env"                                = "REGION=eu-west-1\nDOMAIN_NAME=recipes.example.com\nORIGIN_DOMAIN=origin.recipes.example.com\nMEDIA_BUCKET=ricettine-media-123456789012\nIMAGE_TAG=latest\nALERT_TOPIC_ARN=arn:aws:sns:eu-west-1:123456789012:ricettine-alerts\n"
+        "/opt/ricettine/config.env"                                = "REGION=eu-west-1\nDOMAIN_NAME=recipes.example.com\nORIGIN_DOMAIN=origin.recipes.example.com\nDEMO_DOMAIN=\nMEDIA_BUCKET=ricettine-media-123456789012\nIMAGE_TAG=latest\nALERT_TOPIC_ARN=arn:aws:sns:eu-west-1:123456789012:ricettine-alerts\n"
         "/etc/docker/daemon.json"                                  = "{\n  \"log-driver\": \"json-file\",\n  \"log-opts\": { \"max-size\": \"10m\", \"max-file\": \"3\" }\n}\n"
       }, f.path, "__missing__")
     ])

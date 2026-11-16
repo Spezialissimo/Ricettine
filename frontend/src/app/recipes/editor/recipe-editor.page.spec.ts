@@ -57,7 +57,7 @@ describe('RecipeEditorPage', () => {
     expect(el.textContent).toContain(en.editor.waitingForUploads);
   });
 
-  it('Done stays on the page with a message while a photo uploads', async () => {
+  it('Save stays on the page with a message while a photo uploads', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:x');
     URL.revokeObjectURL = vi.fn();
     const { f, el, nav } = await mount({
@@ -70,7 +70,7 @@ describe('RecipeEditorPage', () => {
     });
     input.dispatchEvent(new Event('change'));
     await settle(f);
-    byText(el.querySelector('.editor-header')!, 'button', en.editor.done)!.click();
+    byText(el.querySelector('.editor-header')!, 'button', en.editor.save)!.click();
     await settle(f);
     expect(nav).not.toHaveBeenCalled();
     expect(el.textContent).toContain(en.editor.uploadsInProgress);
@@ -121,12 +121,17 @@ describe('RecipeEditorPage', () => {
     }
     expect(right.querySelector('.steps')).toBeTruthy();
     const bar = el.querySelector('.bottom-bar')!;
-    expect(bar.querySelector('app-photo-picker button')?.textContent).toContain(en.editor.photo);
-    expect(byText(bar, 'button', en.editor.nextStep)).toBeTruthy();
+    expect(bar.querySelector('button.preview')).toBeTruthy();
     const header = el.querySelector('.editor-header')!;
-    expect(byText(header, 'button', en.editor.done)).toBeTruthy();
+    expect(byText(header, 'button', en.editor.save)).toBeTruthy();
     expect(byText(header, 'button', en.editor.publish)).toBeTruthy();
     expect(header.querySelector('[role="status"]')).toBeTruthy();
+    // no "← Done" any more; Save sits at the top right, after Publish and before the ⋯ menu
+    expect(byText(header, 'button', en.editor.done)).toBeUndefined();
+    const buttons = Array.from(header.querySelectorAll('button'));
+    const save = buttons.indexOf(header.querySelector('button.save') as HTMLButtonElement);
+    expect(save).toBeGreaterThan(buttons.indexOf(header.querySelector('button.publish')!));
+    expect(save).toBe(buttons.indexOf(header.querySelector('button.more')!) - 1);
   });
 
   it('edits title, visibility and notes through the store and shows Saved after the server confirms', async () => {
@@ -139,7 +144,7 @@ describe('RecipeEditorPage', () => {
     type(el.querySelector('#recipe-title') as HTMLInputElement, 'Tiramisù');
     (el.querySelector('input[type="radio"][value="PUBLIC"]') as HTMLInputElement).click();
     type(el.querySelector('#recipe-notes') as HTMLTextAreaElement, 'Use mascarpone');
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(save).toHaveBeenCalledTimes(1);
     expect(save.mock.calls[0][1]).toMatchObject({
@@ -151,10 +156,10 @@ describe('RecipeEditorPage', () => {
     expect(el.querySelector('.editor-header [role="status"]')?.textContent).toContain(
       en.editor.status.saved,
     );
-    expect(nav).toHaveBeenCalledWith('/recipes');
+    expect(nav).toHaveBeenCalledWith('/recipes/r1/view'); // Save opens the recipe as readers see it
   });
 
-  it('Done on a never-touched new draft deletes it instead of saving', async () => {
+  it('Save on a never-touched new draft deletes it and goes back to My kitchen', async () => {
     const save = vi.fn();
     const remove = vi.fn().mockResolvedValue(undefined);
     const { f, el, nav } = await mount({
@@ -162,14 +167,14 @@ describe('RecipeEditorPage', () => {
       save,
       remove,
     });
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(remove).toHaveBeenCalledWith('r1');
     expect(save).not.toHaveBeenCalled();
-    expect(nav).toHaveBeenCalledWith('/recipes');
+    expect(nav).toHaveBeenCalledWith('/kitchen/recipes');
   });
 
-  it('Done on an empty local copy whose server version moved does not remove', async () => {
+  it('Save on an empty local copy whose server version moved does not remove, and opens the recipe', async () => {
     const get = vi
       .fn()
       .mockResolvedValueOnce(serverRecipe({ version: 1 }))
@@ -177,27 +182,27 @@ describe('RecipeEditorPage', () => {
     const save = vi.fn();
     const remove = vi.fn();
     const { f, el, nav } = await mount({ get, save, remove });
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(get).toHaveBeenCalledTimes(2); // re-checked the server copy before deleting
     expect(remove).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
-    expect(nav).toHaveBeenCalledWith('/recipes');
+    expect(nav).toHaveBeenCalledWith('/recipes/r1/view');
   });
 
-  it('Done on an empty local copy does not remove when the server copy has content at the same version', async () => {
+  it('Save on an empty local copy does not remove when the server copy has content at the same version', async () => {
     const get = vi
       .fn()
       .mockResolvedValueOnce(serverRecipe({ version: 3 }))
       .mockResolvedValue(serverRecipe({ version: 3, notes: 'x' }));
     const remove = vi.fn();
     const { f, el } = await mount({ get, remove, save: vi.fn() });
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it('Done during a conflict does not remove, even with an empty local copy', async () => {
+  it('Save during a conflict does not remove, even with an empty local copy', async () => {
     const get = vi.fn().mockResolvedValue(serverRecipe());
     const save = vi
       .fn()
@@ -212,13 +217,13 @@ describe('RecipeEditorPage', () => {
     type(title, ''); // local copy is empty again, but the save 409'd
     await settle(f);
     expect(el.querySelector('.conflict')).toBeTruthy();
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(remove).not.toHaveBeenCalled();
     expect(nav).not.toHaveBeenCalled();
   });
 
-  it('Done and Delete share one busy guard', async () => {
+  it('Save and Delete share one busy guard', async () => {
     const save = vi.fn().mockReturnValue(new Promise(() => {})); // a save that never answers
     const remove = vi.fn();
     const { f, el } = await mount({
@@ -229,13 +234,13 @@ describe('RecipeEditorPage', () => {
     type(el.querySelector('#recipe-title') as HTMLInputElement, 'Y');
     void f.componentInstance.done();
     await settle(f);
-    await f.componentInstance.confirmDelete(); // ignored while Done is running
+    await f.componentInstance.confirmDelete(); // ignored while Save is running
     await settle(f);
     expect(document.querySelector('app-confirm-dialog')).toBeNull();
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it('Done is ignored while the delete confirmation is open', async () => {
+  it('Save is ignored while the delete confirmation is open', async () => {
     const save = vi.fn();
     const remove = vi.fn();
     const { f, el, nav } = await mount({
@@ -246,7 +251,7 @@ describe('RecipeEditorPage', () => {
     void f.componentInstance.confirmDelete();
     await settle(f);
     expect(document.querySelector('app-confirm-dialog')).toBeTruthy();
-    expect((byText(el, 'button', en.editor.done) as HTMLButtonElement).disabled).toBe(true);
+    expect((byText(el, 'button', en.editor.save) as HTMLButtonElement).disabled).toBe(true);
     await f.componentInstance.done();
     expect(remove).not.toHaveBeenCalled();
     expect(nav).not.toHaveBeenCalled();
@@ -266,7 +271,7 @@ describe('RecipeEditorPage', () => {
     const title = el.querySelector('#recipe-title') as HTMLInputElement;
     expect(title.getAttribute('aria-invalid')).toBe('false');
     type(title, '');
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(nav).not.toHaveBeenCalled(); // nothing is lost: we stay on the page
     expect(title.getAttribute('aria-invalid')).toBe('true');
@@ -291,7 +296,7 @@ describe('RecipeEditorPage', () => {
     const { f, el, nav } = await mount({ get, save });
     type(el.querySelector('#recipe-title') as HTMLInputElement, 'Mine');
     type(el.querySelector('#recipe-notes') as HTMLTextAreaElement, 'My notes');
-    byText(el, 'button', en.editor.done)!.click();
+    byText(el, 'button', en.editor.save)!.click();
     await settle(f);
     expect(nav).not.toHaveBeenCalled();
     const banner = el.querySelector('.conflict')!;
@@ -324,7 +329,7 @@ describe('RecipeEditorPage', () => {
     byText(dialog, 'button', en.editor.deleteConfirm.confirm)!.click();
     await settle(f);
     expect(remove).toHaveBeenCalledWith('r1');
-    expect(nav).toHaveBeenCalledWith('/recipes');
+    expect(nav).toHaveBeenCalledWith('/kitchen/recipes');
   });
 
   it('shows the load error', async () => {
@@ -468,38 +473,6 @@ describe('RecipeEditorPage', () => {
       expect(el.querySelector('.ingredients')!.classList.contains('missing')).toBe(false);
     });
 
-    it('a 409 from Reset link moves the editor into conflict and disables Reset', async () => {
-      const resetLink = vi
-        .fn()
-        .mockRejectedValue(
-          new HttpErrorResponse({ status: 409, error: { code: 'recipe_conflict' } }),
-        );
-      const { f, el } = await mount({
-        get: vi.fn().mockResolvedValue(
-          serverRecipe({
-            status: 'PUBLISHED',
-            title: 'T',
-            version: 2,
-            shareUrl: 'https://x.test/r/OLD',
-          }),
-        ),
-        resetLink,
-      });
-      byText(el, 'button', en.editor.resetLink)!.click();
-      await settle(f);
-      byText(
-        document.querySelector('.cdk-overlay-container')!,
-        'button',
-        en.editor.resetLinkConfirm.confirm,
-      )!.click();
-      await settle(f);
-      expect(resetLink).toHaveBeenCalledWith('r1', 2);
-      expect(el.querySelector('.conflict')).toBeTruthy();
-      expect(el.querySelector('[data-url]')?.textContent?.trim()).toBe('https://x.test/r/OLD');
-      expect((byText(el, 'button', en.editor.resetLink) as HTMLButtonElement).disabled).toBe(true);
-      expect(el.textContent).toContain(en.editor.resetLinkLoadLatest);
-    });
-
     it('a 409 from publish moves the editor into conflict', async () => {
       const publish = vi
         .fn()
@@ -577,12 +550,12 @@ describe('RecipeEditorPage', () => {
         expect(document.activeElement).toBe(el.querySelectorAll('input.name')[1]);
       });
 
-      it('Done stays on the page with a warning', async () => {
+      it('Save stays on the page with a warning', async () => {
         const get = vi
           .fn()
           .mockResolvedValue(withRow({ amount: null, unit: 'g', name: '', note: null }));
         const { f, el, nav } = await mount({ get, save: vi.fn(), remove: vi.fn() });
-        byText(el, 'button', en.editor.done)!.click();
+        byText(el, 'button', en.editor.save)!.click();
         await settle(f);
         expect(nav).not.toHaveBeenCalled();
         expect(el.textContent).toContain(en.editor.unsavedInput);
@@ -620,40 +593,33 @@ describe('RecipeEditorPage', () => {
       expect(el.querySelector('#recipe-title-error')).toBeNull();
     });
 
-    it('the bottom-bar camera button names its target step and hides the emoji from screen readers', async () => {
-      const { f, el } = await mount({
-        get: vi.fn().mockResolvedValue(
-          serverRecipe({
-            steps: [
-              { text: 'a', photo: null },
-              { text: 'b', photo: null },
-            ],
-          }),
-        ),
-      });
-      const btn = () =>
-        el.querySelector('.bottom-bar app-photo-picker button') as HTMLButtonElement;
-      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 2');
-      expect(btn().querySelector('[aria-hidden="true"]')?.textContent).toContain('📷');
-      expect(btn().textContent).toContain(en.editor.photo);
-      el.querySelectorAll('.steps li.step')[0]
-        .querySelector('textarea')!
-        .dispatchEvent(new Event('focusin', { bubbles: true }));
-      await settle(f);
-      expect(btn().getAttribute('aria-label')).toBe('Add photo to step 1');
+    it('the phone bottom bar holds Preview and Publish (Publish only for a draft)', async () => {
+      const { el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()) });
+      const bar = el.querySelector('.bottom-bar')!;
+      expect(bar.querySelector('button.preview')?.textContent).toContain(en.editor.preview);
+      expect(bar.querySelector('button.publish')?.textContent).toContain(en.editor.publish);
+      expect(bar.querySelector('app-photo-picker')).toBeNull();
     });
 
-    it('the bottom-bar "+ Next step" adds a step', async () => {
-      const { f, el } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()) });
-      const next = byText(
-        el.querySelector('.bottom-bar')!,
-        'button',
-        en.editor.nextStep,
-      ) as HTMLButtonElement;
-      expect(next.disabled).toBe(false);
-      next.click();
+    it('a published recipe has Preview but no Publish', async () => {
+      const { el } = await mount({
+        get: vi.fn().mockResolvedValue(serverRecipe({ status: 'PUBLISHED', title: 'T' })),
+      });
+      expect(el.querySelector('.bottom-bar button.preview')).not.toBeNull();
+      expect(el.querySelector('button.publish')).toBeNull();
+      const headerPreview = el.querySelector('.editor-header button.preview')!;
+      expect(headerPreview.getAttribute('aria-label')).toBe(en.editor.preview);
+      expect(headerPreview.getAttribute('title')).toBe(en.editor.preview);
+    });
+
+    it('Preview saves first, then opens the reader view of this recipe', async () => {
+      const save = vi.fn().mockImplementation(async () => serverRecipe({ version: 2, title: 'T' }));
+      const { f, el, nav } = await mount({ get: vi.fn().mockResolvedValue(serverRecipe()), save });
+      type(el.querySelector('#recipe-title') as HTMLInputElement, 'T');
+      (el.querySelector('.editor-header button.preview') as HTMLButtonElement).click();
       await settle(f);
-      expect(el.querySelectorAll('.steps textarea').length).toBe(1);
+      expect(save).toHaveBeenCalled();
+      expect(nav).toHaveBeenCalledWith(`/recipes/${serverRecipe().id}/preview`);
     });
   });
 
