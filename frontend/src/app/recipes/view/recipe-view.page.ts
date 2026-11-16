@@ -14,6 +14,7 @@ import { LanguageService } from '../../core/language';
 import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
+import { AvatarComponent } from '../../shared/avatar.component';
 import { scaleAmount, shownAmount } from '../amount';
 import { unitKey } from '../units';
 import { durationKey } from '../editor/time-sheet.component';
@@ -34,6 +35,7 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 @Component({
   selector: 'app-recipe-view-page',
   imports: [
+    AvatarComponent,
     TopBarComponent,
     TranslocoDirective,
     RouterLink,
@@ -148,11 +150,11 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
                     </p>
                   }
                   <div class="author">
-                    @if (avatar(r); as a) {
-                      <img class="avatar" [src]="a" alt="" />
-                    } @else {
-                      <span class="avatar" aria-hidden="true"></span>
-                    }
+                    <app-avatar
+                      [name]="r.author.displayName"
+                      [avatarUrl]="r.author.avatarUrl"
+                      [size]="32"
+                    />
                     @if (auth.me()) {
                       <a class="by" [routerLink]="['/u', r.author.username]">{{
                         t('recipes.by', { name: r.author.displayName })
@@ -529,8 +531,5 @@ export class RecipeViewPage {
   }
   protected stepPhoto(p: { displayUrl: string } | null): string | null {
     return mediaUrl(p?.displayUrl);
-  }
-  protected avatar(r: PublicRecipe): string | null {
-    return mediaUrl(r.author.avatarUrl);
   }
 }

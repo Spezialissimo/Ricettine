@@ -61,14 +61,6 @@ main {
   gap: 10px;
   color: var(--muted);
 }
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--border);
-  flex: none;
-}
 h1 {
   margin: 0;
   font-size: 1.8rem;

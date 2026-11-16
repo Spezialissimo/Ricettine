@@ -45,14 +45,14 @@ describe('AccountMenuComponent', () => {
   it('shows the name and the initial when there is no avatar, collapsed', async () => {
     const { el, trigger } = await menu();
     expect(trigger.textContent).toContain('Ann');
-    expect(el.querySelector('.avatar.initial')?.textContent?.trim()).toBe('A');
+    expect(el.querySelector('app-avatar .initial')?.textContent?.trim()).toBe('A');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(el.querySelector('#account-panel')).toBeNull();
   });
 
   it('shows the avatar image when the user has one', async () => {
     const { el } = await menu({ avatarUrl: '/media/av/thumb.jpg' });
-    expect(el.querySelector('img.avatar')?.getAttribute('src')).toBe('/media/av/thumb.jpg');
+    expect(el.querySelector('app-avatar img')?.getAttribute('src')).toBe('/media/av/thumb.jpg');
   });
 
   it('opens a panel with View profile, Settings and Log out (no Admin for non-admins)', async () => {

@@ -25,6 +25,15 @@ test('a demo recipe with step photos shows them in its steps', async ({ browser 
   await expect(page.getByRole('img', { name: 'Step 1', exact: true }).first()).toBeVisible();
 });
 
+test("a recipe author without a photo shows their initial", async ({ browser }, testInfo) => {
+  const context = await newDemoContext(browser, testInfo);
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByText("Penne all'arrabbiata").first().click();
+  await expect(page.getByRole('heading', { name: "Penne all'arrabbiata", level: 1 })).toBeVisible();
+  await expect(page.locator('.author app-avatar')).toHaveText('O');
+});
+
 test('a deep link on a first visit lands on the target, not on login', async ({ browser }, testInfo) => {
   const context = await newDemoContext(browser, testInfo);
   const page = await context.newPage();

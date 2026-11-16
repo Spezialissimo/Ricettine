@@ -15,7 +15,7 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { Site } from '../core/site';
-import { mediaUrl } from '../core/media';
+import { AvatarComponent } from '../shared/avatar.component';
 import { openSheet } from '../shared/sheet';
 import { AppDatePipe } from '../shared/app-date.pipe';
 import { CopyLinkComponent } from '../shared/copy-link.component';
@@ -27,7 +27,7 @@ import { RemoveMemberDialog } from './remove-member.dialog';
 /** Owner and co-authors. Owner: invite, revoke, remove. Author: leave. */
 @Component({
   selector: 'app-members-panel',
-  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe],
+  imports: [TranslocoDirective, CopyLinkComponent, AppDatePipe, AvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     @use '../../styles/tokens' as t;
@@ -68,19 +68,6 @@ import { RemoveMemberDialog } from './remove-member.dialog';
       min-width: 0;
       overflow-wrap: anywhere;
     }
-    .avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--border);
-      object-fit: cover;
-      flex: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 0.85rem;
-    }
     .role {
       color: var(--muted);
       font-size: 0.8rem;
@@ -119,11 +106,11 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         @if (book().owner; as o) {
           <li data-member="owner">
             <span class="who">
-              @if (src(o); as s) {
-                <img class="avatar" [src]="s" alt="" />
-              } @else {
-                <span class="avatar" aria-hidden="true">{{ initial(o) }}</span>
-              }
+              <app-avatar
+                [name]="o.displayName || o.username"
+                [avatarUrl]="o.avatarUrl"
+                [size]="32"
+              />
               <span>{{ o.displayName }}</span>
             </span>
             <span class="role">{{ t('cookbooks.roleOwner') }}</span>
@@ -132,11 +119,11 @@ import { RemoveMemberDialog } from './remove-member.dialog';
         @for (a of book().authors; track a.id ?? a.username) {
           <li data-member="author">
             <span class="who">
-              @if (src(a); as s) {
-                <img class="avatar" [src]="s" alt="" />
-              } @else {
-                <span class="avatar" aria-hidden="true">{{ initial(a) }}</span>
-              }
+              <app-avatar
+                [name]="a.displayName || a.username"
+                [avatarUrl]="a.avatarUrl"
+                [size]="32"
+              />
               <span>{{ a.displayName }}</span>
             </span>
             @if (book().role === 'OWNER' && a.id && !site.demo()) {
@@ -217,10 +204,6 @@ export class MembersPanelComponent {
       untracked(() => void this.list.load());
     });
   }
-
-  protected src = (p: Person): string | null => mediaUrl(p.avatarUrl);
-  protected initial = (p: Person): string =>
-    [...(p.displayName || p.username)][0]?.toUpperCase() ?? '?';
 
   protected async remove(a: Person): Promise<void> {
     await this.removeAuthor(a.id as string, { name: a.displayName, self: false }, false);

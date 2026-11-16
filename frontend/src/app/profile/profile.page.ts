@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { errorKey, toApiError } from '../core/api-error';
 import { mediaUrl } from '../core/media';
+import { AvatarComponent } from '../shared/avatar.component';
 import { PageTitle } from '../core/page-title';
 import { LanguageService } from '../core/language';
 import { ProfileApi } from './profile.api';
@@ -10,7 +11,7 @@ import { Profile, ProfileRecipe } from './profile.model';
 
 @Component({
   selector: 'app-user-profile-page',
-  imports: [RouterLink, TranslocoDirective],
+  imports: [RouterLink, TranslocoDirective, AvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['../recipes/recipes.scss', './profile.page.scss'],
   template: `
@@ -24,11 +25,7 @@ import { Profile, ProfileRecipe } from './profile.model';
         <button type="button" class="retry" (click)="load()">{{ t('common.retry') }}</button>
       } @else if (profile(); as p) {
         <div class="head">
-          @if (avatar(p); as a) {
-            <img class="avatar" [src]="a" alt="" />
-          } @else {
-            <span class="avatar" aria-hidden="true"></span>
-          }
+          <app-avatar [name]="p.person.displayName" [avatarUrl]="p.person.avatarUrl" [size]="64" />
           <div>
             <h1>{{ p.person.displayName }}</h1>
             <p class="handle">&#64;{{ p.person.username }}</p>
@@ -137,10 +134,6 @@ export class UserProfilePage {
       if (err.status === 404) this.notFound.set(true);
       else this.error.set(errorKey(err));
     }
-  }
-
-  protected avatar(p: Profile): string | null {
-    return mediaUrl(p.person.avatarUrl);
   }
 
   protected thumb(url: string | null): string | null {
