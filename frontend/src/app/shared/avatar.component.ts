@@ -19,14 +19,14 @@ import { mediaUrl } from '../core/media';
       flex: none;
       border-radius: 50%;
       overflow: hidden;
-      background: var(--pill-bg);
-      color: var(--pill-ink);
+      background: var(--avatar-bg, var(--border));
+      color: var(--avatar-ink, var(--ink));
     }
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      background: var(--border);
+      background: var(--avatar-bg, var(--border));
     }
     .initial {
       width: 100%;

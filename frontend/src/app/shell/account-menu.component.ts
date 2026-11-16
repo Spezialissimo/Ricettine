@@ -103,6 +103,10 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
       border-color: rgba(255, 255, 255, 0.35);
       background: rgba(255, 255, 255, 0.14);
     }
+    app-avatar {
+      --avatar-bg: var(--pill-bg);
+      --avatar-ink: var(--pill-ink);
+    }
     .name {
       min-width: 0;
       overflow: hidden;
