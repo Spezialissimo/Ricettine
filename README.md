@@ -9,14 +9,14 @@ A self-hosted recipe app for friends and family, built end to end with Claude Co
 
 <table>
   <tr>
-    <td><img src="docs/images/feed-desktop.png" alt="Ricettine feed on desktop: recent recipes from the people you follow" width="480"></td>
+    <td><img src="docs/images/feed-desktop.png" alt="Ricettine feed on desktop: the latest published recipes" width="480"></td>
     <td><img src="docs/images/recipe-desktop.png" alt="A recipe on desktop: photo, ingredients and steps" width="480"></td>
   </tr>
 </table>
 
 <table>
   <tr>
-    <td><img src="docs/images/feed-mobile.png" alt="Feed on a phone" width="200"></td>
+    <td><img src="docs/images/feed-mobile.png" alt="The feed of latest recipes on a phone" width="200"></td>
     <td><img src="docs/images/recipe-mobile.png" alt="A recipe on a phone" width="200"></td>
     <td><img src="docs/images/editor-mobile.png" alt="Recipe editor on a phone" width="200"></td>
   </tr>
@@ -30,7 +30,7 @@ A self-hosted recipe app for friends and family, built end to end with Claude Co
 - **AI-assisted workflow.** Specs, plans, code, tests and reviews written by Claude Code, with the owner deciding the product: [docs/ai-workflow.md](docs/ai-workflow.md).
 - **Internationalisation.** Italian and English through Transloco, with a unit test that fails when the two files differ: [architecture](docs/architecture.md#frontend).
 - **Accessibility basics.** Labels on controls and touch targets of at least 44 px, desktop first and responsive at 768 px: [decisions](docs/decisions.md#4-desktop-first-responsive-at-768-px).
-- **Security.** Invite-only registration, sessions in Postgres, a documented threat model: [docs/security.md](docs/security.md).
+- **Security.** Invite-only registration, sessions in Postgres, rate limits and a read-only, isolated demo: [docs/security.md](docs/security.md).
 
 ## Tech stack
 
@@ -53,7 +53,7 @@ Open <http://localhost:8080> and create the admin account; the admin then invite
 
 - [Architecture](docs/architecture.md): containers, modules, data model, main flows, frontend.
 - [Decisions](docs/decisions.md): the main design decisions in short ADR form.
-- [Security](docs/security.md): measures in code and infrastructure, and the threat model.
+- [Security](docs/security.md): measures in code and infrastructure.
 - [Quality](docs/quality.md): test layers, check scripts and the code audit.
 - [Deployment](docs/deployment.md): Docker Compose, HTTPS, upgrades, backups and AWS.
 - [AI workflow](docs/ai-workflow.md): how Claude Code was used, what steers it, what went wrong.

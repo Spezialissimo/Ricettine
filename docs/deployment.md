@@ -1,6 +1,6 @@
 # Deployment
 
-How to run Ricettine yourself: with Docker Compose on any host, or on AWS with the Terraform in `infra/terraform/`. For the design behind the stack see [architecture.md](architecture.md); for the threat model see [security.md](security.md).
+How to run Ricettine yourself: with Docker Compose on any host, or on AWS with the Terraform in `infra/terraform/`. For the design behind the stack see [architecture.md](architecture.md); for the security measures see [security.md](security.md).
 
 - [Self-hosting with Docker Compose](#self-hosting-with-docker-compose): configuration, HTTPS, upgrading, backups.
 - [Hosting on AWS](#hosting-on-aws): topology, cost, first deploy, upgrade, restore, rotate the origin secret, demo site, teardown.
