@@ -9,7 +9,7 @@
 
 </div>
 
-Ricettine is a website where users can create and share recipes. They can also collect recipes in cookbooks that they can share with other users.
+Ricettine is a small recipe website: you write your recipes, share them by link or publicly, and collect them in cookbooks that other people can help you fill.
 
 The original idea comes from the simple need for my girlfriend and me to have a space where we could share and manage our recipes. I decided to take the chance to learn how a project can go from zero to a working service using Claude Code.
 
