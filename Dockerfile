@@ -28,8 +28,14 @@ COPY --from=backend /app.jar /app/app.jar
 USER ricettine
 WORKDIR /app
 ENV RICETTINE_STORAGE_LOCAL_PATH=/data/media
-# Size the heap from the container memory limit (default is only 25%) so it fits small hosts without OOM kills.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+# Bound the whole process inside the container memory limit, not just the heap (the default heap is only 25%):
+# the heap is 60% of the limit and glibc malloc arenas are capped, so that heap plus non-heap plus the native
+# image-decoding buffers stay under the limit (both sites run in one JVM). Metaspace and the code cache are left
+# uncapped on purpose: a cap only reserves less address space (no RSS saved) but turns a full code cache into a
+# JIT shutdown and a full metaspace into an OutOfMemoryError. Measured after the e2e suite: metaspace ~108 MB
+# used, code cache ~19 MB used.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=60"
+ENV MALLOC_ARENA_MAX=2
 VOLUME /data
 EXPOSE 8080
 # The JRE image has no curl/wget; probe with bash's /dev/tcp instead.

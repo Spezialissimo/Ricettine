@@ -44,6 +44,9 @@ import {
  * ingredients and notes left; steps right; no bottom bar), a single column with a fixed bottom bar on
  * the phone. Ingredients and steps editors and Publish arrive in Task 8, photos in Task 10.
  */
+/** How long the demo shows "not saved" after Save before leaving the editor. */
+const DEMO_DONE_DELAY_MS = 1500;
+
 @Component({
   selector: 'app-recipe-editor-page',
   imports: [
@@ -86,16 +89,18 @@ import {
             statusKey() === 'idle' ? '' : t('editor.status.' + statusKey())
           }}</span>
           <span class="spacer"></span>
-          <button
-            type="button"
-            class="icon-btn preview"
-            [attr.aria-label]="t('editor.preview')"
-            [attr.title]="t('editor.preview')"
-            [disabled]="busy()"
-            (click)="preview()"
-          >
-            <app-icon name="eye" />
-          </button>
+          @if (!store.local) {
+            <button
+              type="button"
+              class="icon-btn preview"
+              [attr.aria-label]="t('editor.preview')"
+              [attr.title]="t('editor.preview')"
+              [disabled]="busy()"
+              (click)="preview()"
+            >
+              <app-icon name="eye" />
+            </button>
+          }
           @if (store.server()?.status === 'DRAFT') {
             <button
               type="button"
@@ -111,28 +116,38 @@ import {
           <button type="button" class="btn save" [disabled]="busy()" (click)="done()">
             {{ t('editor.save') }}
           </button>
-          <button
-            type="button"
-            class="btn more"
-            [attr.aria-label]="t('editor.more')"
-            [disabled]="busy()"
-            [cdkMenuTriggerFor]="menu"
-          >
-            ⋯
-          </button>
-          <ng-template #menu>
-            <div class="menu" cdkMenu>
-              <button
-                type="button"
-                class="menu-item danger"
-                cdkMenuItem
-                (cdkMenuItemTriggered)="confirmDelete()"
-              >
-                {{ t('editor.delete') }}
-              </button>
-            </div>
-          </ng-template>
+          <!-- the menu only holds Delete, which the demo does not have -->
+          @if (!store.local) {
+            <button
+              type="button"
+              class="btn more"
+              [attr.aria-label]="t('editor.more')"
+              [disabled]="busy()"
+              [cdkMenuTriggerFor]="menu"
+            >
+              ⋯
+            </button>
+            <ng-template #menu>
+              <div class="menu" cdkMenu>
+                <button
+                  type="button"
+                  class="menu-item danger"
+                  cdkMenuItem
+                  (cdkMenuItemTriggered)="confirmDelete()"
+                >
+                  {{ t('editor.delete') }}
+                </button>
+              </div>
+            </ng-template>
+          }
         </header>
+
+        @if (store.local) {
+          <p class="hint demo-notice" role="status">{{ t('demo.notSaved') }}</p>
+        }
+        @if (notSavedToast()) {
+          <p class="demo-toast" role="status">{{ t('demo.notSaved') }}</p>
+        }
 
         @if (store.status() === 'conflict') {
           <section class="conflict" role="alert">
@@ -277,15 +292,17 @@ import {
 
         <!-- phone: the page's actions sit at the bottom, under the thumb -->
         <div class="bottom-bar">
-          <button
-            type="button"
-            class="icon-btn labelled preview"
-            [disabled]="busy()"
-            (click)="preview()"
-          >
-            <app-icon name="eye" />
-            {{ t('editor.preview') }}
-          </button>
+          @if (!store.local) {
+            <button
+              type="button"
+              class="icon-btn labelled preview"
+              [disabled]="busy()"
+              (click)="preview()"
+            >
+              <app-icon name="eye" />
+              {{ t('editor.preview') }}
+            </button>
+          }
           @if (store.server()?.status === 'DRAFT') {
             <button
               type="button"
@@ -319,6 +336,9 @@ export class RecipeEditorPage {
   protected readonly draggingFiles = signal(false);
   /** A photo dropped outside the cover and the steps: say where it goes (the tab is not replaced by the image). */
   protected readonly missedDrop = signal(false);
+  /** The demo's "not saved" message after Save or Publish (it saves nothing). */
+  protected readonly notSavedToast = signal(false);
+  private toastEnd?: ReturnType<typeof setTimeout>;
   private dragEnd?: ReturnType<typeof setTimeout>;
   private missedEnd?: ReturnType<typeof setTimeout>;
   private readonly ingredients = viewChild(IngredientsEditorComponent);
@@ -379,7 +399,7 @@ export class RecipeEditorPage {
     });
     // closing the tab with a photo still uploading or failed: the browser asks first
     const beforeUnload = (e: BeforeUnloadEvent) => {
-      if (!this.store.uploadsUnfinished()) return;
+      if (this.store.local || !this.store.uploadsUnfinished()) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -388,6 +408,7 @@ export class RecipeEditorPage {
       window.removeEventListener('beforeunload', beforeUnload);
       clearTimeout(this.dragEnd);
       clearTimeout(this.missedEnd);
+      clearTimeout(this.toastEnd);
     });
     void this.store.load(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '');
   }
@@ -397,7 +418,7 @@ export class RecipeEditorPage {
    * Signed out (session expired, logout) it never holds the redirect up: that upload cannot succeed.
    */
   async canLeave(): Promise<boolean> {
-    if (!this.store.uploadsUnfinished() || this.auth.me() === null) return true;
+    if (this.store.local || !this.store.uploadsUnfinished() || this.auth.me() === null) return true;
     return confirmSheet(this.dialog, this.injector, this.i18n, {
       titleKey: 'editor.leaveConfirm.title',
       bodyKey: 'editor.leaveConfirm.body',
@@ -405,6 +426,12 @@ export class RecipeEditorPage {
       confirmKey: 'editor.leaveConfirm.leave',
       cancelPrimary: true,
     });
+  }
+
+  private showNotSaved(): void {
+    this.notSavedToast.set(true);
+    clearTimeout(this.toastEnd);
+    this.toastEnd = setTimeout(() => this.notSavedToast.set(false), 4000);
   }
 
   /** Preview: saves like Done (stays when something cannot be saved yet), then shows the reader's view. */
@@ -437,6 +464,7 @@ export class RecipeEditorPage {
   /** Publish: save first, then publish. recipe_incomplete highlights the missing sections. */
   async publish(): Promise<void> {
     if (this.busy()) return;
+    if (this.store.local) return this.showNotSaved();
     this.busy.set(true);
     this.actionError.set(null);
     this.requested.set([]);
@@ -500,6 +528,15 @@ export class RecipeEditorPage {
    */
   async done(): Promise<void> {
     if (this.busy()) return;
+    if (this.store.local) {
+      // the demo saves nothing: say so, give the notice a moment to be read, then go where Done on a new draft goes
+      this.busy.set(true);
+      this.showNotSaved();
+      await new Promise<void>((resolve) => setTimeout(resolve, DEMO_DONE_DELAY_MS));
+      this.busy.set(false);
+      await this.router.navigateByUrl('/kitchen/recipes');
+      return;
+    }
     if (this.store.uploading()) {
       // a photo still going up is not saved yet: stay, so it is not lost
       this.actionError.set('editor.uploadsInProgress');

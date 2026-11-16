@@ -9,10 +9,12 @@ import { CookbookApi } from '../../cookbooks/cookbook.api';
 import { AddToCookbookDialog } from '../../cookbooks/add-to-cookbook.dialog';
 import { openSheet } from '../../shared/sheet';
 import { AuthStore } from '../../core/auth.store';
+import { Site } from '../../core/site';
 import { LanguageService } from '../../core/language';
 import { PageTitle } from '../../core/page-title';
 import { errorKey, toApiError } from '../../core/api-error';
 import { mediaUrl } from '../../core/media';
+import { AvatarComponent } from '../../shared/avatar.component';
 import { scaleAmount, shownAmount } from '../amount';
 import { unitKey } from '../units';
 import { durationKey } from '../editor/time-sheet.component';
@@ -33,6 +35,7 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
 @Component({
   selector: 'app-recipe-view-page',
   imports: [
+    AvatarComponent,
     TopBarComponent,
     TranslocoDirective,
     RouterLink,
@@ -94,7 +97,12 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
                actions, photo, ingredients, steps. -->
           <section class="recipe-head" aria-labelledby="recipe-title">
             @let url = shareUrl(r);
-            @let canAdd = !!auth.me() && !viaCookbook && !preview && (!own || ownPublished());
+            @let canAdd =
+              !siteInfo.demo() &&
+              !!auth.me() &&
+              !viaCookbook &&
+              !preview &&
+              (!own || ownPublished());
             @let canEdit = r.viewerIsAuthor && !!r.recipeId;
             <!-- phone: the photo with the title over its bottom edge and a ⋯ menu in its corner (owner sketch);
                  desktop: the wrapper dissolves into the card's grid -->
@@ -142,11 +150,11 @@ const isWebUrl = (s: string) => /^https?:\/\//i.test(s);
                     </p>
                   }
                   <div class="author">
-                    @if (avatar(r); as a) {
-                      <img class="avatar" [src]="a" alt="" />
-                    } @else {
-                      <span class="avatar" aria-hidden="true"></span>
-                    }
+                    <app-avatar
+                      [name]="r.author.displayName"
+                      [avatarUrl]="r.author.avatarUrl"
+                      [size]="32"
+                    />
                     @if (auth.me()) {
                       <a class="by" [routerLink]="['/u', r.author.username]">{{
                         t('recipes.by', { name: r.author.displayName })
@@ -315,6 +323,7 @@ export class RecipeViewPage {
   private readonly i18n = inject(TranslocoService);
   private readonly language = inject(LanguageService);
   protected readonly auth = inject(AuthStore);
+  protected readonly siteInfo = inject(Site);
   protected readonly wake = inject(ScreenWakeLock);
   private readonly snapshot = inject(ActivatedRoute).snapshot;
   /** Opened through a cookbook link (/c/:token/r/:recipeId) instead of the recipe's own link. */
@@ -460,7 +469,8 @@ export class RecipeViewPage {
   /** Share sheet for every reader; the author also gets Reset link (not through a cookbook link). */
   protected share(r: PublicRecipe, url: string): void {
     const id = r.recipeId;
-    const canReset = (r.viewerIsAuthor || this.preview) && !!id && !this.viaCookbook;
+    const canReset =
+      !this.siteInfo.demo() && (r.viewerIsAuthor || this.preview) && !!id && !this.viaCookbook;
     const data: ShareRecipeData = {
       url,
       reset: canReset ? () => this.resetLink(id!) : undefined,
@@ -521,8 +531,5 @@ export class RecipeViewPage {
   }
   protected stepPhoto(p: { displayUrl: string } | null): string | null {
     return mediaUrl(p?.displayUrl);
-  }
-  protected avatar(r: PublicRecipe): string | null {
-    return mediaUrl(r.author.avatarUrl);
   }
 }

@@ -63,7 +63,8 @@
     "newPassword": "Nuova password",
     "required": "Questo campo è obbligatorio.",
     "register": "Crea account",
-    "fillBoth": "Inserisci email e password."
+    "fillBoth": "Inserisci email e password.",
+    "tryDemo": "Prova la demo"
   },
   "setup": {
     "title": "Configura Ricettine",
@@ -192,7 +193,8 @@
     "photo_unreadable": "Non è stato possibile leggere la foto. Salvala prima come file, poi trascinala o usa Aggiungi foto.",
     "image_url_invalid": "Questo indirizzo dell'immagine non può essere usato.",
     "image_url_not_allowed": "Questo indirizzo dell'immagine non è consentito.",
-    "image_url_unreachable": "Non è stato possibile scaricare l'immagine da quella pagina. Riprova, oppure salvala e usa Aggiungi foto."
+    "image_url_unreachable": "Non è stato possibile scaricare l'immagine da quella pagina. Riprova, oppure salvala e usa Aggiungi foto.",
+    "demoReadOnly": "Non disponibile nella demo."
   },
   "invite": {
     "title": "Unisciti a Ricettine",
@@ -532,5 +534,11 @@
     "showMore": "Mostra altro",
     "showMoreRecipes": "Mostra altre ricette",
     "showMoreCookbooks": "Mostra altri ricettari"
+  },
+  "demo": {
+    "banner": "Questa è una demo: puoi esplorare e provare l'editor, ma le modifiche non vengono salvate.",
+    "backToSite": "Vai a ricettine.food",
+    "credits": "Ricette da TheMealDB e Wikibooks, foto da Unsplash, Pexels e Wikimedia Commons",
+    "notSaved": "Modalità demo: non salvato"
   }
 }

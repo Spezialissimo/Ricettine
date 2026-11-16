@@ -1,9 +1,11 @@
+import { inject } from '@angular/core';
+import { Site } from './core/site';
 import { Routes } from '@angular/router';
 import { LoginPage } from './auth/login.page';
 import { RegisterPage } from './auth/register.page';
 import { ResetPasswordPage } from './auth/reset-password.page';
 import { SetupPage } from './auth/setup.page';
-import { adminGuard, authGuard, guestGuard, setupGuard } from './core/auth.guards';
+import { adminGuard, authGuard, guestGuard, notDemoGuard, setupGuard } from './core/auth.guards';
 import { InvitesPage } from './admin/invites.page';
 import { UsersPage } from './admin/users.page';
 import { DeleteAccountPage } from './settings/delete-account.page';
@@ -135,8 +137,17 @@ export const routes: Routes = [
             path: 'settings',
             component: SettingsLayoutComponent,
             children: [
-              { path: '', pathMatch: 'full', redirectTo: 'profile' },
-              { path: 'profile', title: 'titles.profile', component: ProfilePage },
+              {
+                path: '',
+                pathMatch: 'full',
+                redirectTo: () => (inject(Site).demo() ? 'appearance' : 'profile'),
+              },
+              {
+                path: 'profile',
+                title: 'titles.profile',
+                component: ProfilePage,
+                canActivate: [notDemoGuard],
+              },
               {
                 path: 'appearance',
                 title: 'titles.appearance',
@@ -148,8 +159,18 @@ export const routes: Routes = [
                 title: 'titles.language',
                 loadComponent: () => import('./settings/language.page').then((m) => m.LanguagePage),
               },
-              { path: 'password', title: 'titles.password', component: PasswordPage },
-              { path: 'delete', title: 'titles.deleteAccount', component: DeleteAccountPage },
+              {
+                path: 'password',
+                title: 'titles.password',
+                component: PasswordPage,
+                canActivate: [notDemoGuard],
+              },
+              {
+                path: 'delete',
+                title: 'titles.deleteAccount',
+                component: DeleteAccountPage,
+                canActivate: [notDemoGuard],
+              },
               { path: 'admin', pathMatch: 'full', redirectTo: 'admin/invites' },
               {
                 path: 'admin/invites',

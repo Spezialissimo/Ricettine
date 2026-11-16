@@ -52,6 +52,11 @@ describe('api-error', () => {
     }
   });
 
+  it('maps the demo read-only refusal to its message', () => {
+    expect(errorKey({ status: 403, code: 'demo_read_only' })).toBe('errors.demoReadOnly');
+    expect(en.errors.demoReadOnly).toBeTruthy();
+  });
+
   it('errorKey falls back to errors.unknown', () => {
     expect(errorKey({ status: 409, code: 'email_taken' })).toBe('errors.email_taken');
     expect(errorKey({ status: 418, code: 'teapot' })).toBe('errors.unknown');
@@ -65,7 +70,7 @@ describe('api-error', () => {
   });
 
   it('every error message in en.json is reachable: a known code, or a key the editor uses directly', () => {
-    const direct = ['photo_from_link', 'photo_unreadable'];
+    const direct = ['photo_from_link', 'photo_unreadable', 'demoReadOnly'];
     const messages = Object.entries(en.errors)
       .filter(([, v]) => typeof v === 'string')
       .map(([k]) => k);

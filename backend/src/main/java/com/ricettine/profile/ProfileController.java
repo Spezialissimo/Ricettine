@@ -3,6 +3,7 @@ package com.ricettine.profile;
 import com.ricettine.auth.CurrentUser;
 import com.ricettine.common.RateLimits;
 import com.ricettine.profile.ProfileDtos.ProfileDto;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +27,9 @@ public class ProfileController {
 	}
 
 	@GetMapping("/{username}/profile")
-	ResponseEntity<ProfileDto> profile(@PathVariable String username) {
+	ResponseEntity<ProfileDto> profile(@PathVariable String username, HttpServletRequest request) {
 		UUID me = currentUser.id();
-		limits.profile(me);
+		limits.profile(me, request.getRemoteAddr());
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore())
 			.body(profiles.profile(username, me));
 	}

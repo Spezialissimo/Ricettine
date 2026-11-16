@@ -8,6 +8,7 @@ import { btn, clearOverlays, overlay, person, settle } from '../../testing/spec-
 import { CookbookApi } from '../cookbook.api';
 import { PublicCookbook } from '../cookbook.model';
 import { CookbookViewPage } from './cookbook-view.page';
+import { provideSite } from '../../testing/site';
 
 const pub = (over: Partial<PublicCookbook> = {}): PublicCookbook => ({
   name: 'Desserts',
@@ -148,5 +149,33 @@ describe('CookbookViewPage', () => {
     );
     expect(el.textContent).toContain(en.cookbooks.notFound);
     expect(el.querySelector('app-cookbook-hero')).toBeNull();
+  });
+});
+
+describe('CookbookViewPage in the demo', () => {
+  it('has no Edit link for a member', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        {
+          provide: CookbookApi,
+          useValue: {
+            byToken: vi.fn().mockResolvedValue(pub({ viewerRole: 'OWNER', cookbookId: 'c1' })),
+          },
+        },
+        { provide: AuthStore, useValue: { me: signal({ username: 'ospite' }) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ token: 't' }) } },
+        },
+      ],
+    });
+    const f = TestBed.createComponent(CookbookViewPage);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('h1')).not.toBeNull();
+    expect(el.querySelector('a[href="/cookbooks/c1/edit"]')).toBeNull();
   });
 });

@@ -1,0 +1,1523 @@
+{
+  "users": [
+    {
+      "username": "davide",
+      "displayName": "Davide",
+      "avatar": "avatars/davide.jpg"
+    },
+    {
+      "username": "ospite",
+      "displayName": "Ospite",
+      "avatar": null
+    }
+  ],
+  "recipes": [
+    {
+      "key": "carbonara",
+      "author": "davide",
+      "title": "Spaghetti alla carbonara",
+      "portions": 4,
+      "prepMinutes": 15,
+      "cookMinutes": 15,
+      "notes": "Niente panna: la cremosità viene dai tuorli, dal pecorino e dall'acqua di cottura. Se vuoi la versione romana più fedele, usa il guanciale al posto della pancetta.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "carbonara",
+      "groups": [
+        {
+          "name": null,
+          "ingredients": [
+            {
+              "amount": 320,
+              "unit": "g",
+              "name": "spaghetti",
+              "note": null
+            },
+            {
+              "amount": 6,
+              "unit": "piece",
+              "name": "tuorli",
+              "note": null
+            },
+            {
+              "amount": 150,
+              "unit": "g",
+              "name": "pancetta o guanciale",
+              "note": "a dadini"
+            },
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "pecorino romano",
+              "note": "grattugiato"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "q.b."
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "pepe nero",
+              "note": "q.b., macinato al momento"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Metti sul fuoco una pentola grande con acqua e portala a bollore."
+        },
+        {
+          "text": "Taglia la pancetta a dadini e falla rosolare in una padella ampia, senza aggiungere grassi, a fuoco medio per circa 5 minuti, finché diventa dorata e croccante. Spegni il fuoco."
+        },
+        {
+          "text": "In una ciotola sbatti i tuorli con una frusta. Tieni vicino il pecorino grattugiato e la pancetta croccante, scolata su carta assorbente.",
+          "photo": "carbonara-1"
+        },
+        {
+          "text": "Aggiungi il pecorino ai tuorli e mescola.",
+          "photo": "carbonara-2"
+        },
+        {
+          "text": "Prosegui con una generosa macinata di pepe, finché ottieni una crema densa.",
+          "photo": "carbonara-3"
+        },
+        {
+          "text": "Sala l'acqua e cuoci gli spaghetti al dente. Scolali tenendo da parte una tazza di acqua di cottura."
+        },
+        {
+          "text": "Trasferisci la pasta nella padella con la pancetta, a fuoco spento. Versa la crema di uova e mescola velocemente, aggiungendo un po' di acqua di cottura alla volta finché la salsa diventa lucida e cremosa.",
+          "photo": "carbonara-4"
+        },
+        {
+          "text": "Servi subito, con altro pecorino e pepe.",
+          "photo": "carbonara-5"
+        }
+      ]
+    },
+    {
+      "key": "bolognese",
+      "author": "ospite",
+      "title": "Spaghetti al ragù",
+      "portions": 4,
+      "prepMinutes": 15,
+      "cookMinutes": 40,
+      "notes": "Non è il ragù alla bolognese tradizionale (quello cuoce per ore), ma una versione veloce da settimana. Se ti avanza, si congela benissimo.",
+      "visibility": "PUBLIC",
+      "published": false,
+      "photo": "bolognese",
+      "groups": [
+        {
+          "name": "Per il sugo",
+          "ingredients": [
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "cipolle",
+              "note": "tritate"
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "clove",
+              "name": "aglio",
+              "note": "tritato"
+            },
+            {
+              "amount": 500,
+              "unit": "g",
+              "name": "macinato di manzo magro",
+              "note": null
+            },
+            {
+              "amount": 90,
+              "unit": "g",
+              "name": "funghi",
+              "note": "a fettine"
+            },
+            {
+              "amount": 1,
+              "unit": "tsp",
+              "name": "origano secco",
+              "note": null
+            },
+            {
+              "amount": 400,
+              "unit": "g",
+              "name": "pomodori pelati",
+              "note": "1 lattina"
+            },
+            {
+              "amount": 300,
+              "unit": "ml",
+              "name": "brodo di manzo",
+              "note": "caldo"
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "concentrato di pomodoro",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "salsa Worcestershire",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale e pepe",
+              "note": "q.b."
+            }
+          ]
+        },
+        {
+          "name": "Per servire",
+          "ingredients": [
+            {
+              "amount": 350,
+              "unit": "g",
+              "name": "spaghetti",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "parmigiano",
+              "note": "da grattugiare sopra"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Fai soffriggere le cipolle nell'olio in una pentola capiente, a fuoco abbastanza vivace, per 3-4 minuti."
+        },
+        {
+          "text": "Aggiungi l'aglio e il macinato e rosola finché la carne è ben dorata. Unisci i funghi e l'origano e cuoci ancora un paio di minuti."
+        },
+        {
+          "text": "Versa i pelati, il brodo, il concentrato, la salsa Worcestershire, sale e pepe. Porta a bollore, abbassa la fiamma, copri e lascia sobbollire per 30 minuti, mescolando ogni tanto."
+        },
+        {
+          "text": "Intanto cuoci gli spaghetti in abbondante acqua salata. Scolali, rimettili nella pentola e condiscili con il sugo."
+        },
+        {
+          "text": "Servi nei piatti ben caldi con una spolverata di parmigiano."
+        }
+      ]
+    },
+    {
+      "key": "arrabbiata",
+      "author": "ospite",
+      "title": "Penne all'arrabbiata",
+      "portions": 4,
+      "prepMinutes": 10,
+      "cookMinutes": 15,
+      "notes": "Per un piccante più deciso aumenta il peperoncino. Il parmigiano non è tradizionale, ma a molti piace: ometti pure.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "arrabbiata",
+      "groups": [
+        {
+          "name": null,
+          "ingredients": [
+            {
+              "amount": 450,
+              "unit": "g",
+              "name": "penne rigate",
+              "note": null
+            },
+            {
+              "amount": 60,
+              "unit": "ml",
+              "name": "olio extravergine d'oliva",
+              "note": null
+            },
+            {
+              "amount": 3,
+              "unit": "clove",
+              "name": "aglio",
+              "note": "a fettine"
+            },
+            {
+              "amount": 400,
+              "unit": "g",
+              "name": "pomodori pelati",
+              "note": "1 lattina, spezzettati"
+            },
+            {
+              "amount": 0.5,
+              "unit": "tsp",
+              "name": "peperoncino in fiocchi",
+              "note": null
+            },
+            {
+              "amount": 0.5,
+              "unit": "tsp",
+              "name": "erbe aromatiche italiane",
+              "note": null
+            },
+            {
+              "amount": 6,
+              "unit": "piece",
+              "name": "foglie di basilico",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale e pepe",
+              "note": "q.b."
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "parmigiano reggiano",
+              "note": "a scaglie, per servire"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Porta a bollore una pentola grande di acqua, salala e cuoci le penne seguendo i tempi sulla confezione, circa 9 minuti."
+        },
+        {
+          "text": "Intanto scalda l'olio in una padella larga a fuoco medio-alto. Aggiungi l'aglio e fallo rosolare un paio di minuti, mescolando, finché profuma."
+        },
+        {
+          "text": "Unisci i pomodori, il peperoncino, le erbe aromatiche, sale e pepe. Porta a bollore e cuoci per 5 minuti. Spegni e aggiungi il basilico spezzettato."
+        },
+        {
+          "text": "Scola la pasta, versala nella padella e mescola bene. Servi calda con scaglie di parmigiano e altro basilico."
+        }
+      ]
+    },
+    {
+      "key": "lasagne",
+      "author": "davide",
+      "title": "Lasagne al forno",
+      "portions": 6,
+      "prepMinutes": 40,
+      "cookMinutes": 60,
+      "notes": "Qui la besciamella è sostituita dalla crème fraîche, più veloce da preparare. Si può assemblare il giorno prima e infornare al momento.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "lasagne",
+      "groups": [
+        {
+          "name": "Per il ragù",
+          "ingredients": [
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "slice",
+              "name": "pancetta",
+              "note": "a pezzetti"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "cipolla",
+              "note": "tritata finemente"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "gambo di sedano",
+              "note": "tritato"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "carota",
+              "note": "media, tritata"
+            },
+            {
+              "amount": 2,
+              "unit": "clove",
+              "name": "aglio",
+              "note": "tritato"
+            },
+            {
+              "amount": 500,
+              "unit": "g",
+              "name": "macinato di manzo",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "concentrato di pomodoro",
+              "note": null
+            },
+            {
+              "amount": 800,
+              "unit": "g",
+              "name": "pomodori pelati",
+              "note": "2 lattine"
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "miele",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale e pepe",
+              "note": "q.b."
+            }
+          ]
+        },
+        {
+          "name": "Per assemblare",
+          "ingredients": [
+            {
+              "amount": 500,
+              "unit": "g",
+              "name": "sfoglie di lasagna",
+              "note": null
+            },
+            {
+              "amount": 400,
+              "unit": "ml",
+              "name": "crème fraîche",
+              "note": null
+            },
+            {
+              "amount": 125,
+              "unit": "g",
+              "name": "mozzarella",
+              "note": "a pezzetti"
+            },
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "parmigiano",
+              "note": "grattugiato"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "basilico",
+              "note": "per decorare"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda l'olio in una pentola capiente e fai dorare la pancetta a pezzetti per qualche minuto. Aggiungi cipolla, sedano e carota e cuoci a fuoco medio per 5 minuti, mescolando, finché si ammorbidiscono."
+        },
+        {
+          "text": "Unisci l'aglio e cuoci 1 minuto, poi aggiungi il macinato e rosolalo per circa 6 minuti, sgranandolo con un cucchiaio di legno."
+        },
+        {
+          "text": "Incorpora il concentrato di pomodoro e cuoci 1 minuto. Versa i pelati e riempi a metà le lattine con acqua per recuperare il sugo rimasto, poi aggiungila alla pentola. Unisci il miele, sala, pepa e lascia sobbollire per 20 minuti."
+        },
+        {
+          "text": "Scalda il forno a 200 °C (180 °C se ventilato). Distribuisci un mestolo di ragù sul fondo di una pirofila, copri con due sfoglie leggermente sovrapposte e ripeti con altro ragù e altra pasta. Fai così per tre strati, chiudendo con uno strato di pasta."
+        },
+        {
+          "text": "Mescola la crème fraîche con 2 cucchiai di acqua per renderla fluida e versala sull'ultimo strato. Aggiungi la mozzarella e il parmigiano."
+        },
+        {
+          "text": "Cuoci in forno per 25-30 minuti, finché è dorata e bolle ai bordi. Lascia riposare qualche minuto e servi con qualche foglia di basilico."
+        }
+      ]
+    },
+    {
+      "key": "osso-buco",
+      "author": "davide",
+      "title": "Ossobuco alla milanese",
+      "portions": 4,
+      "prepMinutes": 30,
+      "cookMinutes": 170,
+      "notes": "Il piatto classico lombardo si serve con il risotto alla milanese. La gremolata finale (prezzemolo, aglio, scorza di limone) è quella che dà freschezza al piatto: non saltarla.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "osso-buco",
+      "groups": [
+        {
+          "name": "Per l'ossobuco",
+          "ingredients": [
+            {
+              "amount": 4,
+              "unit": "piece",
+              "name": "fette di stinco di vitello",
+              "note": "belle spesse"
+            },
+            {
+              "amount": 0.5,
+              "unit": "cup",
+              "name": "farina",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 3,
+              "unit": "tbsp",
+              "name": "burro",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "cipolla",
+              "note": "media, a pezzetti"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "carota",
+              "note": "a pezzetti"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "gambo di sedano",
+              "note": "a pezzetti"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "finocchio",
+              "note": "a pezzetti"
+            },
+            {
+              "amount": 3,
+              "unit": "clove",
+              "name": "aglio",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "strisce di scorza d'arancia",
+              "note": null
+            },
+            {
+              "amount": 1.5,
+              "unit": "tsp",
+              "name": "maggiorana",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "foglia di alloro",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "cup",
+              "name": "vino bianco secco",
+              "note": null
+            },
+            {
+              "amount": 0.5,
+              "unit": "cup",
+              "name": "brodo di pollo",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "cup",
+              "name": "pomodori",
+              "note": "a pezzetti, con il loro succo"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale e pepe",
+              "note": "q.b."
+            }
+          ]
+        },
+        {
+          "name": "Per la gremolata",
+          "ingredients": [
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "prezzemolo",
+              "note": "tritato"
+            },
+            {
+              "amount": 1,
+              "unit": "tsp",
+              "name": "aglio",
+              "note": "tritato finemente"
+            },
+            {
+              "amount": 1,
+              "unit": "tsp",
+              "name": "scorza di limone",
+              "note": "grattugiata"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda il forno a 150 °C. Passa le fette di stinco nella farina dopo averle salate e pepate, e scuoti via la farina in eccesso."
+        },
+        {
+          "text": "In un tegame largo e pesante scalda l'olio con 1 cucchiaio di burro. Rosola le fette per circa 5 minuti per lato, finché sono ben dorate, poi mettile da parte su un piatto."
+        },
+        {
+          "text": "Elimina il grasso dal tegame e pulisci il fondo dai residui bruciati. Sciogli il burro rimasto e rosola cipolla, carota, sedano e finocchio con un po' di sale e pepe per 6 minuti, senza farli colorire. Aggiungi l'aglio, la scorza d'arancia, la maggiorana e l'alloro e cuoci ancora un paio di minuti."
+        },
+        {
+          "text": "Versa il vino, alza la fiamma e fai sfumare finché si riduce della metà, circa 5 minuti. Aggiungi il brodo e i pomodori e fai ridurre il liquido a circa una tazza, per altri 10 minuti."
+        },
+        {
+          "text": "Rimetti le fette nel tegame con l'osso verso l'alto e versa sopra il loro sugo. Copri con un foglio di carta forno, chiudi col coperchio e inforna per circa 2 ore, girando le fette e bagnandole con il fondo dopo i primi 40 minuti, finché la carne si stacca dall'osso."
+        },
+        {
+          "text": "Prepara la gremolata mescolando prezzemolo, aglio e scorza di limone. Scopri il tegame, cospargi metà della gremolata e rimetti in forno per 15 minuti."
+        },
+        {
+          "text": "Sposta con delicatezza le fette su un piatto e tienile al caldo. Se il fondo è troppo liquido fallo restringere sul fuoco per 5-10 minuti, poi aggiusta di sale e pepe."
+        },
+        {
+          "text": "Servi l'ossobuco con il sugo e il resto della gremolata."
+        }
+      ]
+    },
+    {
+      "key": "ribollita",
+      "author": "davide",
+      "title": "Ribollita",
+      "portions": 4,
+      "prepMinutes": 20,
+      "cookMinutes": 45,
+      "notes": "Come tutte le zuppe toscane è ancora più buona il giorno dopo, quando è davvero «ribollita». Qui la versione veloce, con i cannellini già cotti.",
+      "visibility": "PRIVATE",
+      "published": true,
+      "photo": "ribollita",
+      "groups": [
+        {
+          "name": "Per la zuppa",
+          "ingredients": [
+            {
+              "amount": 5,
+              "unit": "tbsp",
+              "name": "olio extravergine d'oliva",
+              "note": "diviso"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "cipolla",
+              "note": "tritata"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "carota",
+              "note": "tritata"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "gambo di sedano",
+              "note": "tritato"
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "aglio",
+              "note": "tritato"
+            },
+            {
+              "amount": 2,
+              "unit": "cup",
+              "name": "fagioli cannellini",
+              "note": "già cotti o in scatola, scolati"
+            },
+            {
+              "amount": 1,
+              "unit": "can",
+              "name": "pomodori pelati",
+              "note": "con il loro succo"
+            },
+            {
+              "amount": 4,
+              "unit": "cup",
+              "name": "acqua o brodo",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "rametto di rosmarino",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "rametto di timo",
+              "note": null
+            },
+            {
+              "amount": 450,
+              "unit": "g",
+              "name": "cavolo nero",
+              "note": "a pezzi"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale e pepe",
+              "note": "q.b."
+            }
+          ]
+        },
+        {
+          "name": "Per finire",
+          "ingredients": [
+            {
+              "amount": 4,
+              "unit": "slice",
+              "name": "pane integrale",
+              "note": "spesse"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "cipolla rossa",
+              "note": "a fettine sottili"
+            },
+            {
+              "amount": 0.5,
+              "unit": "cup",
+              "name": "parmigiano",
+              "note": "grattugiato"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda 2 cucchiai di olio in una pentola capiente a fuoco medio. Aggiungi cipolla, carota, sedano e aglio, sala e pepa, e cuoci mescolando finché le verdure sono morbide, 5-10 minuti."
+        },
+        {
+          "text": "Scalda il forno a 250 °C. Aggiungi i fagioli, i pelati con il loro succo, l'acqua o il brodo, il rosmarino e il timo. Porta a bollore, poi abbassa la fiamma, copri e cuoci per 15-20 minuti, schiacciando i pomodori una o due volte."
+        },
+        {
+          "text": "Togli i rametti di rosmarino e timo, unisci il cavolo nero, assaggia e aggiusta di sale."
+        },
+        {
+          "text": "Copri la superficie con le fette di pane, cercando di sovrapporle il meno possibile. Distribuisci la cipolla rossa, condisci con i 3 cucchiai di olio rimasti e cospargi di parmigiano."
+        },
+        {
+          "text": "Inforna la pentola per 10-15 minuti, finché pane, cipolla e formaggio sono dorati e croccanti. Servi la zuppa con il pane in 4 ciotole."
+        }
+      ]
+    },
+    {
+      "key": "risotto-salmone-gamberi",
+      "author": "davide",
+      "title": "Risotto al salmone e gamberi",
+      "portions": 4,
+      "prepMinutes": 15,
+      "cookMinutes": 30,
+      "notes": "Il salmone è già abbastanza sapido, quindi assaggia prima di salare. Puoi sostituire gli asparagi con piselli o zucchine.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "risotto",
+      "groups": [
+        {
+          "name": null,
+          "ingredients": [
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 20,
+              "unit": "g",
+              "name": "burro",
+              "note": "per mantecare"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "cipolla",
+              "note": "tritata finemente"
+            },
+            {
+              "amount": 150,
+              "unit": "g",
+              "name": "riso per risotto",
+              "note": null
+            },
+            {
+              "amount": 125,
+              "unit": "ml",
+              "name": "vino bianco",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "l",
+              "name": "brodo vegetale",
+              "note": "caldo"
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "limone",
+              "note": "succo e scorza"
+            },
+            {
+              "amount": 240,
+              "unit": "g",
+              "name": "gamberi",
+              "note": "sgusciati"
+            },
+            {
+              "amount": 150,
+              "unit": "g",
+              "name": "salmone",
+              "note": "a cubetti"
+            },
+            {
+              "amount": 100,
+              "unit": "g",
+              "name": "punte di asparagi",
+              "note": "sbollentate"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "pepe nero",
+              "note": "macinato"
+            },
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "parmigiano",
+              "note": "a scaglie"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda l'olio in una padella larga e fai appassire la cipolla tritata finemente, senza farla colorire.",
+          "photo": "risotto-1"
+        },
+        {
+          "text": "Unisci il riso e tostalo mescolando, finché ogni chicco è ben unto.",
+          "photo": "risotto-2"
+        },
+        {
+          "text": "Versa il vino e lascialo evaporare mescolando, poi inizia ad aggiungere il brodo caldo.",
+          "photo": "risotto-3"
+        },
+        {
+          "text": "Continua ad aggiungere il brodo un mestolo alla volta, mescolando e aspettando che venga assorbito prima di aggiungerne altro. Servono circa 18 minuti.",
+          "photo": "risotto-4"
+        },
+        {
+          "text": "Il risotto è pronto quando il riso è morbido fuori e ancora al dente dentro, con una crema fluida. Assaggia per controllare.",
+          "photo": "risotto-5"
+        },
+        {
+          "text": "Unisci il salmone a cubetti al risotto e mescola a fuoco dolce per 2-3 minuti, finché cambia colore.",
+          "photo": "risotto-6"
+        },
+        {
+          "text": "Cuoci i gamberi in una padella a parte, 2-3 minuti per lato, finché diventano rosa."
+        },
+        {
+          "text": "Condisci il risotto con succo e scorza di limone, pepe e il burro. Servi con i gamberi, gli asparagi e scaglie di parmigiano."
+        }
+      ]
+    },
+    {
+      "key": "budino-ricotta",
+      "author": "davide",
+      "title": "Budino di ricotta al limone e rum",
+      "portions": 8,
+      "prepMinutes": 20,
+      "cookMinutes": 40,
+      "notes": "Più che un budino è una torta soffice, dalla consistenza simile a una cheesecake al forno. Ottima sia tiepida sia fredda, anche il giorno dopo.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "ricotta-cake",
+      "groups": [
+        {
+          "name": null,
+          "ingredients": [
+            {
+              "amount": 500,
+              "unit": "g",
+              "name": "ricotta",
+              "note": null
+            },
+            {
+              "amount": 4,
+              "unit": "piece",
+              "name": "uova",
+              "note": "grandi, tuorli e albumi separati"
+            },
+            {
+              "amount": 3,
+              "unit": "tbsp",
+              "name": "farina",
+              "note": null
+            },
+            {
+              "amount": 250,
+              "unit": "g",
+              "name": "zucchero",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "tsp",
+              "name": "cannella",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "limoni",
+              "note": "solo la scorza grattugiata"
+            },
+            {
+              "amount": 5,
+              "unit": "tbsp",
+              "name": "rum scuro",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "burro e farina",
+              "note": "per la tortiera"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "zucchero a velo",
+              "note": "per spolverare"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda il forno a 180 °C (160 °C se ventilato). Imburra e infarina una tortiera da 25 cm."
+        },
+        {
+          "text": "Schiaccia la ricotta e lavorala con i tuorli. Aggiungi farina, zucchero, cannella, scorza di limone e rum e mescola bene. Puoi fare tutto nel robot da cucina."
+        },
+        {
+          "text": "Monta gli albumi a neve ferma e incorporali delicatamente all'impasto, dal basso verso l'alto."
+        },
+        {
+          "text": "Versa nella tortiera e cuoci per circa 40 minuti, finché il budino è compatto."
+        },
+        {
+          "text": "Servilo tiepido o freddo, spolverato di zucchero a velo."
+        }
+      ]
+    },
+    {
+      "key": "ravioli-ricotta-spinaci",
+      "author": "davide",
+      "title": "Ravioli di ricotta e spinaci",
+      "portions": 4,
+      "prepMinutes": 75,
+      "cookMinutes": 5,
+      "notes": "La sfoglia asciuga in fretta: tieni coperta quella che non usi. I ravioli crudi si congelano bene, distanziati su un vassoio.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "ravioli",
+      "groups": [
+        {
+          "name": "Per la sfoglia",
+          "ingredients": [
+            {
+              "amount": 300,
+              "unit": "g",
+              "name": "farina 00",
+              "note": null
+            },
+            {
+              "amount": 3,
+              "unit": "piece",
+              "name": "uova",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "un pizzico"
+            }
+          ]
+        },
+        {
+          "name": "Per il ripieno",
+          "ingredients": [
+            {
+              "amount": 250,
+              "unit": "g",
+              "name": "ricotta",
+              "note": null
+            },
+            {
+              "amount": 200,
+              "unit": "g",
+              "name": "spinaci",
+              "note": "lessati e strizzati"
+            },
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "parmigiano",
+              "note": "grattugiato"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "noce moscata",
+              "note": "q.b."
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "q.b."
+            }
+          ]
+        },
+        {
+          "name": "Per condire",
+          "ingredients": [
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "burro",
+              "note": null
+            },
+            {
+              "amount": 8,
+              "unit": "piece",
+              "name": "foglie di salvia",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "parmigiano",
+              "note": "per servire"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Impasta la farina con le uova e un pizzico di sale fino a ottenere un panetto liscio. Avvolgilo e lascialo riposare 30 minuti."
+        },
+        {
+          "text": "Stendi la pasta con la macchina per la pasta, passandola più volte e stringendo i rulli a ogni passaggio, fino a ottenere una sfoglia sottile.",
+          "photo": "ravioli-1"
+        },
+        {
+          "text": "Strizza bene gli spinaci lessati, tritali e mescolali con la ricotta, il parmigiano, la noce moscata e un pizzico di sale."
+        },
+        {
+          "text": "Metti il ripieno in una tasca da pasticciere e fai tanti mucchietti, a distanza regolare, su una striscia di sfoglia.",
+          "photo": "ravioli-2"
+        },
+        {
+          "text": "Ripiega la sfoglia sul ripieno e premi con le dita attorno ai mucchietti, per far uscire l'aria.",
+          "photo": "ravioli-3"
+        },
+        {
+          "text": "In alternativa usa lo stampo per ravioli: stendi la sfoglia sullo stampo, riempi le formine, copri con una seconda sfoglia e passa il mattarello per sigillare e tagliare.",
+          "photo": "ravioli-4"
+        },
+        {
+          "text": "Taglia i ravioli con la rotella e disponili su un piano infarinato, senza farli toccare.",
+          "photo": "ravioli"
+        },
+        {
+          "text": "Cuoci i ravioli in acqua salata che bolle piano per 3-4 minuti, finché vengono a galla. Scolali con una schiumarola."
+        },
+        {
+          "text": "Sciogli il burro con la salvia, condisci i ravioli e servi con altro parmigiano."
+        }
+      ]
+    },
+    {
+      "key": "insalata-ceci-capra",
+      "author": "davide",
+      "title": "Insalata di ceci, coriandolo e formaggio di capra",
+      "portions": 4,
+      "prepMinutes": 30,
+      "cookMinutes": 0,
+      "notes": "Il coriandolo dà il sapore caratteristico a questa insalata e va usato in abbondanza, molto più di quanto metteresti di solito. Se non ti piace, sostituiscilo con altro prezzemolo. Variante: aggiungi fagioli bianchi o peperoni a pezzetti.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "chickpea",
+      "groups": [
+        {
+          "name": null,
+          "ingredients": [
+            {
+              "amount": 250,
+              "unit": "g",
+              "name": "ceci già cotti",
+              "note": "scolati"
+            },
+            {
+              "amount": 150,
+              "unit": "g",
+              "name": "formaggio di capra",
+              "note": null
+            },
+            {
+              "amount": 50,
+              "unit": "g",
+              "name": "prezzemolo fresco",
+              "note": null
+            },
+            {
+              "amount": 40,
+              "unit": "g",
+              "name": "coriandolo fresco",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "cipolle rosse",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "clove",
+              "name": "aglio",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "peperoncini secchi",
+              "note": null
+            },
+            {
+              "amount": 4,
+              "unit": "piece",
+              "name": "cipollotti",
+              "note": "solo la parte verde"
+            },
+            {
+              "amount": 4,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "succo di limone",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "q.b."
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "pepe nero",
+              "note": "q.b."
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scola i ceci in un colino e sciacquali bene sotto l'acqua corrente: sono già cotti, non serve altro.",
+          "photo": "chickpea-1"
+        },
+        {
+          "text": "Taglia le cipolle rosse a pezzetti non troppo piccoli. Trita l'aglio, i peperoncini (senza semi) e la parte verde dei cipollotti.",
+          "photo": "chickpea-2"
+        },
+        {
+          "text": "Mescola le verdure tritate con l'olio e il succo di limone, poi unisci i ceci.",
+          "photo": "chickpea-3"
+        },
+        {
+          "text": "Stacca le foglie di coriandolo e prezzemolo dai gambi, tritale e uniscile all'insalata.",
+          "photo": "chickpea-4"
+        },
+        {
+          "text": "Taglia il formaggio di capra a dadini.",
+          "photo": "chickpea-5"
+        },
+        {
+          "text": "Aggiungi il formaggio per ultimo e mescola con delicatezza. Assaggia, regola di sale e pepe e servi subito.",
+          "photo": "chickpea"
+        }
+      ]
+    },
+    {
+      "key": "rotolo-crema-burro",
+      "author": "davide",
+      "title": "Rotolo di pan di Spagna con crema al burro",
+      "portions": 8,
+      "prepMinutes": 45,
+      "cookMinutes": 10,
+      "notes": "Il biscotto va arrotolato quando è ancora caldo, altrimenti si spezza. Togli la crema dal frigorifero 15 minuti prima di servire, così torna morbida.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "sponge-roll",
+      "groups": [
+        {
+          "name": "Per il biscotto",
+          "ingredients": [
+            {
+              "amount": 4,
+              "unit": "piece",
+              "name": "uova",
+              "note": null
+            },
+            {
+              "amount": 100,
+              "unit": "g",
+              "name": "zucchero a velo",
+              "note": null
+            },
+            {
+              "amount": 120,
+              "unit": "g",
+              "name": "farina 00",
+              "note": "setacciata"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "scorza di limone",
+              "note": "un quarto di limone, grattugiata"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "un pizzico"
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "olio",
+              "note": "per ungere la teglia"
+            }
+          ]
+        },
+        {
+          "name": "Per farcire e decorare",
+          "ingredients": [
+            {
+              "amount": 150,
+              "unit": "g",
+              "name": "marmellata di ribes nero",
+              "note": "o un'altra a piacere"
+            },
+            {
+              "amount": 200,
+              "unit": "g",
+              "name": "burro",
+              "note": "morbido"
+            },
+            {
+              "amount": 100,
+              "unit": "g",
+              "name": "zucchero a velo",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "scaglie di cioccolato",
+              "note": "per decorare"
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Scalda il forno a 200 °C. Ungi la teglia con un velo d'olio e foderala con carta forno."
+        },
+        {
+          "text": "Separa i tuorli dagli albumi. Monta i tuorli con lo zucchero a velo e la scorza di limone fino a ottenere una spuma chiara. In un'altra ciotola monta gli albumi a neve con un pizzico di sale.",
+          "photo": "sponge-roll-1"
+        },
+        {
+          "text": "Incorpora la neve alla spuma di tuorli un po' alla volta, mescolando dal basso verso l'alto, poi aggiungi la farina setacciata."
+        },
+        {
+          "text": "Versa l'impasto sulla teglia e livellalo in modo uniforme, in uno strato sottile.",
+          "photo": "sponge-roll-2"
+        },
+        {
+          "text": "Abbassa il forno a 180 °C e cuoci per circa 10 minuti, finché la superficie è dorata.",
+          "photo": "sponge-roll-3"
+        },
+        {
+          "text": "Appena sfornato, rovescia il biscotto su un foglio di carta forno infarinato, stacca la carta di cottura e arrotolalo insieme alla carta. Lascialo raffreddare.",
+          "photo": "sponge-roll-4"
+        },
+        {
+          "text": "Mentre il biscotto si raffredda, monta il burro morbido con lo zucchero a velo fino a ottenere una crema chiara e spumosa."
+        },
+        {
+          "text": "Srotola il biscotto freddo e spalma la marmellata su tutta la superficie.",
+          "photo": "sponge-roll-5"
+        },
+        {
+          "text": "Arrotolalo di nuovo, senza la carta, e ricoprilo di crema al burro, anche ai lati.",
+          "photo": "sponge-roll-6"
+        },
+        {
+          "text": "Decora con ciuffi di crema e scaglie di cioccolato, poi taglia a fette e servi.",
+          "photo": "sponge-roll"
+        }
+      ]
+    },
+    {
+      "key": "bigos",
+      "author": "davide",
+      "title": "Bigos, lo stufato del cacciatore",
+      "portions": 8,
+      "prepMinutes": 45,
+      "cookMinutes": 180,
+      "notes": "Il bigos migliora a ogni riscaldamento: preparalo il giorno prima. Se il fondo della pentola si attacca un po', non è un problema.",
+      "visibility": "PUBLIC",
+      "published": true,
+      "photo": "bigos",
+      "groups": [
+        {
+          "name": "Carne",
+          "ingredients": [
+            {
+              "amount": 500,
+              "unit": "g",
+              "name": "collo di maiale affumicato",
+              "note": null
+            },
+            {
+              "amount": 400,
+              "unit": "g",
+              "name": "salsiccia affumicata",
+              "note": null
+            }
+          ]
+        },
+        {
+          "name": "Verdure e crauti",
+          "ingredients": [
+            {
+              "amount": 800,
+              "unit": "g",
+              "name": "crauti",
+              "note": "scolati"
+            },
+            {
+              "amount": 3,
+              "unit": "piece",
+              "name": "carote",
+              "note": null
+            },
+            {
+              "amount": 100,
+              "unit": "g",
+              "name": "sedano rapa",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "porro",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "piece",
+              "name": "cipolle",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "olio d'oliva",
+              "note": null
+            },
+            {
+              "amount": 2,
+              "unit": "tbsp",
+              "name": "concentrato di pomodoro",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "l",
+              "name": "brodo di manzo",
+              "note": null
+            },
+            {
+              "amount": 60,
+              "unit": "ml",
+              "name": "vino rosso",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "piece",
+              "name": "foglia di alloro",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "tsp",
+              "name": "maggiorana secca",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "tbsp",
+              "name": "paprika dolce",
+              "note": null
+            },
+            {
+              "amount": 1,
+              "unit": "pinch",
+              "name": "semi di cumino",
+              "note": null
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "sale",
+              "note": "q.b."
+            },
+            {
+              "amount": null,
+              "unit": null,
+              "name": "pepe nero",
+              "note": "q.b."
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "text": "Taglia a cubetti le carote (tienine una a rondelle per dopo), il sedano rapa, il porro e le cipolle, tenendo ogni verdura separata.",
+          "photo": "bigos-1"
+        },
+        {
+          "text": "In una padella con poco olio rosola le verdure una alla volta: prima le carote, poi il sedano rapa e il porro, infine la cipolla, fino a farla dorare.",
+          "photo": "bigos-2"
+        },
+        {
+          "text": "Taglia il collo di maiale affumicato e la salsiccia a cubetti.",
+          "photo": "bigos-3"
+        },
+        {
+          "text": "In una pentola capiente metti le verdure rosolate, i crauti, il concentrato di pomodoro, il brodo, il vino e le spezie. Porta a bollore e cuoci a fuoco dolce per circa 30 minuti, finché i crauti sono morbidi.",
+          "photo": "bigos-4"
+        },
+        {
+          "text": "Aggiungi la carne e la salsiccia e mescola bene.",
+          "photo": "bigos-5"
+        },
+        {
+          "text": "Unisci le carote a rondelle, copri e cuoci a fuoco molto basso per circa 2 ore e mezza, mescolando ogni tanto e aggiungendo un po' di brodo se si asciuga troppo.",
+          "photo": "bigos-6"
+        },
+        {
+          "text": "Spegni e lascia riposare. Servi caldo, con pane di segale: il giorno dopo è ancora più buono.",
+          "photo": "bigos"
+        }
+      ]
+    }
+  ],
+  "cookbooks": [
+    {
+      "owner": "davide",
+      "name": "Primi della domenica",
+      "description": "Le paste che metto in tavola quando c'è tutta la famiglia: dalle lasagne alla carbonara, fino ai ravioli fatti a mano.",
+      "visibility": "PUBLIC",
+      "cover": "cover-primi",
+      "recipes": [
+        "lasagne",
+        "carbonara",
+        "arrabbiata",
+        "ravioli-ricotta-spinaci"
+      ],
+      "authors": [
+        "ospite"
+      ]
+    },
+    {
+      "owner": "davide",
+      "name": "Dolci",
+      "description": "Dolci semplici da fare con quello che c'è in casa.",
+      "visibility": "PUBLIC",
+      "cover": "cover-dolci",
+      "recipes": [
+        "budino-ricotta",
+        "rotolo-crema-burro"
+      ],
+      "authors": []
+    },
+    {
+      "owner": "davide",
+      "name": "Cucina veneta e lombarda",
+      "description": "Piatti del Nord: ossobuco e risotto.",
+      "visibility": "PUBLIC",
+      "cover": "cover-nord",
+      "recipes": [
+        "osso-buco",
+        "risotto-salmone-gamberi"
+      ],
+      "authors": []
+    }
+  ]
+}

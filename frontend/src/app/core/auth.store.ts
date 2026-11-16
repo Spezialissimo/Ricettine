@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from './api-error';
 import { PendingSaves } from './pending-saves';
+import { Site } from './site';
 
 export type Me = {
   id: string;
@@ -17,22 +18,52 @@ export type Me = {
 export class AuthStore {
   private readonly http = inject(HttpClient);
   private readonly pending = inject(PendingSaves);
+  private readonly site = inject(Site);
+  /** The demo sign-in under way, shared by every caller so concurrent 401s make one request. */
+  private demoSignIn: Promise<boolean> | null = null;
   private readonly _me = signal<Me | null>(null);
   private readonly _ready = signal(false);
 
   readonly me = this._me.asReadonly();
   readonly ready = this._ready.asReadonly();
 
-  /** GET /api/me (also makes the backend set the XSRF cookie). 401 means signed out. */
+  /**
+   * GET /api/me (also makes the backend set the XSRF cookie). 401 means signed out, except on the demo site, where it
+   * starts the guest session and asks once more. Run after `Site.load()` so the demo flag is known.
+   */
   async load(): Promise<void> {
     try {
-      this._me.set(await firstValueFrom(this.http.get<Me>('/api/me')));
-    } catch {
-      // 401 means signed out; if the backend is unreachable also start signed-out.
-      this._me.set(null);
+      this._me.set(await this.fetchMe());
+    } catch (e) {
+      if (this.site.demo() && toApiError(e).status === 401) await this.reauthenticate();
+      else this._me.set(null); // 401, or the backend is unreachable: start signed-out
     } finally {
       this._ready.set(true);
     }
+  }
+
+  /**
+   * Demo site only: POST /api/demo/session, then GET /api/me once. Resolves false (and leaves `me` null) if either
+   * fails, so a caller never loops. Concurrent calls share one request.
+   */
+  reauthenticate(): Promise<boolean> {
+    this.demoSignIn ??= this.startDemoSession().finally(() => (this.demoSignIn = null));
+    return this.demoSignIn;
+  }
+
+  private async startDemoSession(): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.post<void>('/api/demo/session', null));
+      this._me.set(await this.fetchMe());
+      return true;
+    } catch {
+      this._me.set(null);
+      return false;
+    }
+  }
+
+  private fetchMe(): Promise<Me> {
+    return firstValueFrom(this.http.get<Me>('/api/me'));
   }
 
   async login(email: string, password: string): Promise<void> {

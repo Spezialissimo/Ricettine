@@ -12,7 +12,8 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
-import { mediaUrl } from '../core/media';
+import { Site } from '../core/site';
+import { AvatarComponent } from '../shared/avatar.component';
 import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 
 /**
@@ -22,7 +23,7 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
  */
 @Component({
   selector: 'app-account-menu',
-  imports: [RouterLink, TranslocoDirective],
+  imports: [RouterLink, TranslocoDirective, AvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
@@ -38,11 +39,11 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
           [attr.aria-expanded]="open()"
           (click)="toggle()"
         >
-          @if (avatar(); as src) {
-            <img class="avatar" [src]="src" alt="" />
-          } @else {
-            <span class="avatar initial" aria-hidden="true">{{ initial() }}</span>
-          }
+          <app-avatar
+            [name]="auth.me()?.displayName"
+            [avatarUrl]="auth.me()?.avatarUrl"
+            [size]="36"
+          />
           <span class="name">{{ me.displayName }}</span>
           <svg class="caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 9l6 6 6-6" />
@@ -57,9 +58,11 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
                 <a routerLink="/settings/admin/invites">{{ t('nav.admin') }}</a>
               }
             </nav>
-            <button type="button" class="logout" [disabled]="busy()" (click)="logout()">
-              {{ t('auth.logout') }}
-            </button>
+            @if (!site.demo()) {
+              <button type="button" class="logout" [disabled]="busy()" (click)="logout()">
+                {{ t('auth.logout') }}
+              </button>
+            }
             @if (logoutError(); as key) {
               <div class="logout-error" role="alert">
                 <span>{{ t(key) }}</span>
@@ -100,21 +103,9 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
       border-color: rgba(255, 255, 255, 0.35);
       background: rgba(255, 255, 255, 0.14);
     }
-    .avatar {
-      width: 36px;
-      height: 36px;
-      flex: none;
-      border-radius: 50%;
-      object-fit: cover;
-      background: var(--surface);
-    }
-    .avatar.initial {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--pill-bg);
-      color: var(--pill-ink);
-      font-weight: 700;
+    app-avatar {
+      --avatar-bg: var(--pill-bg);
+      --avatar-ink: var(--pill-ink);
     }
     .name {
       min-width: 0;
@@ -196,6 +187,7 @@ import { UnsavedBackup } from '../recipes/editor/unsaved-backup';
 })
 export class AccountMenuComponent {
   protected readonly auth = inject(AuthStore);
+  protected readonly site = inject(Site);
   private readonly router = inject(Router);
   private readonly backup = inject(UnsavedBackup);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -203,9 +195,6 @@ export class AccountMenuComponent {
   protected readonly open = signal(false);
   protected readonly busy = signal(false);
   protected readonly logoutError = signal<string | null>(null);
-
-  protected readonly avatar = () => mediaUrl(this.auth.me()?.avatarUrl);
-  protected readonly initial = () => (this.auth.me()?.displayName ?? '?').charAt(0).toUpperCase();
 
   constructor() {
     this.router.events

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { errorKey, errorKeyOf, fieldErrorKey, toApiError } from '../core/api-error';
 import { LanguageService } from '../core/language';
+import { Site } from '../core/site';
 import { confirmSheet } from '../shared/confirm-dialog.component';
 import { openSheet } from '../shared/sheet';
 import { CookbookApi } from './cookbook.api';
@@ -57,9 +58,11 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
             [visibility]="b.visibility"
             [coverUrl]="mediaUrl(b.cover?.displayUrl)"
           >
-            <a class="btn primary" [routerLink]="['/cookbooks', b.id, 'edit']">{{
-              t('cookbooks.edit')
-            }}</a>
+            @if (!site.demo()) {
+              <a class="btn primary" [routerLink]="['/cookbooks', b.id, 'edit']">{{
+                t('cookbooks.edit')
+              }}</a>
+            }
           </app-cookbook-hero>
           @if (b.description) {
             <p class="book-desc">{{ b.description }}</p>
@@ -76,7 +79,7 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
           <div class="head">
             <h1>{{ t('titles.cookbookEdit') }}</h1>
             <div class="actions">
-              @if (b.role === 'OWNER') {
+              @if (b.role === 'OWNER' && !site.demo()) {
                 <button type="button" class="btn danger" (click)="confirmDelete(b)">
                   {{ t('cookbooks.delete') }}
                 </button>
@@ -138,7 +141,7 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
           @if (mediaUrl(b.cover?.displayUrl); as src) {
             <img class="cover" [src]="src" alt="" />
           }
-          @if (b.role === 'OWNER') {
+          @if (b.role === 'OWNER' && !site.demo()) {
             <div class="cover-actions">
               <app-photo-picker
                 [label]="t(b.cover ? 'cookbooks.cover.replace' : 'cookbooks.cover.add')"
@@ -207,6 +210,7 @@ import { PhotoPickerComponent } from '../recipes/editor/photo-picker.component';
   `,
 })
 export class CookbookPage {
+  protected readonly site = inject(Site);
   private readonly api = inject(CookbookApi);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);

@@ -20,7 +20,7 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | --- | --- | --- |
 | `RICETTINE_BASE_URL` | derived from the request | Public URL of the app, e.g. `https://recipes.example.com`. **Set this in production**: otherwise invite and password-reset links are built from the request `Host` header. |
 | `RICETTINE_VERSION` | `latest` | Image tag to run, e.g. `1.2.0`. See Upgrading. |
-| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 75% of it, so raise it for a large library rather than removing it (not used by `compose.aws.yaml`, which pins `1g`). |
+| `RICETTINE_MEM_LIMIT` | `1g` | Memory limit of the `app` container. The JVM heap is 60% of it (the rest covers metaspace, code cache and image decoding), so raise it for a large library rather than removing it (not used by `compose.aws.yaml`, which pins `1g`). |
 | `RICETTINE_TRUSTED_PROXIES` | matches nothing (Caddy overlays: loopback and private ranges) | Regex of peer addresses whose `X-Forwarded-For` the app believes, for the per-IP rate limits. With `:8080` published directly there is no proxy, so none is trusted; the Caddy overlays trust their Docker network. Set it only for your own reverse proxy. |
 | `RICETTINE_DEMO_ENABLED` | `false` | Serve a public demo site next to the real one, in its own database (`ricettine_demo`, wiped and recreated at every start). A request is the demo only if your reverse proxy sets `X-Ricettine-Site: demo` (case-insensitive); the app trusts that header, so only a proxy you control may set it, and it must overwrite any client-sent value. With `compose.https.yaml`, `RICETTINE_DEMO_DOMAIN` does this for you. |
 | `RICETTINE_DEMO_URL` | - | Public URL of the demo site, e.g. `https://demo.example.com`. Optional; the app reports it in `/api/setup/status`. |
@@ -38,7 +38,7 @@ Everything is optional. Set variables in a `.env` file next to `compose.yaml` or
 | `RICETTINE_STORAGE_S3_API_CALL_ATTEMPT_TIMEOUT` | `PT10S` | Time limit for a single S3 attempt. |
 | `RICETTINE_STORAGE_S3_CONNECTION_TIMEOUT` | `PT5S` | Time limit for opening the connection to S3. |
 | `RICETTINE_SECURITY_MAX_CONCURRENT_HASHES` | `4` | Password hashes (login, sign-up, password change) computed at once; each needs ~16 MB. Extra requests wait up to 10 s, then get "busy, try again". |
-| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=75` | JVM options. The default sizes the heap to 75% of the container memory limit. |
+| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=60 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=64m` | JVM options. The default sizes the heap to 60% of the container memory limit and caps metaspace and the code cache. |
 
 ## HTTPS
 

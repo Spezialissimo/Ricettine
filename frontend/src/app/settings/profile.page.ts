@@ -5,13 +5,14 @@ import { DISPLAY_NAME_VALIDATORS, USERNAME_VALIDATORS } from '../auth/account-fo
 import { errorKeyOf } from '../core/api-error';
 import { AuthStore } from '../core/auth.store';
 import { mediaUrl } from '../core/media';
+import { AvatarComponent } from '../shared/avatar.component';
 import { SettingsApi } from './settings.api';
 
 const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
 
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, TranslocoDirective],
+  imports: [ReactiveFormsModule, TranslocoDirective, AvatarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './settings-page.scss',
   template: `
@@ -20,11 +21,12 @@ const MAX_AVATAR_BYTES = 15 * 1024 * 1024;
       <section class="card">
         <h2>{{ t('settings.avatar') }}</h2>
         <div class="avatar-row">
-          @if (avatar(); as src) {
-            <img class="avatar" [src]="src" [alt]="t('settings.avatarAlt')" />
-          } @else {
-            <span class="avatar placeholder" aria-hidden="true">{{ initial() }}</span>
-          }
+          <app-avatar
+            [name]="auth.me()?.displayName"
+            [avatarUrl]="auth.me()?.avatarUrl"
+            [size]="72"
+            [alt]="t('settings.avatarAlt')"
+          />
           <label class="btn">
             {{ uploading() ? t('settings.avatarUploading') : t('settings.avatarChoose') }}
             <input
@@ -122,7 +124,6 @@ export class ProfilePage {
   readonly removing = signal(false);
 
   protected avatar = () => mediaUrl(this.auth.me()?.avatarUrl);
-  protected initial = () => (this.auth.me()?.displayName ?? '?').charAt(0).toUpperCase();
 
   async save(): Promise<void> {
     if (this.busy()) return;

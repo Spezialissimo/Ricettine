@@ -7,6 +7,7 @@ import { Recipe } from '../recipe.model';
 import { EditorStore } from './editor-store';
 import { serverRecipe } from './editor-store.testing';
 import { SharePanelComponent } from './share-panel.component';
+import { provideSite } from '../../testing/site';
 
 @Component({ imports: [SharePanelComponent], template: '<app-share-panel />' })
 class Host {}
@@ -60,5 +61,27 @@ describe('SharePanelComponent', () => {
     await settle(f);
     expect(overlay().textContent).toContain(en.cookbooks.addToCookbook);
     expect(overlay().textContent).toContain(en.cookbooks.noneYet);
+  });
+});
+
+describe('SharePanelComponent in the demo', () => {
+  it('has no Add to cookbook on a published recipe', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        {
+          provide: EditorStore,
+          useValue: {
+            server: signal<Recipe | null>(
+              serverRecipe({ status: 'PUBLISHED', shareUrl: 'https://x.test/r/OLD' }),
+            ).asReadonly(),
+          },
+        },
+      ],
+    });
+    const f = TestBed.createComponent(Host);
+    await settle(f);
+    expect(btn(f.nativeElement as HTMLElement, en.cookbooks.addToCookbook)).toBeUndefined();
   });
 });

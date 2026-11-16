@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angul
 import { ApiError, errorKey, errorKeyOf, toApiError } from '../../core/api-error';
 import { AuthStore } from '../../core/auth.store';
 import { PendingSaves } from '../../core/pending-saves';
+import { Site } from '../../core/site';
 import { RecipeApi } from '../recipe.api';
 import { Photo, Recipe, RecipeInput, toInput } from '../recipe.model';
 import { Autosave, SaveStatus } from './autosave';
@@ -22,6 +23,29 @@ const EMPTY: RecipeInput = {
   groups: [],
   steps: [],
 };
+
+/** The id of the in-memory new recipe of the demo (never sent to the server). */
+export const LOCAL_ID = 'local';
+
+const localRecipe = (): Recipe => ({
+  id: LOCAL_ID,
+  status: 'DRAFT',
+  visibility: 'PRIVATE',
+  title: '',
+  portions: 1,
+  prepMinutes: null,
+  cookMinutes: null,
+  source: null,
+  notes: null,
+  cover: null,
+  groups: [],
+  steps: [],
+  version: 1,
+  shareUrl: null,
+  createdAt: '',
+  updatedAt: '',
+  publishedAt: null,
+});
 
 const blank = (s: string | null) => !s || !s.trim();
 
@@ -171,6 +195,15 @@ export class EditorStore {
   private readonly api = inject(RecipeApi);
   private readonly backup = inject(UnsavedBackup);
   private readonly auth = inject(AuthStore);
+  /**
+   * True on the demo: the editor works on a copy in memory and never writes anything (server, backup,
+   * photos). Read by the page for its notice and its Save/Publish message.
+   */
+  readonly local: boolean = inject(Site).demo();
+  /** Whether edits are sent to the server and backed up. The one switch for the demo's behaviour. */
+  private get persists(): boolean {
+    return !this.local;
+  }
   /** Whose editor this is (captured at load): the backup is written and read for this user only. */
   private userId: string | null = null;
   /** This editor's (tab's) entry in the recipe's backup: it writes and clears only its own. */
@@ -274,14 +307,18 @@ export class EditorStore {
     // Logging out sends what was typed first (PendingSaves.flushAll), while the session is valid.
     // Rejects when text stayed unsaved, so a logout keeps the local backups.
     const pending = inject(PendingSaves);
-    const unregister = pending.register(() =>
-      this.autosave.flush().then(() => this.savedForLogout()),
-    );
+    const unregister = this.persists
+      ? pending.register(() => this.autosave.flush().then(() => this.savedForLogout()))
+      : () => {};
     // Leaving the page (nav link, back) still sends what was typed; then stop for good.
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this._uploads().forEach((u) => this.revoke(u.preview));
       this._uploads.set([]);
+      if (!this.persists) {
+        this.autosave.dispose();
+        return;
+      }
       pending.track(
         this.autosave
           .flush()
@@ -309,11 +346,12 @@ export class EditorStore {
 
   async load(id: string): Promise<void> {
     this._id = id;
-    this.userId = this.auth.me()?.id ?? null;
+    // no user id, no backup: nothing is written or read in the demo
+    this.userId = this.persists ? (this.auth.me()?.id ?? null) : null;
     this._loadError.set(null);
     let server: Recipe;
     try {
-      server = await this.api.get(id);
+      server = this.local && id === LOCAL_ID ? localRecipe() : await this.api.get(id);
     } catch (e) {
       this._loadError.set(errorKeyOf(e));
       return;
@@ -379,7 +417,7 @@ export class EditorStore {
   update(fn: (r: RecipeInput) => RecipeInput): void {
     if (!this.loaded()) return;
     this._recipe.set(fn(this._recipe()));
-    this.autosave.changed();
+    if (this.persists) this.autosave.changed();
   }
 
   // ---- photos ----
@@ -408,6 +446,21 @@ export class EditorStore {
     const id = this.nextUploadId++;
     const file = typeof source === 'string' ? null : source;
     const url = typeof source === 'string' ? source : null;
+    if (!this.persists) {
+      // a preview only: nothing is uploaded; a web address has nothing to show without the server
+      if (file) {
+        this.setUpload({
+          id,
+          slot,
+          status: 'done',
+          preview: URL.createObjectURL(file),
+          error: null,
+        });
+      } else {
+        this.rejectPhoto(slot, 'errors.demoReadOnly');
+      }
+      return;
+    }
     const preview = file ? URL.createObjectURL(file) : null;
     this.setUpload({ id, slot, status: 'uploading', preview, error: null });
     try {
@@ -463,7 +516,7 @@ export class EditorStore {
   /** The server thumb is on screen: the local preview is no longer needed. */
   previewLoaded(slot: PhotoSlot): void {
     const u = this.uploadFor(slot);
-    if (u?.status === 'done') this.dropUpload(slot);
+    if (this.persists && u?.status === 'done') this.dropUpload(slot);
   }
 
   /** Steps below an inserted/removed step move: their uploads follow (the removed step's upload is discarded). */
@@ -556,7 +609,7 @@ export class EditorStore {
   }
 
   flush(): Promise<void> {
-    return this.autosave.flush();
+    return this.persists ? this.autosave.flush() : Promise.resolve();
   }
 
   /** "Load latest" after a conflict: the server copy replaces the working copy. */
@@ -592,7 +645,7 @@ export class EditorStore {
    * `conflict` ('conflict'); other server refusals (recipe_incomplete, ...) are thrown.
    */
   async publish(): Promise<'published' | 'invalid' | 'blocked' | 'conflict'> {
-    if (!this._id || this.uploadsUnfinished()) return 'blocked';
+    if (!this.persists || !this._id || this.uploadsUnfinished()) return 'blocked';
     if (this.hasUnsavedInput()) return 'invalid';
     await this.autosave.flush();
     const st = this.status();

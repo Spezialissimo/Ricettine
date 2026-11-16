@@ -9,14 +9,6 @@
 .head h1 {
   margin: 0;
 }
-.avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--border);
-  flex: none;
-}
 .handle {
   color: var(--muted);
   margin: 0;

@@ -147,6 +147,8 @@ How it works: the demo has its own CloudFront distribution and certificate. It s
 
 **Do not go live (`demo_enabled=true`) until the read-only demo (Plan 9 PR 2) is deployed.** Until then a fresh demo database reports `setupRequired`, and the first visitor to the demo host could create an admin account.
 
+The demo reseeds on every restart: at each start the app drops and recreates `ricettine_demo`, migrates it and seeds the content again. Anything visitors do, and every demo session, is gone after a restart or an instance replacement. Backups (`deploy/backup.sh`) cover the main database only.
+
 Go-live (you run this):
 
 1. `aws login --profile ricettine`

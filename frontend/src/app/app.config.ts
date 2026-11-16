@@ -8,7 +8,7 @@ import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@ang
 import { RouteReuseStrategy, TitleStrategy, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
-import { AuthStore } from './core/auth.store';
+import { initSiteAndAuth } from './core/app-init';
 import { UnsavedBackup } from './recipes/editor/unsaved-backup';
 import { ParamReuseStrategy } from './core/param-reuse-strategy';
 import { AppTitleStrategy } from './core/page-title';
@@ -26,6 +26,6 @@ export const appConfig: ApplicationConfig = {
     ),
     provideAppTransloco(),
     provideAppInitializer(() => inject(UnsavedBackup).sweep()),
-    provideAppInitializer(() => inject(AuthStore).load()),
+    provideAppInitializer(initSiteAndAuth),
   ],
 };

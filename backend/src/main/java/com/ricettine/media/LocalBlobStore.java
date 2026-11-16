@@ -79,4 +79,21 @@ public class LocalBlobStore implements BlobStore {
 			throw new UncheckedIOException(e);
 		}
 	}
+
+	@Override
+	public void deleteByPrefix(String prefix) {
+		BlobStore.requireSubtreePrefix(prefix);
+		Path dir = resolve(prefix);
+		if (!Files.exists(dir)) {
+			return;
+		}
+		try (java.util.stream.Stream<Path> walk = Files.walk(dir)) {
+			for (Path p : (Iterable<Path>) walk.sorted(java.util.Comparator.reverseOrder())::iterator) {
+				Files.deleteIfExists(p);
+			}
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
 }

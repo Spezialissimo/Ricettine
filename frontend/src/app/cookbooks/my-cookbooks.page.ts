@@ -4,6 +4,7 @@ import { errorKeyOf } from '../core/api-error';
 import { CookbookApi } from './cookbook.api';
 import { CookbookSummary } from './cookbook.model';
 import { CookbookCardsComponent } from './cookbook-cards.component';
+import { Site } from '../core/site';
 import { NewCookbookFlow } from './new-cookbook';
 
 /** The Cookbooks tab of My kitchen: the user's cookbooks, owned and co-authored, newest edit first. */
@@ -24,16 +25,20 @@ import { NewCookbookFlow } from './new-cookbook';
         @if (list.length === 0) {
           <div class="empty-state">
             <p>{{ t('cookbooks.empty') }}</p>
-            <button type="button" class="btn-primary new" (click)="create()">
-              {{ t('cookbooks.emptyAction') }}
-            </button>
+            @if (!site.demo()) {
+              <button type="button" class="btn-primary new" (click)="create()">
+                {{ t('cookbooks.emptyAction') }}
+              </button>
+            }
           </div>
         } @else {
-          <div class="head">
-            <button type="button" class="btn-primary new" (click)="create()">
-              {{ t('cookbooks.new') }}
-            </button>
-          </div>
+          @if (!site.demo()) {
+            <div class="head">
+              <button type="button" class="btn-primary new" (click)="create()">
+                {{ t('cookbooks.new') }}
+              </button>
+            </div>
+          }
           <app-cookbook-cards [cookbooks]="list" />
         }
       } @else {
@@ -45,6 +50,7 @@ import { NewCookbookFlow } from './new-cookbook';
 export class MyCookbooksPage {
   private readonly api = inject(CookbookApi);
   private readonly newCookbook = inject(NewCookbookFlow);
+  protected readonly site = inject(Site);
   protected readonly books = signal<CookbookSummary[] | null>(null);
   protected readonly error = signal<string | null>(null);
 

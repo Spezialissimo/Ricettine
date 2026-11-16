@@ -10,6 +10,7 @@ import { AuthStore } from '../../core/auth.store';
 import { routes } from '../../app.routes';
 import { leaveEditorGuard } from './leave-editor.guard';
 import { RecipeEditorPage } from './recipe-editor.page';
+import { provideSite } from '../../testing/site';
 
 async function mount(api: Partial<RecipeApi>, before: () => void = () => {}) {
   TestBed.configureTestingModule({
@@ -773,5 +774,62 @@ describe('RecipeEditorPage', () => {
       expect((el.querySelector('#recipe-title') as HTMLInputElement).value).toBe('Restored');
       expect(el.textContent).toContain(en.editor.restored);
     });
+  });
+});
+
+describe('RecipeEditorPage in the demo', () => {
+  async function mountDemo() {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: RecipeApi, useValue: {} },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'local' }) } },
+        },
+      ],
+    });
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const f = TestBed.createComponent(RecipeEditorPage);
+    await settle(f);
+    return { f, el: f.nativeElement as HTMLElement, nav };
+  }
+  afterEach(clearOverlays);
+
+  it('shows a notice, and Save and Publish say nothing is saved', async () => {
+    const { f, el, nav } = await mountDemo();
+    expect(el.querySelector('.demo-notice')?.textContent).toContain(en.demo.notSaved);
+    (el.querySelector('button.publish') as HTMLButtonElement).click();
+    await settle(f);
+    expect(el.querySelector('.demo-toast')?.textContent).toContain(en.demo.notSaved);
+    expect(nav).not.toHaveBeenCalled();
+  });
+
+  it('Save says nothing is saved, then goes to My kitchen', async () => {
+    const { f, el, nav } = await mountDemo();
+    vi.useFakeTimers();
+    try {
+      byText(el.querySelector('.editor-header')!, 'button', en.editor.save)!.click();
+      await vi.advanceTimersByTimeAsync(100);
+      f.detectChanges();
+      expect(el.querySelector('.demo-toast')?.textContent).toContain(en.demo.notSaved);
+      expect(nav).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(nav).toHaveBeenCalledWith('/kitchen/recipes');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('has no "more" menu, which would only be empty', async () => {
+    const { el } = await mountDemo();
+    expect(el.querySelector('button.more')).toBeNull();
+  });
+
+  it('leaveGuardAllowsInDemo', async () => {
+    const { f } = await mountDemo();
+    expect(await f.componentInstance.canLeave()).toBe(true);
   });
 });

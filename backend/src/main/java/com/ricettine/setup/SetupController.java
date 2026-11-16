@@ -40,7 +40,7 @@ public class SetupController {
 	public SetupStatus status() {
 		boolean onDemo = SiteContext.current() == Site.DEMO;
 		String demoUrl = !onDemo && demo.enabled() ? demo.url() : null;
-		return new SetupStatus(setup.setupRequired(), onDemo, demoUrl);
+		return new SetupStatus(!onDemo && setup.setupRequired(), onDemo, demoUrl);
 	}
 
 	public record SetupStatus(boolean setupRequired, boolean demo, String demoUrl) {

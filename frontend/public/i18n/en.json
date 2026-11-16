@@ -63,7 +63,8 @@
     "newPassword": "New password",
     "required": "This field is required.",
     "register": "Create account",
-    "fillBoth": "Enter your email and password."
+    "fillBoth": "Enter your email and password.",
+    "tryDemo": "Try the demo"
   },
   "setup": {
     "title": "Set up Ricettine",
@@ -192,7 +193,8 @@
     "photo_unreadable": "That photo could not be read. Save it as a file first, then drag it or use Add photo.",
     "image_url_invalid": "That image address cannot be used.",
     "image_url_not_allowed": "That image address is not allowed.",
-    "image_url_unreachable": "The image could not be downloaded from that page. Try again, or save it and use Add photo."
+    "image_url_unreachable": "The image could not be downloaded from that page. Try again, or save it and use Add photo.",
+    "demoReadOnly": "Not available in the demo."
   },
   "invite": {
     "title": "Join Ricettine",
@@ -532,5 +534,11 @@
     "showMore": "Show more",
     "showMoreRecipes": "Show more recipes",
     "showMoreCookbooks": "Show more cookbooks"
+  },
+  "demo": {
+    "banner": "This is a demo: explore and try the editor, but changes aren't saved.",
+    "backToSite": "Go to ricettine.food",
+    "credits": "Recipes from TheMealDB and Wikibooks, photos from Unsplash, Pexels and Wikimedia Commons",
+    "notSaved": "Demo mode: not saved"
   }
 }

@@ -7,6 +7,7 @@ import { btn, clearOverlays, overlay, person, settle } from '../testing/spec-hel
 import { CookbookApi } from './cookbook.api';
 import { Cookbook } from './cookbook.model';
 import { MembersPanelComponent } from './members-panel.component';
+import { provideSite } from '../testing/site';
 
 const book = (over: Partial<Cookbook> = {}): Cookbook => ({
   id: 'c1',
@@ -153,5 +154,35 @@ describe('MembersPanelComponent', () => {
     await settle(f);
     expect(removeAuthor).toHaveBeenCalledWith('c1', 'u2', false);
     expect(nav).toHaveBeenCalledWith('/kitchen/cookbooks');
+  });
+});
+
+describe('MembersPanelComponent in the demo', () => {
+  afterEach(clearOverlays);
+
+  it('lists the members without invite, revoke, remove or leave', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideTestTransloco(),
+        provideSite({ demo: true }),
+        { provide: CookbookApi, useValue: { invites: vi.fn().mockResolvedValue([]) } },
+      ],
+    });
+    TestBed.inject(AuthStore).setMe({
+      id: 'u1',
+      email: 'a@b.c',
+      username: 'x',
+      displayName: 'X',
+      avatarUrl: null,
+      admin: false,
+    });
+    const f = TestBed.createComponent(Host);
+    await settle(f);
+    const el = f.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('BOB');
+    expect(btn(el, en.cookbooks.invite)).toBeUndefined();
+    expect(btn(el, 'Remove BOB')).toBeUndefined();
+    expect(btn(el, en.cookbooks.leave)).toBeUndefined();
   });
 });

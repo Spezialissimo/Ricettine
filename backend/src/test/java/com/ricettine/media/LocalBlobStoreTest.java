@@ -36,4 +36,29 @@ class LocalBlobStoreTest {
 			assertThatThrownBy(() -> s.delete(k)).isInstanceOf(IllegalArgumentException.class);
 		}
 	}
+
+	@Test
+	void deleteByPrefixRemovesOnlyThatSubtree() {
+		LocalBlobStore s = new LocalBlobStore(dir);
+		s.put("demo/img/a/thumb.jpg", new byte[] {1}, "image/jpeg");
+		s.put("demo/img/b/thumb.jpg", new byte[] {2}, "image/jpeg");
+		s.put("demo2/img/c/thumb.jpg", new byte[] {3}, "image/jpeg");
+		s.put("img/d/thumb.jpg", new byte[] {4}, "image/jpeg");
+		s.deleteByPrefix("demo/");
+		assertThat(s.get("demo/img/a/thumb.jpg")).isEmpty();
+		assertThat(s.get("demo/img/b/thumb.jpg")).isEmpty();
+		assertThat(s.get("demo2/img/c/thumb.jpg")).isPresent();
+		assertThat(s.get("img/d/thumb.jpg")).isPresent();
+		s.deleteByPrefix("demo/");
+	}
+
+	@Test
+	void deleteByPrefixRefusesBlankOrUnsafePrefixes() {
+		LocalBlobStore s = new LocalBlobStore(dir);
+		s.put("img/d/thumb.jpg", new byte[] {4}, "image/jpeg");
+		for (String p : new String[] {"", "  ", "/", "demo", "../", "a/../../"}) {
+			assertThatThrownBy(() -> s.deleteByPrefix(p)).as(p).isInstanceOf(IllegalArgumentException.class);
+		}
+		assertThat(s.get("img/d/thumb.jpg")).isPresent();
+	}
 }

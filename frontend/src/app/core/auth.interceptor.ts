@@ -1,8 +1,9 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { catchError, from, switchMap, tap, throwError } from 'rxjs';
 import { AuthStore } from './auth.store';
+import { Site } from './site';
 
 const GUEST_PREFIXES = ['/login', '/setup', '/invite/', '/reset/'];
 
@@ -15,7 +16,8 @@ function isExempt(method: string, url: string): boolean {
   const path = url.split(/[?#]/)[0];
   if (!path.startsWith('/api/')) return true;
   return (
-    (method === 'GET' && path === '/api/me') || (method === 'POST' && path === '/api/auth/login')
+    (method === 'GET' && path === '/api/me') ||
+    (method === 'POST' && (path === '/api/auth/login' || path === '/api/demo/session'))
   );
 }
 
@@ -28,11 +30,24 @@ class SessionRedirect {
 /**
  * A 401 from the API (other than the "who am I" and login calls) while signed in means the session is gone: sign out
  * locally and go to login. While already signed out, 401s are left to the caller.
+ * On the demo site the guest session is simply started again (sessions are lost on a server restart) and the request
+ * is retried once; a second 401, or a failed sign-in, reaches the caller as it is.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const auth = inject(AuthStore);
   const redirect = inject(SessionRedirect);
+  if (inject(Site).demo()) {
+    return next(req).pipe(
+      catchError((e: unknown) => {
+        if (!(e instanceof HttpErrorResponse) || e.status !== 401 || isExempt(req.method, req.url))
+          return throwError(() => e);
+        return from(auth.reauthenticate()).pipe(
+          switchMap((ok) => (ok ? next(req) : throwError(() => e))),
+        );
+      }),
+    );
+  }
   return next(req).pipe(
     tap({
       error: (e: unknown) => {

@@ -7,6 +7,7 @@ import { AuthStore } from '../core/auth.store';
 import { en, provideTestTransloco } from '../testing/transloco';
 import { pressEscape, settle } from '../testing/spec-helpers';
 import { AccountMenuComponent } from './account-menu.component';
+import { provideSite } from '../testing/site';
 
 @Component({ template: '' })
 class Blank {}
@@ -44,14 +45,14 @@ describe('AccountMenuComponent', () => {
   it('shows the name and the initial when there is no avatar, collapsed', async () => {
     const { el, trigger } = await menu();
     expect(trigger.textContent).toContain('Ann');
-    expect(el.querySelector('.avatar.initial')?.textContent?.trim()).toBe('A');
+    expect(el.querySelector('app-avatar .initial')?.textContent?.trim()).toBe('A');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(el.querySelector('#account-panel')).toBeNull();
   });
 
   it('shows the avatar image when the user has one', async () => {
     const { el } = await menu({ avatarUrl: '/media/av/thumb.jpg' });
-    expect(el.querySelector('img.avatar')?.getAttribute('src')).toBe('/media/av/thumb.jpg');
+    expect(el.querySelector('app-avatar img')?.getAttribute('src')).toBe('/media/av/thumb.jpg');
   });
 
   it('opens a panel with View profile, Settings and Log out (no Admin for non-admins)', async () => {
@@ -135,5 +136,35 @@ describe('AccountMenuComponent', () => {
     await settle(f);
     expect(TestBed.inject(AuthStore).me()).toBeNull();
     expect(nav).toHaveBeenCalledWith('/login');
+  });
+});
+
+describe('AccountMenuComponent in the demo', () => {
+  it('has no Log out', async () => {
+    TestBed.configureTestingModule({
+      imports: [AccountMenuComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideTestTransloco(),
+        provideRouter([{ path: '**', component: Blank }]),
+        provideSite({ demo: true }),
+      ],
+    });
+    TestBed.inject(AuthStore).setMe({
+      id: '1',
+      email: 'a@b.c',
+      username: 'ospite',
+      displayName: 'Ospite',
+      avatarUrl: null,
+      admin: false,
+    });
+    const f = TestBed.createComponent(AccountMenuComponent);
+    await f.whenStable();
+    const el = f.nativeElement as HTMLElement;
+    (el.querySelector('button.trigger') as HTMLButtonElement).click();
+    await f.whenStable();
+    expect(el.querySelector('#account-panel')).not.toBeNull();
+    expect(el.querySelector('button.logout')).toBeNull();
   });
 });
