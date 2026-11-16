@@ -8,8 +8,7 @@ import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@ang
 import { RouteReuseStrategy, TitleStrategy, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
-import { AuthStore } from './core/auth.store';
-import { Site } from './core/site';
+import { initSiteAndAuth } from './core/app-init';
 import { UnsavedBackup } from './recipes/editor/unsaved-backup';
 import { ParamReuseStrategy } from './core/param-reuse-strategy';
 import { AppTitleStrategy } from './core/page-title';
@@ -27,14 +26,6 @@ export const appConfig: ApplicationConfig = {
     ),
     provideAppTransloco(),
     provideAppInitializer(() => inject(UnsavedBackup).sweep()),
-    // Site first: on the demo, load() signs in silently, so deep links land on their page and the
-    // guards (which run after the initializers) already see a user.
-    provideAppInitializer(async () => {
-      // inject() only works before the first await
-      const site = inject(Site);
-      const auth = inject(AuthStore);
-      await site.load();
-      await auth.load();
-    }),
+    provideAppInitializer(initSiteAndAuth),
   ],
 };

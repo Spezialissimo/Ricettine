@@ -14,8 +14,27 @@ export COMPOSE_FILE=compose.yaml:compose.build.yaml
 # own project name: `down -v` below must never touch a developer's real stack (and its volumes)
 export COMPOSE_PROJECT_NAME="${SMOKE_PROJECT:-ricettine-smoke}"
 
+# Memory gate: the app container must not have been restarted or OOM-killed during the run (an OOM kill is
+# otherwise only visible as unrelated connection failures). Also logs its memory use and cgroup peak.
+# The peak only covers the time since the last container start.
+check_memory() {
+  local cid state events peak
+  cid="$(docker compose ps -q app)"
+  [ -n "$cid" ] || { echo "SMOKE FAIL: no app container to check" >&2; return 1; }
+  docker stats --no-stream --format 'app memory: {{.MemUsage}} ({{.MemPerc}})' "$cid"
+  peak="$(docker exec "$cid" cat /sys/fs/cgroup/memory.peak 2>/dev/null || true)"
+  if [[ "$peak" =~ ^[0-9]+$ ]]; then echo "app memory.peak: $((peak / 1048576)) MiB"; fi
+  state="$(docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' "$cid")"
+  events="$(docker events --since "$STARTED_AT" --until "$(date +%s)" --filter "container=$cid" --filter event=oom | wc -l | tr -d ' ')"
+  if [ "$state" != "0 false" ] || [ "$events" != 0 ]; then
+    echo "SMOKE FAIL: app container restarts/OOMKilled is '$state', OOM events since start: $events" >&2
+    return 1
+  fi
+}
+
 cleanup() { docker compose down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
+STARTED_AT="$(date +%s)"
 
 fail() { echo "SMOKE FAIL: $*" >&2; docker compose logs --tail=50 app >&2 || true; exit 1; }
 
@@ -44,7 +63,7 @@ status="$(curl -fsS "$BASE/api/setup/status")"
 curl -fsS "$BASE/r/anything" | grep -q '<app-root' || fail "/r/anything is not index HTML"
 
 heap="$(docker compose exec -T app java -XX:+PrintFlagsFinal -version 2>/dev/null | grep -w MaxRAMPercentage || true)"
-[[ "$heap" == *"= 75"* ]] || fail "JVM MaxRAMPercentage is not 75: $heap"
+[[ "$heap" == *"= 60"* ]] || fail "JVM MaxRAMPercentage is not 60: $heap"
 
 # the JVM heap must leave headroom inside the container memory limit (mem_limit on app in compose.yaml)
 limit_bytes="$(docker inspect --format '{{.HostConfig.Memory}}' "$(docker compose ps -q app)")"
@@ -77,5 +96,7 @@ if [ -n "$PLATFORM" ]; then
   arch="$(docker compose exec -T app uname -m | tr -d '\r')"
   [ "$arch" = "$want" ] || fail "running architecture is $arch, expected $want"
 fi
+
+check_memory || exit 1
 
 echo "SMOKE OK${PLATFORM:+ ($PLATFORM)}"

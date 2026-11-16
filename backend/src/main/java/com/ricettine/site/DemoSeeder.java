@@ -81,9 +81,6 @@ public class DemoSeeder {
 	@EventListener(ApplicationReadyEvent.class)
 	void onReady() {
 		seedSafely(FIXTURE);
-		// decoding the photos grows the heap well past what the running app needs; hand it back so the demo does
-		// not push a small container (the default limit is 1 GiB) towards its memory limit
-		System.gc();
 	}
 
 	/** Seeds, logging instead of throwing; on failure the demo is left empty (503 on its session endpoint). */

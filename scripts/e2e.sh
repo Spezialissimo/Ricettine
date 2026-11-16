@@ -11,6 +11,25 @@ TIMEOUT="${E2E_TIMEOUT:-180}"
 # compose.e2e.yaml lifts the per-IP rate limits (all browsers share one gateway IP).
 export COMPOSE_FILE=compose.yaml:compose.build.yaml:e2e/compose.e2e.yaml
 COMPOSE=(docker compose -p "$E2E_COMPOSE_PROJECT")
+STARTED_AT="$(date +%s)"
+
+# Memory gate: the app container must not have been restarted or OOM-killed during the run (an OOM kill is
+# otherwise only visible as unrelated connection failures). Also logs its memory use and cgroup peak.
+# The peak only covers the time since the last container start.
+check_memory() {
+  local cid state events peak
+  cid="$("${COMPOSE[@]}" ps -q app)"
+  [ -n "$cid" ] || { echo "E2E FAIL: no app container to check" >&2; return 1; }
+  docker stats --no-stream --format 'app memory: {{.MemUsage}} ({{.MemPerc}})' "$cid"
+  peak="$(docker exec "$cid" cat /sys/fs/cgroup/memory.peak 2>/dev/null || true)"
+  if [[ "$peak" =~ ^[0-9]+$ ]]; then echo "app memory.peak: $((peak / 1048576)) MiB"; fi
+  state="$(docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' "$cid")"
+  events="$(docker events --since "$STARTED_AT" --until "$(date +%s)" --filter "container=$cid" --filter event=oom | wc -l | tr -d ' ')"
+  if [ "$state" != "0 false" ] || [ "$events" != 0 ]; then
+    echo "E2E FAIL: app container restarts/OOMKilled is '$state', OOM events since start: $events" >&2
+    return 1
+  fi
+}
 
 cleanup() { "${COMPOSE[@]}" down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -36,6 +55,8 @@ npx playwright install chromium
 if ! npx playwright test "$@"; then
   mkdir -p test-results
   "${COMPOSE[@]}" logs --no-color > test-results/compose.log 2>&1 || true
+  check_memory || true
   echo "E2E FAIL: compose logs saved to e2e/test-results/compose.log" >&2
   exit 1
 fi
+check_memory
