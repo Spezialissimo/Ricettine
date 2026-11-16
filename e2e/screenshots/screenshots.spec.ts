@@ -2,12 +2,34 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+const writes: string[] = [];
+
 // The README/docs images, taken on the demo site (see scripts/screenshots.sh). The language and theme are set the
 // way the app keeps them (localStorage `ricettine.lang` / `ricettine.theme`), so each shot is explicit.
 const OUT = process.env.SCREENSHOT_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/images');
 
 
+/**
+ * The images show the real main-site UI over the seeded demo data: sign in once through the demo session (the
+ * requests carry the demo site header, so the data is the demo database), then answer /api/setup/status with
+ * `demo: false`, so the SPA drops the demo banner, notices and read-only restrictions. The shots only read: any
+ * write request fails the test.
+ */
 async function prepare(page: Page, lang: 'it' | 'en', theme: 'light' | 'dark') {
+  const api = page.context().request;
+  await api.get('/api/me'); // 401, but sets the XSRF cookie
+  const cookies = await page.context().cookies();
+  const xsrf = cookies.find((c) => c.name === 'XSRF-TOKEN')?.value ?? '';
+  const session = await api.post('/api/demo/session', { headers: { 'X-XSRF-TOKEN': xsrf } });
+  expect(session.ok()).toBe(true);
+  await page.route('**/api/setup/status', async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    await route.fulfill({ response: res, json: { ...body, demo: false, demoUrl: null } });
+  });
+  page.on('request', (req) => {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method())) writes.push(`${req.method()} ${req.url()}`);
+  });
   await page.addInitScript(
     ([l, t]) => {
       localStorage.setItem('ricettine.lang', l);
@@ -31,19 +53,20 @@ async function settle(page: Page) {
   await page.waitForTimeout(500);
 }
 
-/** The demo banner is left out of every image; it must exist first, so a selector change cannot silently bring it back. */
-async function hideDemoBanner(page: Page) {
-  const banner = page.locator('app-demo-banner');
-  await expect(banner).toBeVisible();
-  await page.addStyleTag({ content: 'app-demo-banner { display: none !important; }' });
-  await expect(banner).toBeHidden();
-  await expect(page.getByText(/^(Questa è una demo|This is a demo)/)).toBeHidden();
+/** Nothing of the demo mode may show: no banner, notice or toast, and no "demo" in the app's own chrome. */
+async function assertMainSiteUi(page: Page) {
+  // the banner's host element is always in the shell; it must render nothing
+  await expect(page.locator('app-demo-banner')).toHaveText('');
+  for (const sel of ['.demo-notice', '.demo-toast']) await expect(page.locator(sel)).toHaveCount(0);
+  await expect(page.locator('header, nav, [role="status"], [role="alert"]').filter({ hasText: /demo/i })).toHaveCount(0);
+  await expect(page.getByText(/non salvato|not saved/i)).toHaveCount(0);
+  expect(writes).toEqual([]);
 }
 
 /** `endAfter`: cut the image just below this element, so it ends on a whole element (not mid-field). */
 async function shoot(page: Page, name: string, endAfter?: Locator) {
   await settle(page);
-  await hideDemoBanner(page);
+  await assertMainSiteUi(page);
   let clip: { x: number; y: number; width: number; height: number } | undefined;
   if (endAfter) {
     const box = await endAfter.boundingBox();
@@ -68,6 +91,8 @@ async function openEditor(page: Page) {
   await page.getByRole('link', { name: /^(Edit|Modifica)$/ }).or(page.getByRole('menuitem', { name: /^(Edit|Modifica)$/ })).click();
   await expect(page).toHaveURL(/\/recipes\/[^/]+\/edit$/);
   await expect(page.getByLabel(/^(Title|Titolo)$/)).toHaveValue("Penne all'arrabbiata");
+  // the main-site editor, not the demo's local one: its normal actions are there
+  await expect(page.getByRole('button', { name: /^(More actions|Altre azioni)$/ }).or(page.getByRole('link', { name: /^(Preview|Anteprima)$/ })).first()).toBeVisible();
 }
 
 test.describe('desktop', { tag: '@desktop' }, () => {
