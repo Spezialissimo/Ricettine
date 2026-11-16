@@ -49,6 +49,36 @@ class DemoSeederIT extends DemoIntegrationTest {
 	}
 
 	@Test
+	void stepPhotosAreAttachedAndRender() throws Exception {
+		DemoFixture fixture = json.readValue(getClass().getResourceAsStream(DemoSeeder.FIXTURE), DemoFixture.class);
+		long expected = fixture.recipes().stream().flatMap(r -> r.steps().stream()).filter(s -> s.photo() != null)
+			.count();
+		assertThat(expected).isPositive();
+		assertThat(onDemo(() -> jdbc.queryForObject("select count(*) from step where photo_media_id is not null",
+				Integer.class))).isEqualTo((int) expected);
+		// Recipe photos are readable with the recipe's share token, as the share/public view does.
+		java.util.List<java.util.Map<String, Object>> rows = onDemo(() -> jdbc.queryForList("""
+				select s.photo_media_id as id, r.share_token as token from step s join recipe r on r.id = s.recipe_id
+				where s.photo_media_id is not null
+				"""));
+		assertThat(rows).hasSize((int) expected);
+		for (java.util.Map<String, Object> row : rows) {
+			for (String variant : new String[] { "thumb", "display" }) {
+				mvc.perform(demo(get("/media/" + row.get("id") + "/" + variant + ".jpg")).param("s",
+						(String) row.get("token"))).andExpect(status().isOk());
+			}
+		}
+		// recipes without step photos keep photo-less steps, and every recipe still has its cover
+		for (DemoFixture.Recipe r : fixture.recipes()) {
+			long want = r.steps().stream().filter(s -> s.photo() != null).count();
+			assertThat(onDemo(() -> jdbc.queryForObject("""
+					select count(*) from step s join recipe r on r.id = s.recipe_id
+					where r.title = ? and s.photo_media_id is not null
+					""", Long.class, r.title()))).as(r.key()).isEqualTo(want);
+		}
+	}
+
+	@Test
 	void davideHasAvatarOspiteDoesNot() {
 		assertThat(onDemo(() -> jdbc.queryForObject(
 				"select avatar_key from app_user where username = 'davide'", String.class))).isNotBlank();

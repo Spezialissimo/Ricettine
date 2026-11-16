@@ -16,6 +16,15 @@ test('the demo lands on the feed, signed in as a guest, with the banner and no l
   await expect(page.getByRole('button', { name: 'Log in' })).toHaveCount(0);
 });
 
+test('a demo recipe with step photos shows them in its steps', async ({ browser }, testInfo) => {
+  const context = await newDemoContext(browser, testInfo);
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByText('Bigos, lo stufato del cacciatore').first().click();
+  await expect(page.getByRole('heading', { name: 'Bigos, lo stufato del cacciatore', level: 1 })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Step 1', exact: true }).first()).toBeVisible();
+});
+
 test('a deep link on a first visit lands on the target, not on login', async ({ browser }, testInfo) => {
   const context = await newDemoContext(browser, testInfo);
   const page = await context.newPage();

@@ -132,8 +132,10 @@ public class DemoSeeder {
 				RequestContextHolder.resetRequestAttributes();
 			}
 		}
-		log.info("Demo seeded: {} recipes, {} cookbooks in {} ms", fixture.recipes().size(),
-				fixture.cookbooks().size(), System.currentTimeMillis() - start);
+		long stepPhotos = fixture.recipes().stream().flatMap(r -> r.steps().stream()).filter(st -> st.photo() != null)
+			.count();
+		log.info("Demo seeded: {} recipes, {} cookbooks, {} step photos in {} ms", fixture.recipes().size(),
+				fixture.cookbooks().size(), stepPhotos, System.currentTimeMillis() - start);
 	}
 
 	private void seedAll(DemoFixture fixture, Map<String, DemoPhoto> photos) {
@@ -166,7 +168,10 @@ public class DemoSeeder {
 				PHOTO_VARIANTS)).mediaId();
 		List<GroupDto> groups = r.groups().stream().map(g -> new GroupDto(g.name(), g.ingredients().stream()
 			.map(i -> new IngredientDto(i.amount(), i.unit(), i.name(), i.note())).toList())).toList();
-		List<StepInput> steps = r.steps().stream().map(s -> new StepInput(s.text(), null)).toList();
+		// A step photo is a recipe photo (same upload path as the editor) whose media id the step then references.
+		List<StepInput> steps = r.steps().stream().map(s -> new StepInput(s.text(), s.photo() == null ? null
+				: recipes.addPhoto(authorId, draft.id(), media.process(() -> image(s.photo(), photos),
+						PHOTO_VARIANTS)).mediaId())).toList();
 		RecipeDto saved = recipes.update(authorId, draft.id(), new RecipeInput(draft.version(), r.title(),
 				r.portions(), r.prepMinutes(), r.cookMinutes(), null, r.notes(), r.visibility(), cover, groups, steps));
 		if (r.published()) {
