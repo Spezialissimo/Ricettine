@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -18,7 +19,10 @@ import tools.jackson.databind.json.JsonMapper;
 class DemoFixtureTest {
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
-	private static final Set<String> LICENSES = Set.of("Unsplash License", "Pexels License");
+	/** Explicit allow-list of licence names; anything else (for example a non-commercial CC variant) fails the build. */
+	private static final Set<String> LICENSES = Set.of("Unsplash License", "Pexels License", "CC0", "Public domain");
+	private static final Pattern LICENSE_PATTERN = Pattern
+		.compile("CC BY \\d\\.\\d|CC BY-SA \\d\\.\\d|Free Art License( \\d\\.\\d)?");
 	private static final long MAX_IMAGE_BYTES = 600 * 1024;
 	private static final List<String> ENGLISH_MARKERS = List.of(" the ", " and ", " with ", "minutes");
 
@@ -73,8 +77,37 @@ class DemoFixtureTest {
 				assertThat(p.path(field).asString("")).as(e.getKey() + "." + field).isNotBlank();
 			}
 			assertThat(p.get("sourceUrl").asString()).startsWith("https://");
-			assertThat(LICENSES).contains(p.get("license").asString());
+			String license = p.get("license").asString();
+			assertThat(LICENSES.contains(license) || LICENSE_PATTERN.matcher(license).matches())
+				.as(e.getKey() + " licence '" + license + "' is allowed").isTrue();
 		});
+	}
+
+	@Test
+	void everyStepPhotoResolvesToAnEntryAndAFile() {
+		recipes.get("recipes").forEach(r -> r.get("steps").forEach(s -> {
+			JsonNode photo = s.get("photo");
+			if (photo == null) {
+				return;
+			}
+			assertThat(photos.has(photo.asString())).as(r.get("key") + " step photo " + photo).isTrue();
+			assertThat(size("/demo/images/" + photos.get(photo.asString()).get("file").asString())).isPositive();
+		}));
+	}
+
+	@Test
+	void everyPhotoIsUsed() {
+		Set<String> used = new HashSet<>();
+		recipes.get("recipes").forEach(r -> {
+			used.add(r.get("photo").asString());
+			r.get("steps").forEach(s -> {
+				if (s.has("photo")) {
+					used.add(s.get("photo").asString());
+				}
+			});
+		});
+		recipes.get("cookbooks").forEach(c -> used.add(c.get("cover").asString()));
+		assertThat(used).containsExactlyInAnyOrderElementsOf(photos.propertyNames());
 	}
 
 	@Test

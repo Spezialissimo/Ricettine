@@ -42,13 +42,6 @@
     "license": "Unsplash License",
     "width": 1200
   },
-  "rigatoni": {
-    "file": "rigatoni.jpg",
-    "sourceUrl": "https://unsplash.com/photos/rigatoni-pasta-with-meat-sauce-and-cheese-on-a-plate-l7jEWbVOJhg",
-    "downloadUrl": "https://images.unsplash.com/photo-1771508558365-07e711f60270",
-    "photographer": "gabbiistudios",
-    "license": "Unsplash License"
-  },
   "risotto": {
     "file": "risotto.jpg",
     "sourceUrl": "https://unsplash.com/photos/person-eating-fish-meat-xXJciiQAJ-Y",
@@ -56,32 +49,11 @@
     "photographer": "Travis Yewell",
     "license": "Unsplash License"
   },
-  "linguine-gamberi": {
-    "file": "linguine-gamberi.jpg",
-    "sourceUrl": "https://unsplash.com/photos/cooked-noodles-with-shrimps-r01ZopTiEV8",
-    "downloadUrl": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8",
-    "photographer": "Olayinka Babalola",
-    "license": "Unsplash License"
-  },
-  "ragu-anatra": {
-    "file": "ragu-anatra.jpg",
-    "sourceUrl": "https://unsplash.com/photos/a-plate-of-pasta-being-lifted-with-a-fork-qfpVo7fMyII",
-    "downloadUrl": "https://images.unsplash.com/photo-1734356959885-54fe2e99c1cd",
-    "photographer": "Hailey Tong",
-    "license": "Unsplash License"
-  },
   "ricotta-cake": {
     "file": "ricotta-cake.jpg",
     "sourceUrl": "https://unsplash.com/photos/sliced-of-cake-on-white-ceramic-plate-SPw9MtQtgxM",
     "downloadUrl": "https://images.unsplash.com/photo-1609355109553-3bb67c76b1f7",
     "photographer": "Karolina Kołodziejczak",
-    "license": "Unsplash License"
-  },
-  "pasta-salad": {
-    "file": "pasta-salad.jpg",
-    "sourceUrl": "https://unsplash.com/photos/tortellini-salad-with-tomatoes-ham-and-basil-y3oQNH6E9HU",
-    "downloadUrl": "https://images.unsplash.com/photo-1757625620914-1f686e8d15b5",
-    "photographer": "sheri silver",
     "license": "Unsplash License"
   },
   "cover-primi": {
@@ -104,5 +76,293 @@
     "downloadUrl": "https://images.pexels.com/photos/28703259/pexels-photo-28703259.jpeg",
     "photographer": "Jonathan Borba",
     "license": "Pexels License"
+  },
+  "risotto-1": {
+    "file": "risotto-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon(oignon).jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Preparation_rissoto_saumon%28oignon%29.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 0
+  },
+  "risotto-2": {
+    "file": "risotto-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon_etape2.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/3/32/Preparation_rissoto_saumon_etape2.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 0
+  },
+  "risotto-3": {
+    "file": "risotto-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon_etape3.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Preparation_rissoto_saumon_etape3.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 0
+  },
+  "risotto-4": {
+    "file": "risotto-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon_etape4.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/d/de/Preparation_rissoto_saumon_etape4.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 0
+  },
+  "risotto-5": {
+    "file": "risotto-5.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Preparation_rissoto_saumon.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "risotto-6": {
+    "file": "risotto-6.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Preparation_rissoto_saumon2.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Preparation_rissoto_saumon2.jpg",
+    "photographer": "Antoine",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "carbonara-1": {
+    "file": "carbonara-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Linguini_Carbonara_1.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Linguini_Carbonara_1.jpg",
+    "photographer": "Key West Wedding Photography",
+    "license": "CC BY 2.0",
+    "width": 960
+  },
+  "carbonara-2": {
+    "file": "carbonara-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Linguini_Carbonara_2.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Linguini_Carbonara_2.jpg",
+    "photographer": "Key West Wedding Photography",
+    "license": "CC BY 2.0",
+    "width": 960
+  },
+  "carbonara-3": {
+    "file": "carbonara-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Linguini_Carbonara_4.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/4/44/Linguini_Carbonara_4.jpg",
+    "photographer": "Key West Wedding Photography",
+    "license": "CC BY 2.0",
+    "width": 960
+  },
+  "carbonara-4": {
+    "file": "carbonara-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Linguini_Carbonara_5.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Linguini_Carbonara_5.jpg",
+    "photographer": "Key West Wedding Photography",
+    "license": "CC BY 2.0",
+    "width": 960
+  },
+  "carbonara-5": {
+    "file": "carbonara-5.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Linguini_Carbonara_6.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Linguini_Carbonara_6.jpg",
+    "photographer": "Key West Wedding Photography",
+    "license": "CC BY 2.0",
+    "width": 960
+  },
+  "ravioli": {
+    "file": "ravioli.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ravioli_fatti_in_casa.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/7/73/Ravioli_fatti_in_casa.jpg",
+    "photographer": "Marica Massaro",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "ravioli-1": {
+    "file": "ravioli-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Making_of_ravioli,_Toskanischer_Markt_RT_70.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/69/Making_of_ravioli%2C_Toskanischer_Markt_RT_70.jpg",
+    "photographer": "Vux",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "ravioli-2": {
+    "file": "ravioli-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Making_of_ravioli,_Toskanischer_Markt_RT_75.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/62/Making_of_ravioli%2C_Toskanischer_Markt_RT_75.jpg",
+    "photographer": "Vux",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "ravioli-3": {
+    "file": "ravioli-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Making_of_ravioli,_Toskanischer_Markt_RT_76.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Making_of_ravioli%2C_Toskanischer_Markt_RT_76.jpg",
+    "photographer": "Vux",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "ravioli-4": {
+    "file": "ravioli-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Making_Ravioli-003.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Making_Ravioli-003.jpg",
+    "photographer": "Amada44",
+    "license": "Public domain",
+    "width": 960
+  },
+  "chickpea": {
+    "file": "chickpea.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-30.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/2/27/13-01-19-kichererbsensalat-30.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "chickpea-1": {
+    "file": "chickpea-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-05.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/1/15/13-01-19-kichererbsensalat-05.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "chickpea-2": {
+    "file": "chickpea-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-18.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/f/f4/13-01-19-kichererbsensalat-18.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "chickpea-3": {
+    "file": "chickpea-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-24.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4b/13-01-19-kichererbsensalat-24.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "chickpea-4": {
+    "file": "chickpea-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-27.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/a/a6/13-01-19-kichererbsensalat-27.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "chickpea-5": {
+    "file": "chickpea-5.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:13-01-19-kichererbsensalat-28.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/66/13-01-19-kichererbsensalat-28.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "CC BY-SA 3.0",
+    "width": 960
+  },
+  "sponge-roll": {
+    "file": "sponge-roll.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step._22_We_fold_piece_rolls_on_dessert_plate_and_eat_pastry_fork.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/8/86/Sponge_roll_with_butter_cream_-_Step_by_step._22_We_fold_piece_rolls_on_dessert_plate_and_eat_pastry_fork.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-1": {
+    "file": "sponge-roll-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_06_Left_yolk_and_powdered_sugar_(foam)_and_right_egg_white_salt_(snow).jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/5/50/Sponge_roll_with_butter_cream_-_06_Left_yolk_and_powdered_sugar_%28foam%29_and_right_egg_white_salt_%28snow%29.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-2": {
+    "file": "sponge-roll-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step.08_Evenly_spoon.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Sponge_roll_with_butter_cream_-_Step_by_step.08_Evenly_spoon.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-3": {
+    "file": "sponge-roll-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step.09_Bake_at_180_C.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/8/83/Sponge_roll_with_butter_cream_-_Step_by_step.09_Bake_at_180_C.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-4": {
+    "file": "sponge-roll-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step.12_Twist,_we_load_and_chill.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Sponge_roll_with_butter_cream_-_Step_by_step.12_Twist%2C_we_load_and_chill.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-5": {
+    "file": "sponge-roll-5.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step._16_Paint_the_entire_surface.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Sponge_roll_with_butter_cream_-_Step_by_step._16_Paint_the_entire_surface.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "sponge-roll-6": {
+    "file": "sponge-roll-6.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sponge_roll_with_butter_cream_-_Step_by_step.18_Roulade_paint_the_two_third_of_the_cream.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/8/87/Sponge_roll_with_butter_cream_-_Step_by_step.18_Roulade_paint_the_two_third_of_the_cream.jpg",
+    "photographer": "Pohled 111 (Jiří Zelenka)",
+    "license": "CC BY-SA 4.0",
+    "width": 960
+  },
+  "bigos": {
+    "file": "bigos.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-20.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/0/01/2011-04-09-bigos-by-RalfR-20.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-1": {
+    "file": "bigos-1.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-01.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/2/26/2011-04-09-bigos-by-RalfR-01.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-2": {
+    "file": "bigos-2.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-08.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/1/1e/2011-04-09-bigos-by-RalfR-08.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-3": {
+    "file": "bigos-3.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-14.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/4/47/2011-04-09-bigos-by-RalfR-14.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-4": {
+    "file": "bigos-4.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-17.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b2/2011-04-09-bigos-by-RalfR-17.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-5": {
+    "file": "bigos-5.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-18.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e9/2011-04-09-bigos-by-RalfR-18.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
+  },
+  "bigos-6": {
+    "file": "bigos-6.jpg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2011-04-09-bigos-by-RalfR-19.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/2011-04-09-bigos-by-RalfR-19.jpg",
+    "photographer": "Ralf Roletschek",
+    "license": "Free Art License",
+    "width": 960
   }
 }

@@ -19,7 +19,8 @@ record DemoFixture(List<User> users, List<Recipe> recipes, List<Cookbook> cookbo
 	record Ingredient(BigDecimal amount, String unit, String name, String note) {
 	}
 
-	record Step(String text) {
+	/** {@code photo} is an optional key into photos.json; the seeder does not use it yet. */
+	record Step(String text, String photo) {
 	}
 
 	record Cookbook(String owner, String name, String description, String visibility, String cover,
