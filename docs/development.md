@@ -18,7 +18,7 @@ CI (`.github/workflows/ci.yml`) runs the ones marked with a job on every pull re
 
 ## Regenerating screenshots
 
-The images in `docs/images/` are produced by `scripts/screenshots.sh`. It builds the image, starts the demo stack as compose project `ricettine-shots`, takes the nine README and docs images with Playwright (`e2e/screenshots.config.ts`) into `docs/images/`, compresses any image over 600 KB with pngquant (run in Docker) and tears the stack down with `-v`. It fails if an image is missing, empty or still over 600 KB after compression. It is manual and not part of CI.
+The images in `docs/images/` are produced by `scripts/screenshots.sh`. It builds the image, starts the demo stack as compose project `ricettine-shots`, takes the eleven README and docs images with Playwright (`e2e/screenshots.config.ts`) into `docs/images/`, compresses any image over 600 KB with pngquant (run in Docker) and tears the stack down with `-v`. It fails if an image is missing, empty or still over 600 KB after compression. It is manual and not part of CI.
 
 Environment overrides: `SHOTS_BASE_URL` (default `http://localhost:8080`), `SHOTS_TIMEOUT` (health wait in seconds, default 180) and `SHOTS_COMPOSE_PROJECT`.
 
