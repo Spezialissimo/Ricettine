@@ -44,6 +44,9 @@ import {
  * ingredients and notes left; steps right; no bottom bar), a single column with a fixed bottom bar on
  * the phone. Ingredients and steps editors and Publish arrive in Task 8, photos in Task 10.
  */
+/** How long the demo shows "not saved" after Save before leaving the editor. */
+const DEMO_DONE_DELAY_MS = 1500;
+
 @Component({
   selector: 'app-recipe-editor-page',
   imports: [
@@ -113,18 +116,19 @@ import {
           <button type="button" class="btn save" [disabled]="busy()" (click)="done()">
             {{ t('editor.save') }}
           </button>
-          <button
-            type="button"
-            class="btn more"
-            [attr.aria-label]="t('editor.more')"
-            [disabled]="busy()"
-            [cdkMenuTriggerFor]="menu"
-          >
-            ⋯
-          </button>
-          <ng-template #menu>
-            <div class="menu" cdkMenu>
-              @if (!store.local) {
+          <!-- the menu only holds Delete, which the demo does not have -->
+          @if (!store.local) {
+            <button
+              type="button"
+              class="btn more"
+              [attr.aria-label]="t('editor.more')"
+              [disabled]="busy()"
+              [cdkMenuTriggerFor]="menu"
+            >
+              ⋯
+            </button>
+            <ng-template #menu>
+              <div class="menu" cdkMenu>
                 <button
                   type="button"
                   class="menu-item danger"
@@ -133,9 +137,9 @@ import {
                 >
                   {{ t('editor.delete') }}
                 </button>
-              }
-            </div>
-          </ng-template>
+              </div>
+            </ng-template>
+          }
         </header>
 
         @if (store.local) {
@@ -524,7 +528,15 @@ export class RecipeEditorPage {
    */
   async done(): Promise<void> {
     if (this.busy()) return;
-    if (this.store.local) return this.showNotSaved();
+    if (this.store.local) {
+      // the demo saves nothing: say so, give the notice a moment to be read, then go where Done on a new draft goes
+      this.busy.set(true);
+      this.showNotSaved();
+      await new Promise<void>((resolve) => setTimeout(resolve, DEMO_DONE_DELAY_MS));
+      this.busy.set(false);
+      await this.router.navigateByUrl('/kitchen/recipes');
+      return;
+    }
     if (this.store.uploading()) {
       // a photo still going up is not saved yet: stay, so it is not lost
       this.actionError.set('editor.uploadsInProgress');

@@ -16,7 +16,8 @@ class SiteStatusIT extends DemoIntegrationTest {
 
 	@Test
 	void demoSiteFlagsItselfWithoutUrl() throws Exception {
-		mvc.perform(demo(get("/api/setup/status"))).andExpect(jsonPath("$.demo").value(true))
+		mvc.perform(demo(get("/api/setup/status"))).andExpect(jsonPath("$.setupRequired").value(false))
+			.andExpect(jsonPath("$.demo").value(true))
 			.andExpect(jsonPath("$.demoUrl").value(org.hamcrest.Matchers.nullValue()));
 	}
 }

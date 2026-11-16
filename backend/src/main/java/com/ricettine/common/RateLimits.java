@@ -1,6 +1,8 @@
 package com.ricettine.common;
 
 import com.ricettine.config.LimitsConfig;
+import com.ricettine.site.Site;
+import com.ricettine.site.SiteContext;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Clock;
@@ -138,8 +140,13 @@ public class RateLimits {
 		hitOrReject(uploads, userId.toString());
 	}
 
-	public void profile(UUID userId) {
-		hitOrReject(profile, userId.toString());
+	/**
+	 * On the demo every visitor is the same guest account, so a per-user key would share one bucket among all of
+	 * them: there the limit is per client address instead (like the other demo limits).
+	 */
+	public void profile(UUID userId, String ip) {
+		String key = SiteContext.current() == Site.DEMO && ip != null ? bound(ipKey(ip)) : userId.toString();
+		hitOrReject(profile, key);
 	}
 
 	/** IPv6 clients are keyed by their /64 (one subscriber holds a whole /64); IPv4 and unparsable values as is. */

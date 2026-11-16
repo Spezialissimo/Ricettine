@@ -17,7 +17,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * The demo site is read-only: any method other than GET, HEAD or OPTIONS is refused with 403 {@code demo_read_only}.
  * Runs right after {@link SiteFilter} and before Spring Session and Spring Security, so a refused request creates
  * no session and passes no authentication. The two exceptions are matched on the exact request URI (no trailing
- * slash, path parameter or case variant gets through: such a request is refused).
+ * slash, path parameter or case variant gets through: such a request is refused). Methods are compared exactly
+ * (HTTP methods are case-sensitive), so a lower-case {@code get} is not safe.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -35,7 +36,7 @@ public class DemoReadOnlyFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		if (!readOnly || SiteContext.current() != Site.DEMO || SAFE_METHODS.contains(request.getMethod().toUpperCase())
+		if (!readOnly || SiteContext.current() != Site.DEMO || SAFE_METHODS.contains(request.getMethod())
 				|| isAllowedWrite(request)) {
 			chain.doFilter(request, response);
 			return;
@@ -48,7 +49,7 @@ public class DemoReadOnlyFilter extends OncePerRequestFilter {
 	}
 
 	private static boolean isAllowedWrite(HttpServletRequest request) {
-		if (!"POST".equalsIgnoreCase(request.getMethod())) {
+		if (!"POST".equals(request.getMethod())) {
 			return false;
 		}
 		String uri = request.getRequestURI();

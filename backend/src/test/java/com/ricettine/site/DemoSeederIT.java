@@ -20,7 +20,7 @@ class DemoSeederIT extends DemoIntegrationTest {
 	@Autowired
 	DemoSeeder seeder;
 
-	@Autowired
+	@org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 	BlobStore blobs;
 
 	/** DemoIntegrationTest empties the demo database before each test; here the real seeder fills it again. */
@@ -81,6 +81,16 @@ class DemoSeederIT extends DemoIntegrationTest {
 		assertThat(count("app_user")).isEqualTo(2);
 		assertThat(count("recipe")).isEqualTo(12);
 		assertThat(count("cookbook")).isEqualTo(3);
+	}
+
+	@Test
+	void blobWipeFailureDoesNotStopSeeding() {
+		SiteContext.runAs(Site.DEMO, this::truncateAll);
+		org.mockito.Mockito.doThrow(new RuntimeException("storage down")).when(blobs).deleteByPrefix(
+				org.mockito.ArgumentMatchers.anyString());
+		seeder.seed();
+		assertThat(count("app_user")).isEqualTo(2);
+		assertThat(count("recipe")).isEqualTo(12);
 	}
 
 	@Test

@@ -1,5 +1,5 @@
-# e2e overlay: every Playwright request arrives from the one Docker gateway IP, so the per-IP abuse limits are
-# effectively off. The per-account, upload and profile limits keep their defaults.
+# e2e overlay: every Playwright request arrives from the one Docker gateway IP, so the per-IP abuse limits (login,
+# anonymous auth, demo session) are effectively off. The per-account, upload and profile limits keep their defaults.
 # The e2e image-from-a-web-page test drags the app's own (public) avatar URL, which the server fetches from
 # itself on localhost: the test-only switch allows private addresses and any port. Never set it in production.
 services:
@@ -7,6 +7,7 @@ services:
     environment:
       RICETTINE_LIMITS_LOGINIP_LIMIT: "100000"
       RICETTINE_LIMITS_ANONYMOUSAUTH_LIMIT: "100000"
+      RICETTINE_LIMITS_DEMOSESSION_LIMIT: "100000"
       RICETTINE_REMOTE_IMAGES_ALLOW_PRIVATE_ADDRESSES: "true"
       # the demo site, reached with the X-Ricettine-Site: demo header (see helpers/demo.ts)
       RICETTINE_DEMO_ENABLED: "true"

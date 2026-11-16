@@ -804,16 +804,28 @@ describe('RecipeEditorPage in the demo', () => {
     (el.querySelector('button.publish') as HTMLButtonElement).click();
     await settle(f);
     expect(el.querySelector('.demo-toast')?.textContent).toContain(en.demo.notSaved);
-    byText(el.querySelector('.editor-header')!, 'button', en.editor.save)!.click();
-    await settle(f);
     expect(nav).not.toHaveBeenCalled();
   });
 
-  it('hides the Delete menu item', async () => {
-    const { f, el } = await mountDemo();
-    (el.querySelector('button.more') as HTMLButtonElement).click();
-    await settle(f);
-    expect(document.body.textContent).not.toContain(en.editor.delete);
+  it('Save says nothing is saved, then goes to My kitchen', async () => {
+    const { f, el, nav } = await mountDemo();
+    vi.useFakeTimers();
+    try {
+      byText(el.querySelector('.editor-header')!, 'button', en.editor.save)!.click();
+      await vi.advanceTimersByTimeAsync(100);
+      f.detectChanges();
+      expect(el.querySelector('.demo-toast')?.textContent).toContain(en.demo.notSaved);
+      expect(nav).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(nav).toHaveBeenCalledWith('/kitchen/recipes');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('has no "more" menu, which would only be empty', async () => {
+    const { el } = await mountDemo();
+    expect(el.querySelector('button.more')).toBeNull();
   });
 
   it('leaveGuardAllowsInDemo', async () => {

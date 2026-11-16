@@ -103,6 +103,16 @@ public class DemoSeeder {
 		seed(FIXTURE);
 	}
 
+	/** Best-effort: stale blobs only waste space, so a storage hiccup must not keep the demo from seeding. */
+	void wipeBlobs() {
+		try {
+			blobs.deleteByPrefix(Site.DEMO.blobPrefix());
+		}
+		catch (RuntimeException e) {
+			log.warn("Could not wipe the demo blobs of earlier boots; seeding continues", e);
+		}
+	}
+
 	void seed(String fixturePath) {
 		long start = System.currentTimeMillis();
 		DemoFixture fixture = read(fixturePath, DemoFixture.class);
@@ -113,7 +123,7 @@ public class DemoSeeder {
 		}
 		try {
 			SiteContext.runAs(Site.DEMO, () -> {
-				blobs.deleteByPrefix(Site.DEMO.blobPrefix());
+				wipeBlobs();
 				seedAll(fixture, photos);
 			});
 		}

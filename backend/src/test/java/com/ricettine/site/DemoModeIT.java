@@ -155,6 +155,15 @@ class DemoModeIT extends DemoIntegrationTest {
 	}
 
 	@Test
+	void lowerCaseMethodWithBodyIsRefused() throws Exception {
+		Cookie session = demoSession();
+		// HTTP methods are case-sensitive: "get" is not GET, so it must not pass as a safe method
+		mvc.perform(demo(request(HttpMethod.valueOf("get"), "/api/recipes")).cookie(session)
+				.contentType(MediaType.APPLICATION_JSON).content("{}"))
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("demo_read_only"));
+	}
+
+	@Test
 	void logoutAllowedOnDemo() throws Exception {
 		Cookie session = demoSession();
 		mvc.perform(demo(post("/api/auth/logout")).with(csrf()).cookie(session)).andExpect(status().isNoContent());

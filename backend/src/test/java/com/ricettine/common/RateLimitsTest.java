@@ -17,6 +17,25 @@ class RateLimitsTest {
 	}
 
 	@Test
+	void profileIsPerUserOnMainAndPerAddressOnDemo() {
+		LimitsConfig cfg = new LimitsConfig();
+		cfg.getProfile().setLimit(2);
+		RateLimits limits = new RateLimits(cfg, Clock.systemUTC());
+		java.util.UUID guest = java.util.UUID.randomUUID();
+		// main: one bucket per user, whatever the address
+		limits.profile(guest, "1.1.1.1");
+		limits.profile(guest, "2.2.2.2");
+		assertThatThrownBy(() -> limits.profile(guest, "3.3.3.3")).isInstanceOf(ApiException.class);
+		// demo: every visitor is the same guest, so the bucket is per address
+		com.ricettine.site.SiteContext.runAs(com.ricettine.site.Site.DEMO, () -> {
+			limits.profile(guest, "1.1.1.1");
+			limits.profile(guest, "1.1.1.1");
+			assertThatThrownBy(() -> limits.profile(guest, "1.1.1.1")).isInstanceOf(ApiException.class);
+			limits.profile(guest, "2.2.2.2");
+		});
+	}
+
+	@Test
 	void keysLongerThan320CharactersShareACounterOnTheirFirst320() {
 		RateLimits limits = limits(2, 100);
 		String prefix = "a".repeat(320);
