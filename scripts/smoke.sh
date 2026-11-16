@@ -21,7 +21,7 @@ check_memory() {
   local cid state events peak
   cid="$(docker compose ps -q app)"
   [ -n "$cid" ] || { echo "SMOKE FAIL: no app container to check" >&2; return 1; }
-  docker stats --no-stream --format 'app memory: {{.MemUsage}} ({{.MemPerc}})' "$cid"
+  docker stats --no-stream --format 'app memory: {{.MemUsage}} ({{.MemPerc}})' "$cid" || true
   peak="$(docker exec "$cid" cat /sys/fs/cgroup/memory.peak 2>/dev/null || true)"
   if [[ "$peak" =~ ^[0-9]+$ ]]; then echo "app memory.peak: $((peak / 1048576)) MiB"; fi
   state="$(docker inspect -f '{{.RestartCount}} {{.State.OOMKilled}}' "$cid")"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Restore drill: builds the image, creates an admin and an avatar, backs up with deploy/backup.sh,
 # wipes every volume, restores with deploy/restore.sh and checks the data is back.
+# The demo is enabled so the drill also proves that backups cover the main database only.
 # Needs port 8080 free. Always tears its stack down with -v.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -10,6 +11,7 @@ BASE="http://localhost:8080"
 TIMEOUT="${SMOKE_TIMEOUT:-180}"
 export COMPOSE_FILE=compose.yaml:compose.build.yaml
 export COMPOSE_PROJECT_NAME="$PROJECT"
+export RICETTINE_DEMO_ENABLED=true
 
 BACKUPS="$(mktemp -d)"
 # set explicitly so a developer .env cannot redirect the drill (backup.sh only reads .env for unset variables)
@@ -37,6 +39,8 @@ json_post() {
   curl -sS -o "$BODY" -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST -H 'Content-Type: application/json' \
     -H "X-XSRF-TOKEN: $(xsrf)" -d "$2" "$1"
 }
+# psql_in <db> <sql>: one value from the compose database
+psql_in() { docker compose exec -T db psql -U ricettine -d "$1" -tAc "$2" | tr -d '[:space:]'; }
 setup_required() { curl -fsS "$BASE/api/setup/status" | grep -o '"setupRequired":[a-z]*' | cut -d: -f2; }
 
 docker compose down -v >/dev/null 2>&1 || true
@@ -65,12 +69,18 @@ avatar_info() {
 before="$(avatar_info)"
 [[ "$before" == "200 image/"* ]] || fail "avatar before backup: $before"
 
-echo "== backup"
+echo "== backup (demo database must exist and stay untouched)"
+[ "$(psql_in ricettine_demo "select count(*) from app_user where username = 'ospite'")" = 1 ] || fail "demo database has no ospite user"
+demo_before="$(psql_in ricettine_demo "select count(*) from recipe")"
+[ "$demo_before" -gt 0 ] || fail "demo database has no recipes"
 "$BASH" deploy/backup.sh
+[ "$(psql_in ricettine_demo "select count(*) from recipe")" = "$demo_before" ] || fail "backup changed the demo database"
 dump="$(find "$BACKUPS" -name 'ricettine-*.dump' | head -n1)"
 media="$(find "$BACKUPS" -name 'ricettine-*-media.tar.gz' | head -n1)"
 [ -s "$dump" ] || fail "no dump written"
 [ -s "$media" ] || fail "no media archive written"
+
+if docker compose exec -T db pg_restore -f - <"$dump" | grep -q -e ospite -e ricettine_demo; then fail "backup contains demo content"; fi
 
 echo "== wipe"
 docker compose down -v
@@ -81,6 +91,7 @@ wait_healthy
 echo "== restore"
 "$BASH" deploy/restore.sh "$dump" "$media"
 [ "$(setup_required)" = false ] || fail "after restore: setupRequired is not false"
+[ "$(psql_in ricettine "select count(*) from app_user where username = 'ospite'")" = 0 ] || fail "restored main database has demo content"
 fresh_jar
 code="$(json_post "$BASE/api/auth/login" '{"email":"admin@example.com","password":"correct-horse-battery"}')"
 [ "$code" = 200 ] || fail "login after restore returned $code: $(cat "$BODY")"

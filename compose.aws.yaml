@@ -22,7 +22,7 @@ services:
 
   app:
     ports: !reset []
-    # explicit, not RICETTINE_MEM_LIMIT: sized for the instance type in infra/ (the JVM heap is 75% of it)
+    # explicit, not RICETTINE_MEM_LIMIT: sized for the instance type in infra/ (the JVM heap is 60% of it)
     mem_limit: 1g
     environment:
       RICETTINE_BASE_URL: https://${RICETTINE_DOMAIN:?Set RICETTINE_DOMAIN}
