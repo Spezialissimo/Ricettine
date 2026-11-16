@@ -17,8 +17,9 @@ services:
   app:
     image: ghcr.io/spezialissimo/ricettine:${RICETTINE_VERSION:-latest}
     restart: unless-stopped
-    # The JVM sizes its heap at 60% of this limit (MaxRAMPercentage) and caps metaspace and the code cache; the rest is
-    # headroom for native buffers (image decoding). Without a limit it would use the whole host.
+    # The JVM sizes its heap at 60% of this limit (MaxRAMPercentage, set in the Dockerfile together with
+    # MALLOC_ARENA_MAX=2); metaspace and the code cache are deliberately not capped. The rest is headroom for non-heap
+    # and native buffers (image decoding). Without a limit it would use the whole host.
     mem_limit: ${RICETTINE_MEM_LIMIT:-1g}
     depends_on:
       db:
