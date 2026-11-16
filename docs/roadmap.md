@@ -21,7 +21,7 @@ gantt
     Plan 9 demo and docs (ongoing) :active, p9, 2026-11-15, 2026-11-17
 ```
 
-Plan 9 has no merge date yet: its first three pull requests (#48, #50, #51) merged by 2026-11-16, and the documentation pull request is open. The end of its bar is a placeholder. Plan 7's start is the date its plan file was first committed (2026-11-15); the file is named for 2026-11-12, when the feedback it records began.
+Plan 9 has no merge date yet: its first three pull requests (#48, #50, #51) had merged by 2026-11-16, and the plan ends with this documentation. The end of its bar is a placeholder. Plan 7's start is the date its plan file was first committed (2026-11-15); the file is named for 2026-11-12, when the feedback it records began.
 
 ## What each plan delivered
 
