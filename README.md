@@ -5,9 +5,9 @@
 
 [Live site](https://ricettine.food) · [**Try the demo**](https://demo.ricettine.food)
 
-My girlfriend and I wanted one place to write down our recipes and to collect them in cookbooks, without handing them to a service we do not control. So I started building one: a small recipe app that we host ourselves and that we can open to friends and family by invitation.
+My girlfriend and I wanted one place to write down our recipes and to collect them in cookbooks. So I started building one: a small recipe app that we host ourselves and that we can open to friends and family by invitation.
 
-Along the way it became something else too. I wanted to learn how far Claude Code can take a project from nothing to something finished, so I used Ricettine as the test. Every feature went through the same loop: a written spec, a plan split into small pull requests, implementation by Claude Code subagents, a review, and CI on every pull request. The same process covered the Docker image, the end-to-end tests, a code audit of the first five plans, and the move to AWS with Terraform. I decided what the product should be and what was good enough; Claude Code wrote most of the code, and I read and corrected a lot of it.
+Along the way it became something else too. I wanted to learn how far Claude Code can take a project from nothing to something finished, so I used Ricettine as the test. Every feature went through the same loop: a written spec, a plan split into small pull requests, implementation by Claude Code subagents, a review, and CI on every pull request. The same process covered the Docker image, the end-to-end tests, a code audit of the first five plans, and the move to AWS with Terraform. I decided what the product should be and what was good enough; Claude Code wrote the code, the tests and the docs.
 
 This repository is the result, and the `docs` folder is an honest account of it: what the app does, how it is built, what went wrong and what is still missing. The live site is where we use it. The demo is a read-only copy with sample recipes (Italian, like the rest of the content), so you can look around without an account.
 
@@ -65,7 +65,6 @@ docker compose up -d
 ```
 
 Open <http://localhost:8080> and create the admin account; the admin then invites other people with single-use links. Configuration, HTTPS, upgrades and backups: [docs/deployment.md](docs/deployment.md).
-
 
 ## A guide to the docs
 
