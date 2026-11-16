@@ -53,6 +53,7 @@ RICETTINE_DOMAIN=recipes.example.com docker compose -f compose.yaml -f compose.h
 Caddy has **no access logs on purpose**: invite, password-reset and share tokens are part of URL paths, so request logs would leak them. Its error log (for example a 502 while the app restarts) has request URIs and headers removed for the same reason.
 
 If you run your own reverse proxy instead, make it set `X-Forwarded-For` (the real client address, overwriting any client-sent value; it feeds the rate limits) and `X-Forwarded-Proto`, set `RICETTINE_BASE_URL`, set `RICETTINE_TRUSTED_PROXIES` to a regex matching your proxy's address as the app sees it (otherwise `X-Forwarded-For` and `X-Forwarded-Proto` are ignored: every client shares the proxy's rate limit, the `SESSION` and `XSRF-TOKEN` cookies lose `Secure`, and links are `http://` unless `RICETTINE_BASE_URL` is set), and disable access logs for the same reason.
+
 ### Upgrading
 
 Images are published by CI to `ghcr.io/spezialissimo/ricettine` on every push to `main` (`latest`, `sha-...`) and on `v*` tags (semver), for amd64 and arm64. To upgrade:

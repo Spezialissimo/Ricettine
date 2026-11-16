@@ -11,7 +11,7 @@ Self-hosted recipe app: Spring Boot 4 (Java 25) backend + Angular 22 frontend, s
 - `docs/superpowers/` — spec, plans and follow-ups. Read on demand, not every session.
 
 ## Commands
-- Backend/frontend tests, dev server and every check script with what it covers: README "Development and checks" (backend `./mvnw verify` needs Docker; frontend `npx ng test --watch=false` and `npx ng build`). Formatting: `cd frontend && npm run format:check`; fix with `npx prettier --write .`.
+- Backend/frontend tests, dev server and every check script with what it covers: docs/development.md (backend `./mvnw verify` needs Docker; frontend `npx ng test --watch=false` and `npx ng build`). Formatting: `cd frontend && npm run format:check`; fix with `npx prettier --write .`.
 - Scripts you will run most: `scripts/e2e.sh` (Playwright, needs the built image) · `scripts/smoke.sh` · `scripts/infra-check.sh` (workflows, shell, Caddyfiles, Terraform with mock providers) · `scripts/backup-restore-check.sh` (backup, wipe, restore drill).
 - `compose.yaml` is image-only (published image); scripts export `COMPOSE_FILE=compose.yaml:compose.build.yaml` to build locally
 - Locally Docker runs on Colima: `export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`
