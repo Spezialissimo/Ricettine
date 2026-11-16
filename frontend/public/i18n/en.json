@@ -538,7 +538,7 @@
   "demo": {
     "banner": "This is a demo: explore and try the editor, but changes aren't saved.",
     "backToSite": "Go to ricettine.food",
-    "credits": "Recipes from TheMealDB, photos from Unsplash and Pexels",
+    "credits": "Recipes from TheMealDB and Wikibooks, photos from Unsplash, Pexels and Wikimedia Commons",
     "notSaved": "Demo mode: not saved"
   }
 }

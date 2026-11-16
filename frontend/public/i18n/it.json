@@ -538,7 +538,7 @@
   "demo": {
     "banner": "Questa è una demo: puoi esplorare e provare l'editor, ma le modifiche non vengono salvate.",
     "backToSite": "Vai a ricettine.food",
-    "credits": "Ricette da TheMealDB, foto da Unsplash e Pexels",
+    "credits": "Ricette da TheMealDB e Wikibooks, foto da Unsplash, Pexels e Wikimedia Commons",
     "notSaved": "Modalità demo: non salvato"
   }
 }
