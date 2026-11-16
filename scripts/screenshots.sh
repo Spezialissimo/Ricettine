@@ -46,6 +46,7 @@ for name in "${IMAGES[@]}"; do
     docker run --rm -v "$PWD/docs/images:/img" -w /img alpine:3.22 sh -c \
       "apk add --no-cache pngquant >/dev/null && pngquant --quality 65-95 --speed 1 --force --ext .png $name.png"
   fi
+  [ -s "$f" ] || { echo "SCREENSHOTS FAIL: $f is empty after compression" >&2; exit 1; }
   if [ "$(wc -c <"$f")" -gt "$MAX_BYTES" ]; then
     echo "SCREENSHOTS FAIL: $f is still over 600 KB" >&2
     exit 1

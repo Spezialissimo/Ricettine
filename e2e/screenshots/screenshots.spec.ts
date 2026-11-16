@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -31,9 +31,27 @@ async function settle(page: Page) {
   await page.waitForTimeout(500);
 }
 
-async function shoot(page: Page, name: string) {
+/** The demo banner is left out of every image; it must exist first, so a selector change cannot silently bring it back. */
+async function hideDemoBanner(page: Page) {
+  const banner = page.locator('app-demo-banner');
+  await expect(banner).toBeVisible();
+  await page.addStyleTag({ content: 'app-demo-banner { display: none !important; }' });
+  await expect(banner).toBeHidden();
+  await expect(page.getByText(/^(Questa è una demo|This is a demo)/)).toBeHidden();
+}
+
+/** `endAfter`: cut the image just below this element, so it ends on a whole element (not mid-field). */
+async function shoot(page: Page, name: string, endAfter?: Locator) {
   await settle(page);
-  await page.screenshot({ path: path.join(OUT, name), fullPage: false });
+  await hideDemoBanner(page);
+  let clip: { x: number; y: number; width: number; height: number } | undefined;
+  if (endAfter) {
+    const box = await endAfter.boundingBox();
+    const vp = page.viewportSize();
+    if (!box || !vp) throw new Error(`no box to end ${name} on`);
+    clip = { x: 0, y: 0, width: vp.width, height: Math.min(vp.height, Math.ceil(box.y + box.height + 6)) };
+  }
+  await page.screenshot({ path: path.join(OUT, name), clip });
 }
 
 async function openRecipe(page: Page, title: string) {
@@ -111,6 +129,6 @@ test.describe('mobile', { tag: '@mobile' }, () => {
   test('editor', async ({ page }) => {
     await prepare(page, 'it', 'light');
     await openEditor(page);
-    await shoot(page, 'editor-mobile.png');
+    await shoot(page, 'editor-mobile.png', page.locator('p', { hasText: 'Elencata in Scopri' }));
   });
 });
