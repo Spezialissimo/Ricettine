@@ -20,7 +20,7 @@ JAR="$(mktemp)"
 BODY="$(mktemp)"
 cleanup() {
   docker compose down -v >/dev/null 2>&1 || true
-  rm -rf "$BACKUPS" "$JAR" "$BODY" "$BODY.before"
+  rm -rf "$BACKUPS" "$JAR" "$BODY" "$BODY.before" "$BODY.sql"
 }
 trap cleanup EXIT
 fail() { echo "BACKUP-RESTORE FAIL: $*" >&2; docker compose logs --no-color --tail=40 app >&2 || true; exit 1; }
@@ -70,9 +70,13 @@ before="$(avatar_info)"
 [[ "$before" == "200 image/"* ]] || fail "avatar before backup: $before"
 
 echo "== backup (demo database must exist and stay untouched)"
-[ "$(psql_in ricettine_demo "select count(*) from app_user where username = 'ospite'")" = 1 ] || fail "demo database has no ospite user"
+demo_deadline=$((SECONDS + 60))
+until [ "$(psql_in ricettine_demo "select count(*) from app_user where username = 'ospite'" 2>/dev/null || true)" = 1 ] &&
+  [ "$(psql_in ricettine_demo "select count(*) from recipe" 2>/dev/null || true)" -gt 0 ] 2>/dev/null; do
+  [ "$SECONDS" -lt "$demo_deadline" ] || fail "demo database has no ospite user and recipes after 60s"
+  sleep 2
+done
 demo_before="$(psql_in ricettine_demo "select count(*) from recipe")"
-[ "$demo_before" -gt 0 ] || fail "demo database has no recipes"
 "$BASH" deploy/backup.sh
 [ "$(psql_in ricettine_demo "select count(*) from recipe")" = "$demo_before" ] || fail "backup changed the demo database"
 dump="$(find "$BACKUPS" -name 'ricettine-*.dump' | head -n1)"
@@ -80,7 +84,11 @@ media="$(find "$BACKUPS" -name 'ricettine-*-media.tar.gz' | head -n1)"
 [ -s "$dump" ] || fail "no dump written"
 [ -s "$media" ] || fail "no media archive written"
 
-if docker compose exec -T db pg_restore -f - <"$dump" | grep -q -e ospite -e ricettine_demo; then fail "backup contains demo content"; fi
+# capture the dump as text first: grep -q in a pipe would SIGPIPE pg_restore and pass vacuously under pipefail
+docker compose exec -T db pg_restore -f - <"$dump" >"$BODY.sql" || fail "pg_restore could not read the dump"
+grep -q 'admin@example.com' "$BODY.sql" || fail "dump text lacks the main admin, so the demo check would prove nothing"
+if grep -q -e ospite -e ricettine_demo "$BODY.sql"; then fail "backup contains demo content"; fi
+rm -f "$BODY.sql"
 
 echo "== wipe"
 docker compose down -v
