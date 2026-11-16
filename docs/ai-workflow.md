@@ -79,7 +79,7 @@ flowchart TD
 - **The demo container ran out of memory.** With the demo enabled, the 1 GiB container was OOM-killed under e2e load. The JVM budget was lowered (`-XX:MaxRAMPercentage=60`, `MALLOC_ARENA_MAX=2`) and `e2e.sh` and `smoke.sh` now fail if the container restarts or is OOM-killed (PR #50).
 - **The gate for that could hang.** The new memory check called `docker events --until` with a time from the host clock, which diverged from the Docker VM's after the Mac slept, so it waited forever. Its window now comes from the daemon's clock and the call is capped at 15 seconds (PR #50).
 - **A merge broke `main`.** PR #48 added `demo` and `demoUrl` to `GET /api/setup/status`, but `smoke.sh` matched the old body exactly. #48 merged with `smoke` and `smoke-arm64` red, and #49 updated the check. A green CI is the gate for that reason.
-- **Production depended on a test-only bean.** In review of Plan 9's first pull request, the main data source was found to require a `JdbcConnectionDetails` bean that only tests and Docker Compose service connections provide. The fix (commit `0a21868`) falls back to `spring.datasource.*`, and `PlainDataSourcePropertiesIT` starts the app that way.
+- **Production depended on a test-only bean.** In review of Plan 9's first pull request (#48), the main data source was found to require a `JdbcConnectionDetails` bean that only tests and Docker Compose service connections provide. The fix (commit `0a21868`) falls back to `spring.datasource.*`, and `PlainDataSourcePropertiesIT` starts the app that way.
 
 ## The raw record
 

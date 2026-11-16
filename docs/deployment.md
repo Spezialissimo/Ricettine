@@ -276,7 +276,7 @@ An optional public demo at `demo.<domain>` runs on the same host, with its own d
 
 How it works: the demo has its own CloudFront distribution and certificate. It sends `X-Ricettine-Site: demo` to the origin as a custom header, which overrides any value from the viewer, and the app serves the demo database for that header. The main distribution never forwards that header from viewers (a whitelist in the origin request policy, asserted in `tests/edge.tftest.hcl`), and Caddy only accepts requests that carry the origin secret, so nobody can pick the demo from the outside.
 
-**Do not go live (`demo_enabled=true`) with an image that predates the read-only demo (merged in Plan 9 PR 2).** Such an image leaves a fresh demo database in `setupRequired`, and the first visitor to the demo host could create an admin account.
+**Do not go live (`demo_enabled=true`) with an image that predates the read-only demo (merged in Plan 9, #50).** Such an image leaves a fresh demo database in `setupRequired`, and the first visitor to the demo host could create an admin account.
 
 The demo reseeds on every restart: at each start the app drops and recreates `ricettine_demo`, migrates it and seeds the content again. Anything visitors do, and every demo session, is gone after a restart or an instance replacement. Backups (`deploy/backup.sh`) cover the main database only.
 

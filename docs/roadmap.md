@@ -18,10 +18,10 @@ gantt
     Plan 7 UI shell and feedback :done, p7, 2026-11-15, 2026-11-15
     Plan 8 Italian :done, p8, 2026-11-15, 2026-11-15
     section Showcase
-    Plan 9 demo and docs (ongoing) :active, p9, 2026-11-15, 2026-11-17
+    Plan 9 demo and docs :done, p9, 2026-11-15, 2026-11-16
 ```
 
-Plan 9 has no merge date yet: its first three pull requests (#48, #50, #51) had merged by 2026-11-16, and the plan ends with this documentation. The end of its bar is a placeholder. Plan 7's start is the date its plan file was first committed (2026-11-15); the file is named for 2026-11-12, when the feedback it records began.
+Plan 9 merged on 2026-11-16, with its four pull requests (#48, #50, #51, #52). Plan 7's start is the date its plan file was first committed (2026-11-15); the file is named for 2026-11-12, when the feedback it records began.
 
 ## What each plan delivered
 
@@ -31,9 +31,9 @@ Plan 9 has no merge date yet: its first three pull requests (#48, #50, #51) had 
 4. **Reading, feed, profile** (merged 2026-11-05, #15 to #18): portion scaling with kitchen fractions, keep-screen-on, home feed of public recipes, profile page.
 5. **Hosting and CI** (merged 2026-11-08, #19 to #25): rate limits, published multi-arch image, optional HTTPS with Caddy, backup and restore with a drill, AWS infrastructure as code.
 6. **Code audit and fixes** (merged 2026-11-09, #26 to #35): a 102-finding audit, then 51 fixes in nine pull requests. See [quality.md](quality.md).
-7. **UI shell and feedback** (merged 2026-11-15, #45): new app shell, My kitchen, settings, command palette, editor photos, reworked recipe and cookbook pages.
+7. **UI shell and feedback** (merged 2026-11-15, #45): new app shell, My kitchen, settings, editor photos, reworked recipe and cookbook pages.
 8. **Italian** (merged 2026-11-15, #46): Italian localization.
-9. **Demo and docs** (ongoing): database routing per site (#48), a read-only demo with seeded Italian content (#50), a screenshot generator and docs images (#51), and this documentation (PR 4).
+9. **Demo and docs** (merged 2026-11-16, #48, #50 to #52): database routing per site (#48), a read-only demo with seeded Italian content (#50), a screenshot generator and docs images (#51), and the documentation (#52).
 
 Between plans 8 and 9, #47 fixed the first real deploy to AWS (2026-11-15), and #49 repaired a smoke check that #48 had broken (see [ai-workflow.md](ai-workflow.md#what-went-wrong)). Dependabot bumps of GitHub Actions (#36 to #44) are not part of any plan.
 
