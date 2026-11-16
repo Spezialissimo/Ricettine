@@ -27,17 +27,13 @@ import { FeedItem } from './feed.model';
             @for (r of list; track r.id) {
               <li class="card">
                 @if (thumb(r); as src) {
-                  <img
-                    class="thumb"
-                    [src]="src"
-                    [alt]="t('recipes.coverAlt', { title: r.title })"
-                  />
+                  <img class="thumb" [src]="src" alt="" />
                 } @else {
                   <span class="thumb none" aria-hidden="true"></span>
                 }
                 <a class="recipe name" [routerLink]="['/r', r.shareToken]">{{ r.title }}</a>
                 <p class="meta">
-                  {{ r.publishedAt | appDate }}
+                  <span>{{ r.publishedAt | appDate }}</span>
                   <span aria-hidden="true">·</span>
                   <a class="author" [routerLink]="['/u', r.author.username]">{{
                     t('recipes.by', { name: r.author.displayName })

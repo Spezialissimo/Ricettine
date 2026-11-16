@@ -1,11 +1,20 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const writes: string[] = [];
+let writes: string[] = [];
+/** What /api/setup/status really said, and what the page was told instead. */
+let setupStatus: { real?: { demo?: boolean }; patched?: { demo?: boolean; demoUrl?: string | null } } = {};
+
+test.beforeEach(() => {
+  writes = [];
+  setupStatus = {};
+});
 
 // The README/docs images, taken on the demo site (see scripts/screenshots.sh). The language and theme are set the
 // way the app keeps them (localStorage `ricettine.lang` / `ricettine.theme`), so each shot is explicit.
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = process.env.SCREENSHOT_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/images');
 
 
@@ -25,7 +34,8 @@ async function prepare(page: Page, lang: 'it' | 'en', theme: 'light' | 'dark') {
   await page.route('**/api/setup/status', async (route) => {
     const res = await route.fetch();
     const body = await res.json();
-    await route.fulfill({ response: res, json: { ...body, demo: false, demoUrl: null } });
+    setupStatus = { real: body, patched: { ...body, demo: false, demoUrl: null } };
+    await route.fulfill({ response: res, json: setupStatus.patched });
   });
   page.on('request', (req) => {
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method())) writes.push(`${req.method()} ${req.url()}`);
@@ -55,6 +65,14 @@ async function settle(page: Page) {
 
 /** Nothing of the demo mode may show: no banner, notice or toast, and no "demo" in the app's own chrome. */
 async function assertMainSiteUi(page: Page) {
+  // positive controls, so the negative checks below cannot go stale: the demo server really says demo (and the page
+  // was told otherwise), and the selectors are the real ones from the app's source
+  expect(setupStatus.real?.demo).toBe(true);
+  expect(setupStatus.patched?.demo).toBe(false);
+  const src = (f: string) => readFileSync(path.resolve(REPO, 'frontend/src/app', f), 'utf8');
+  expect(src('shell/demo-banner.component.ts')).toContain("selector: 'app-demo-banner'");
+  expect(src('recipes/editor/recipe-editor.page.ts')).toContain('demo-notice');
+  expect(src('recipes/editor/recipe-editor.page.ts')).toContain('demo-toast');
   // the banner's host element is always in the shell; it must render nothing
   await expect(page.locator('app-demo-banner')).toHaveText('');
   for (const sel of ['.demo-notice', '.demo-toast']) await expect(page.locator(sel)).toHaveCount(0);
@@ -75,6 +93,31 @@ async function shoot(page: Page, name: string, endAfter?: Locator) {
     clip = { x: 0, y: 0, width: vp.width, height: Math.min(vp.height, Math.ceil(box.y + box.height + 6)) };
   }
   await page.screenshot({ path: path.join(OUT, name), clip });
+}
+
+/** The feed's author link is a real 44 px target, never clipped by its card; on the phone a card is as tall as its image. */
+async function assertFeedCards(page: Page, mobile: boolean) {
+  const sizes = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('li.card')).map((card) => {
+      const r = card.getBoundingClientRect();
+      const a = card.querySelector('a.author')!.getBoundingClientRect();
+      const t = card.querySelector('a.recipe')!.getBoundingClientRect();
+      const img = card.querySelector('img.thumb')?.getBoundingClientRect() ?? card.querySelector('.thumb')!.getBoundingClientRect();
+      return {
+        card: [r.top, r.bottom], author: [a.width, a.height, a.top, a.bottom], title: [t.top, t.bottom], imgH: img.height, cardH: r.height,
+      };
+    }),
+  );
+  expect(sizes.length).toBeGreaterThan(0);
+  for (const s of sizes) {
+    expect(s.author[0]).toBeGreaterThanOrEqual(44);
+    expect(s.author[1]).toBeGreaterThanOrEqual(44);
+    expect(s.author[2]).toBeGreaterThanOrEqual(s.card[0]); // not clipped by the card
+    expect(s.author[3]).toBeLessThanOrEqual(s.card[1] + 0.5);
+    expect(s.author[2]).toBeGreaterThanOrEqual(s.title[1] - 0.5); // no overlap with the title link
+    if (mobile) expect(s.cardH).toBeLessThanOrEqual(s.imgH + 2.5); // image plus the 1 px borders
+  }
+  console.log(`feed cards (${mobile ? 'mobile' : 'desktop'}): author ${sizes[0].author[0].toFixed(0)}x${sizes[0].author[1].toFixed(0)}, card ${sizes[0].cardH.toFixed(0)} / image ${sizes[0].imgH.toFixed(0)}`);
 }
 
 async function openRecipe(page: Page, title: string) {
@@ -100,6 +143,7 @@ test.describe('desktop', { tag: '@desktop' }, () => {
     await prepare(page, 'it', 'light');
     await page.goto('/');
     await expect(page.getByText('Spaghetti alla carbonara').first()).toBeVisible();
+    await assertFeedCards(page, false);
     await shoot(page, 'feed-desktop.png');
   });
 
@@ -142,6 +186,7 @@ test.describe('mobile', { tag: '@mobile' }, () => {
     await prepare(page, 'it', 'light');
     await page.goto('/');
     await expect(page.getByText('Spaghetti alla carbonara').first()).toBeVisible();
+    await assertFeedCards(page, true);
     await shoot(page, 'feed-mobile.png');
   });
 

@@ -53,6 +53,8 @@ describe('FeedPage', () => {
     expect(cards[0].querySelector('.meta a.author')).toBe(authors[0]);
     expect(cards[0].querySelector('.meta [aria-hidden="true"]')?.textContent).toBe('·');
     expect(cards[0].querySelector('img.thumb')?.getAttribute('src')).toBe('/media/m/T.jpg?s=tok-a');
+    // decorative: the title link next to it names the card
+    expect(cards[0].querySelector('img.thumb')?.getAttribute('alt')).toBe('');
     expect(cards[1].querySelector('img')).toBeNull();
     expect(more(el)).toBeNull();
   });
